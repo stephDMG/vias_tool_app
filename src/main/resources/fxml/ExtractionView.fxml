@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ProgressBar?>
+<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.effect.Blend?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<!-- WICHTIG: Der Controller wurde geändert -->
+
+<BorderPane prefHeight="547.0" prefWidth="555.0" xmlns="http://javafx.com/javafx/24.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.controller.ExtractionViewController">
+    <padding>
+        <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+    </padding>
+    <center>
+        <VBox spacing="10">
+            <!-- Titel -->
+            <Label alignment="CENTER" maxWidth="Infinity" style="-fx-font-size: 20px; -fx-font-weight: bold;" text="VIAS Export Tool - PDF Extraktion" textFill="#263240" />
+
+            <!-- Manuelle Dateisuche -->
+            <HBox alignment="CENTER_LEFT" spacing="10">
+                <Label minWidth="120" text="Datei suchen:" />
+                <TextField fx:id="searchField" promptText="Dateinamen eingeben (z.B. Versicherungsbestätung.pdf)" HBox.hgrow="ALWAYS" />
+                <Button fx:id="searchButton" text="Suchen" />
+            </HBox>
+
+            <!-- PDF-Datei Auswahl -->
+            <HBox alignment="CENTER_LEFT" spacing="10">
+                <Label minWidth="120" text="PDF-Datei:" />
+                <TextField fx:id="pdfFileField" promptText="Pfad zur PDF-Datei..." HBox.hgrow="ALWAYS" />
+                <Button fx:id="selectPdfButton" text="Durchsuchen..." />
+            </HBox>
+
+            <!-- Ausgabeverzeichnis -->
+            <HBox alignment="CENTER_LEFT" spacing="10">
+                <Label minWidth="120" text="Ausgabe:" />
+                <TextField fx:id="outputDirectoryField" promptText="Standard: CarlSchroeter.vias\output" HBox.hgrow="ALWAYS" />
+                <Button fx:id="selectOutputButton" text="Durchsuchen..." />
+            </HBox>
+
+            <!-- Exportformate -->
+            <HBox alignment="CENTER_LEFT" spacing="10">
+                <Label minWidth="120" text="Formate:" />
+                <CheckBox selected="true" text="XLSX (Excel)" textFill="#5d605b" fx:id="xlsxCheckBox" />
+                <CheckBox fx:id="csvCheckBox" selected="true" text="CSV" textFill="#5d605b">
+               <effect>
+                  <Blend />
+               </effect></CheckBox>
+            </HBox>
+
+            <!-- Aktionen -->
+            <HBox alignment="CENTER_LEFT" spacing="10">
+                <Button fx:id="extractButton" style="-fx-background-color: #4CAF50; -fx-text-fill: white;" text="Extraktion starten" />
+                <ProgressBar fx:id="progressBar" prefWidth="200" visible="false" />
+                <Label fx:id="statusLabel" text="Warte auf Eingabe..." />
+            </HBox>
+
+            <!-- Log-Ausgabe -->
+            <Label style="-fx-font-weight: bold;" text="Log-Ausgabe:">
+                <VBox.margin>
+                    <Insets top="10.0" />
+                </VBox.margin>
+            </Label>
+            <TextArea fx:id="logTextArea" editable="false" prefRowCount="15" wrapText="true" />
+
+        </VBox>
+    </center>
+</BorderPane>

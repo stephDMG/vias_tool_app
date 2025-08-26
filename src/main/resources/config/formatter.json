@@ -1,0 +1,144 @@
+{
+  "fields": [
+    {
+      "name": "Restreserve",
+      "type": "MONEY"
+    },
+    {
+      "name": "Zahlungen 100",
+      "type": "MONEY"
+    },
+    {
+      "name": "Zahlungen Anteil CS",
+      "type": "MONEY"
+    },
+    {
+      "name": "Max Jahresleistung",
+      "type": "MONEY"
+    },
+    {
+      "name": "Max Schadenleistung",
+      "type": "MONEY"
+    },
+    {
+      "name": "Anteil CS",
+      "type": "MONEY"
+    },
+    {
+      "name": "Reserve (Anteil CS)",
+      "type": "MONEY"
+    },
+    {
+      "name": "Bezahlte Schäden (Anteil CS)",
+      "type": "MONEY"
+    },
+    {
+      "name": "Schaden Gesamt (Anteil CS)",
+      "type": "MONEY"
+    },
+    {
+      "name": "Gesamt",
+      "type": "MONEY"
+    },
+    {
+      "name": "Prämie ERWM 1",
+      "type": "MONEY"
+    },
+    {
+      "name": "Prämie ERWM 2",
+      "type": "MONEY"
+    },
+    {
+      "name": "Min. Prämie Netto",
+      "type": "MONEY"
+    },
+    {
+      "name": "VSP Prämie Netto",
+      "type": "MONEY"
+    },
+    {
+      "name": "Jahresprämie Netto",
+      "type": "MONEY"
+    },
+    {
+      "name": "Zahlungen",
+      "type": "MONEY"
+    },
+    {
+      "name": "Abrechnungsbetrag",
+      "type": "MONEY"
+    },
+    {
+      "name": "Zahlbetrag/Teilzahlungen",
+      "type": "MONEY"
+    },
+    {
+      "name": "SALDO",
+      "type": "MONEY"
+    },
+    {
+      "name": "Total",
+      "type": "MONEY"
+    },
+    {
+      "name": "Settlement amount",
+      "type": "MONEY"
+    },
+    {
+      "name": "Payment amount/Partial payment",
+      "type": "MONEY"
+    },
+    {
+      "name": "Balance",
+      "type": "MONEY"
+    },
+    {
+      "name": "Schadentag",
+      "type": "DATE"
+    },
+    {
+      "name": "Meldedatum",
+      "type": "DATE"
+    },
+    {
+      "name": "Importdatum",
+      "type": "DATE"
+    },
+    {
+      "name": "Transportbeginn",
+      "type": "DATE"
+    },
+    {
+      "name": "Transportende",
+      "type": "DATE"
+    },
+    {
+      "name": "Beginn",
+      "type": "DATE"
+    },
+    {
+      "name": "Ende",
+      "type": "DATE"
+    },
+    {
+      "name": "Ablauf",
+      "type": "DATE"
+    },
+    {
+      "name": "Rg-Datum",
+      "type": "DATE"
+    },
+    {
+      "name": "Fälligkeit",
+      "type": "DATE"
+    },
+    {
+      "name": "Due date",
+      "type": "DATE"
+    },
+    {
+      "name": "Invoice date",
+      "type": "DATE"
+    }
+  ]
+}

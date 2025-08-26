@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox spacing="15.0" xmlns="http://javafx.com/javafx/24.0.1" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="gui.controller.AiAssistantViewController">
+    <padding>
+        <Insets bottom="20.0" left="20.0" right="20.0" top="20.0"/>
+    </padding>
+
+    <Label style="-fx-font-size: 20px; -fx-font-weight: bold;" text="VIAS Export Tool - KI-Assistent"/>
+
+    <SplitPane dividerPositions="0.35" VBox.vgrow="ALWAYS">
+        <!-- Linke Spalte: Eingabe + Hilfe -->
+        <VBox spacing="10.0" minWidth="300.0">
+            <Label text="1. Stellen Sie Ihre Frage (DE):" style="-fx-font-weight: bold;"/>
+            <TextArea fx:id="questionTextArea" prefHeight="100.0"
+                      promptText="z.B. Zeige mir alle Verträge für Makler 100120..."
+                      wrapText="true"/>
+
+            <HBox alignment="CENTER_LEFT" spacing="10.0">
+                <Button fx:id="generateSqlButton" onAction="#generateSql" text="SQL generieren"
+                        styleClass="success-button" disable="true"/>
+                <ProgressBar fx:id="progressBar" visible="false"/>
+                <Label text="(oder Strg+Enter)" style="-fx-font-style: italic; -fx-text-fill: grey;"/>
+            </HBox>
+
+            <!-- Hilfe & Dokumentation mit dynamischen Beispielen -->
+            <Label text="Hilfe &amp; Dokumentation:"/>
+            <HBox spacing="8">
+                <Label text="Kontext:"/>
+                <ComboBox fx:id="helpContextCombo" prefWidth="180.0"/>
+            </HBox>
+            <Label text="Beispiele (klickbar):"/>
+            <FlowPane fx:id="helpChipsPane" hgap="6" vgap="6" prefWrapLength="300.0"/>
+        </VBox>
+
+        <!-- Rechte Spalte: SQL + Vorschau -->
+        <VBox spacing="10.0">
+            <SplitPane dividerPositions="0.4" orientation="VERTICAL" VBox.vgrow="ALWAYS">
+
+                <VBox spacing="10.0">
+                    <padding><Insets top="5.0" right="5.0" left="5.0" bottom="5.0"/></padding>
+                    <HBox alignment="CENTER_LEFT" spacing="10">
+                        <Label text="SQL Vorschau" style="-fx-font-weight: bold;"/>
+                        <Region HBox.hgrow="ALWAYS"/>
+                        <Button fx:id="executeQueryButton" disable="true" onAction="#executeQuery" text="Abfrage ausführen"/>
+                    </HBox>
+                    <TextArea fx:id="sqlTextArea" editable="false" styleClass="text-area-code" wrapText="true" VBox.vgrow="ALWAYS"/>
+                </VBox>
+
+                <VBox spacing="10.0">
+                    <padding><Insets top="5.0" right="5.0" left="5.0" bottom="5.0"/></padding>
+                    <HBox alignment="CENTER_LEFT">
+                        <Label text="Ergebnis-Vorschau" style="-fx-font-weight: bold;"/>
+                        <Label fx:id="resultsCountLabel" style="-fx-padding: 0 0 0 10;"/>
+                    </HBox>
+
+                    <TableView fx:id="previewTableView" styleClass="data-table" editable="true" VBox.vgrow="ALWAYS">
+                        <columnResizePolicy>
+                            <TableView fx:constant="UNCONSTRAINED_RESIZE_POLICY"/>
+                        </columnResizePolicy>
+                    </TableView>
+                    <HBox alignment="CENTER_RIGHT" spacing="10.0">
+                        <Label text="Ausgewählte Spalten löschen:" />
+                        <Button fx:id="deleteColumnsButton" onAction="#handleDeleteSelectedColumns" styleClass="button-danger" text="Löschen" />
+                    </HBox>
+
+
+                    <Pagination fx:id="pagination"/>
+                    <HBox alignment="CENTER_RIGHT" spacing="10.0">
+                        <Label text="Vollständigen Bericht exportieren als:"/>
+                        <Button fx:id="exportCsvButton" disable="true" onAction="#exportFullReport" text="CSV"/>
+                        <Button fx:id="exportXlsxButton" disable="true" onAction="#exportFullReport" text="XLSX"/>
+                    </HBox>
+                </VBox>
+
+            </SplitPane>
+        </VBox>
+    </SplitPane>
+
+    <Label fx:id="statusLabel" text="Warte auf Eingabe..."/>
+</VBox>

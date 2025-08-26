@@ -1,0 +1,11 @@
+package model.ai.ir;
+
+public enum Op {
+    EQUALS, NOT_EQUALS,
+    LIKE, NOT_LIKE,
+    IN, NOT_IN,
+    GREATER_THAN, GREATER_THAN_OR_EQUAL,
+    LESS_THAN, LESS_THAN_OR_EQUAL,
+    BETWEEN,
+    IS_NULL, IS_NOT_NULL
+}
