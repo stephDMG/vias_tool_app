@@ -32,6 +32,11 @@ import static gui.controller.utils.Dialog.showErrorDialog;
 import static gui.controller.utils.Dialog.showSuccessDialog;
 import static gui.controller.utils.format.FormatterService.exportWithFormat;
 
+/**
+ * Controller für den Datenbank-Exportbereich. Unterstützt vordefinierte Abfragen
+ * mit Parametererfassung (Grid oder Liste), Vorschau mit Spaltenverwaltung
+ * und Export in CSV/XLSX.
+ */
 public class DbExportViewController implements Initializable {
 
     private static final Logger logger = LoggerFactory.getLogger(DbExportViewController.class);

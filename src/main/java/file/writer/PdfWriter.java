@@ -15,6 +15,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
 
+/**
+ * PDF-Writer für tabellarische Exporte (z. B. OP-Listen) auf Basis von PDFBox.
+ * Erzeugt eine Querformat-Seite, zeichnet Kopf-/Fußbereich und rendert eine Tabelle
+ * mit Spaltenüberschriften und Datenzeilen.
+ */
 public class PdfWriter implements DataWriter {
 
     private PDDocument document;
@@ -23,10 +28,22 @@ public class PdfWriter implements DataWriter {
     private float yPosition;
     private float tableWidth;
 
-    public PdfWriter() {
+    /**
+         * Erstellt einen neuen PDF-Writer.
+         * Ressourcen (Dokument/Streams) werden pro Export in writeCustomData erzeugt.
+         */
+        public PdfWriter() {
     }
 
-    public void writeCustomData(List<RowData> data, List<String> headers, String outputPath) throws IOException {
+    /**
+         * Schreibt die übergebenen Daten als Tabelle in eine neue PDF-Datei.
+         * Erzeugt eine Querformatseite, zeichnet Header, Tabelle und Footer und speichert anschließend.
+         * @param data Zeileninhalte
+         * @param headers Spaltenüberschriften (Anzeigetexte)
+         * @param outputPath Zielpfad der PDF-Datei
+         * @throws IOException bei I/O-Fehlern
+         */
+        public void writeCustomData(List<RowData> data, List<String> headers, String outputPath) throws IOException {
         document = new PDDocument();
         PDRectangle a4 = PDRectangle.A4;
         PDPage page = new PDPage(new PDRectangle(a4.getHeight(), a4.getWidth()));

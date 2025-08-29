@@ -3,6 +3,41 @@
     -fx-font-family: "Segoe UI", Arial, sans-serif;
 }
 
+
+.lg {
+    -fx-min-height: 46;
+    -fx-max-height: 46;
+    -fx-font-size: 18;
+}
+
+.sm {
+    -fx-min-height: 30;
+    -fx-max-height: 30;
+}
+
+.xs {
+    -fx-min-height: 22;
+    -fx-max-height: 22;
+    -fx-font-size: 10;
+}
+
+.primary .arrow,
+.success .arrow,
+.info .arrow,
+.warning .arrow,
+.danger .arrow {
+    -fx-background-color: transparent, white;
+}
+
+.primary > .label,
+.success > .label,
+.info > .label,
+.warning > .label,
+.danger > .label {
+    -fx-text-fill: white;
+}
+
+
 .button {
     -fx-background-color: #e0e0e0;
     -fx-background-radius: 5;
@@ -256,4 +291,45 @@
 
 .button-warning:hover {
     -fx-background-color: #ec971f;
+}
+
+
+.menu-item {
+    -fx-min-width: 200;
+}
+
+.menu-item:focused {
+    -fx-background-color: #f5f5f5;
+}
+
+.menu-item:focused > * {
+    -fx-text-fill: #262626;
+}
+.menu-item:focused .arrow {
+    -fx-background-color: #333333;
+}
+
+.check-menu-item:checked:hover > .left-container > .check,
+.check-menu-item:checked:focused > .left-container > .check,
+.radio-menu-item:checked:hover > .left-container > .radio,
+.radio-menu-item:checked:focused > .left-container > .radio {
+    -fx-background-color: #333333;
+}
+
+.context-menu {
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+    -fx-border-color: #bebec0;
+}
+
+.context-menu > * {
+    -fx-padding: 5 0 5 0;
+}
+
+.separator {
+    -fx-padding: 5 0 5 0;
+}
+
+.text-field {
+    -fx-pref-height: 30;
 }

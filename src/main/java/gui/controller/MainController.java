@@ -8,12 +8,21 @@ import javafx.fxml.Initializable;
 import javafx.geometry.Insets;
 import javafx.scene.Parent;
 import javafx.scene.control.*;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.text.Text;
+import javafx.scene.text.TextFlow;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import service.AccessControlService;
+import service.LoginService;
 import service.UpdateService;
+import service.theme.ThemeService;
 
+import javax.swing.text.Element;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -22,44 +31,89 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Optional;
-import java.util.Properties;
-import java.util.ResourceBundle;
+import java.util.*;
 
+import static gui.controller.utils.Dialog.showErrorDialog;
+
+/**
+ * Haupt-Controller des Hauptfensters (MainWindow.fxml).
+ *
+ * Verantwortlich für:
+ * - Initialisierung der UI (Begrüßung, Rechteprüfung, Vorladen der Teil-Views)
+ * - Navigation/Ansichtswechsel (Extraction, Data, DbExport, AI, Pivot, Dashboard, Enrichment, OP-Liste)
+ * - Updateprüfung inkl. Download, Integritätscheck und Start des Installers
+ */
 public class MainController implements Initializable {
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(MainController.class);
 
     private static final Logger logger = LoggerFactory.getLogger(MainController.class);
-    private static final String VERSION_FILE_PATH = "X:\\FREIE ZONE\\Dongmo, Stephane\\Vias-Tool\\jpackage_output\\version.txt";
-    private static final String CHANGELOG_FILE_PATH = "X:\\FREIE ZONE\\Dongmo, Stephane\\Vias-Tool\\jpackage_output\\changelog.txt";
+    private static final String VERSION_FILE_PATH = "C:\\VIAS_TOOL_PUBLIC\\jpackage_output\\version.txt";
+    private static final String CHANGELOG_FILE_PATH = "C:\\VIAS_TOOL_PUBLIC\\jpackage_output\\changelog.txt";
     private String CURRENT_VERSION = "N/A";
     private Parent opListView;
 
     @FXML
     private BorderPane mainBorderPane;
-    private Parent extractionView, dataView, dbExportView, aiAssistantView, pivotView, dashboardView, showEnrichmentView;
+    private Parent extractionView, dataView, dbExportView, aiAssistantView, pivotView, dashboardView, showEnrichmentView, settingsView;
 
+    @FXML
+    private MenuItem statusItem;
+    @FXML
+    private TextFlow userGreeting;
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
+
         logger.info("🎯 MainController wird initialisiert...");
         loadAppVersion();
+        LoginService loginService = new LoginService();
+        String username = loginService.getCurrentWindowsUsername();
+        AccessControlService accessControl = new AccessControlService();
+        statusItem.setVisible(accessControl.hasPermission(username, "op-status") || accessControl.hasPermission(username, "all"));
+
+        String user =  username.replace('.', ' ');
+        Text part1 = new Text("Moin ");
+
+        Text handIcon = new Text("👋");
+        handIcon.setStyle("-fx-fill: orange;");
+
+        Text part2 = new Text(" " + capitalizeFirstLetter(user) + "!");
+
+        userGreeting.getChildren().addAll(part1, handIcon, part2);
 
         try {
-            extractionView = FXMLLoader.load(getClass().getResource("/fxml/ExtractionView.fxml"));
-            dataView = FXMLLoader.load(getClass().getResource("/fxml/DataView.fxml"));
-            dbExportView = FXMLLoader.load(getClass().getResource("/fxml/DbExportView.fxml"));
-            aiAssistantView = FXMLLoader.load(getClass().getResource("/fxml/AiAssistantView.fxml"));
-            pivotView = FXMLLoader.load(getClass().getResource("/fxml/PivotView.fxml"));
-            dashboardView = FXMLLoader.load(getClass().getResource("/fxml/DashboardView.fxml"));
-            showEnrichmentView = FXMLLoader.load(getClass().getResource("/fxml/EnrichmentView.fxml"));
-            opListView = FXMLLoader.load(getClass().getResource("/fxml/OpListView.fxml"));
+            extractionView = FXMLLoader.load(Objects.requireNonNull(getClass().getResource("/fxml/ExtractionView.fxml")));
+            dataView = FXMLLoader.load(Objects.requireNonNull(getClass().getResource("/fxml/DataView.fxml")));
+            dbExportView = FXMLLoader.load(Objects.requireNonNull(getClass().getResource("/fxml/DbExportView.fxml")));
+            aiAssistantView = FXMLLoader.load(Objects.requireNonNull(getClass().getResource("/fxml/AiAssistantView.fxml")));
+            pivotView = FXMLLoader.load(Objects.requireNonNull(getClass().getResource("/fxml/PivotView.fxml")));
+            dashboardView = FXMLLoader.load(Objects.requireNonNull(getClass().getResource("/fxml/DashboardView.fxml")));
+            showEnrichmentView = FXMLLoader.load(Objects.requireNonNull(getClass().getResource("/fxml/EnrichmentView.fxml")));
+            opListView = FXMLLoader.load(Objects.requireNonNull(getClass().getResource("/fxml/OpListView.fxml")));
+            settingsView = FXMLLoader.load(Objects.requireNonNull(getClass().getResource("/fxml/SettingsView.fxml")));
+
         } catch (IOException e) {
             logger.error("❌ Fehler beim Vorladen der Ansichten", e);
             e.printStackTrace();
         }
 
+        ThemeService themeService = new ThemeService();
+        themeService.applyTheme(themeService.loadTheme());
+
         showDashboardView();
         checkForUpdates();
+    }
+
+    public static String capitalizeFirstLetter(String input) {
+        if (input == null || input.isEmpty()) {
+            return input;
+        }
+        String[] words = input.split("\\s+");
+        StringJoiner result = new StringJoiner(" ");
+        for (String word : words) {
+            result.add(word.substring(0, 1).toUpperCase() + word.substring(1));
+        }
+        return result.toString();
     }
 
     private void loadAppVersion() {
@@ -93,17 +147,32 @@ public class MainController implements Initializable {
             protected UpdateInfo call() {
                 try {
                     logger.info("Prüfe auf neue Version unter: {}", VERSION_FILE_PATH);
-                    String onlineVersion = Files.readString(Paths.get(VERSION_FILE_PATH), StandardCharsets.UTF_8).trim();
 
-                    String changelogContent = "Konnte keine Änderungsbeschreibung laden.";
-                    try {
-                        changelogContent = Files.readString(Paths.get(CHANGELOG_FILE_PATH), StandardCharsets.UTF_8);
-                    } catch (IOException e) {
-                        logger.warn("Konnte changelog.txt nicht lesen: {}", e.getMessage());
+                    // Version prüfen
+                    Path versionPath = Paths.get(VERSION_FILE_PATH);
+                    if (!Files.exists(versionPath)) {
+                        logger.warn("Version-Datei existiert nicht: {}", VERSION_FILE_PATH);
+                        return null;
                     }
+                    String onlineVersion = Files.readString(versionPath, StandardCharsets.UTF_8).trim();
+
+                    // Changelog laden
+                    String changelogContent = "Keine Änderungsbeschreibung verfügbar.";
+                    Path changelogPath = Paths.get(CHANGELOG_FILE_PATH);
+                    if (Files.exists(changelogPath)) {
+                        try {
+                            changelogContent = Files.readString(changelogPath, StandardCharsets.UTF_8);
+                            logger.info("Changelog erfolgreich geladen ({} Zeichen)", changelogContent.length());
+                        } catch (IOException e) {
+                            logger.warn("Fehler beim Lesen der changelog.txt: {}", e.getMessage());
+                        }
+                    } else {
+                        logger.warn("Changelog-Datei existiert nicht: {}", CHANGELOG_FILE_PATH);
+                    }
+
                     return new UpdateInfo(onlineVersion, changelogContent);
                 } catch (IOException e) {
-                    logger.warn("Konnte version.txt nicht lesen: {}", e.getMessage());
+                    logger.error("Fehler beim Lesen der Update-Dateien: {}", e.getMessage());
                     return null;
                 }
             }
@@ -113,21 +182,28 @@ public class MainController implements Initializable {
                 UpdateInfo info = getValue();
                 if (info != null && info.version != null && isNewer(info.version, CURRENT_VERSION)) {
                     logger.info("Neue Version gefunden! Online: {}, Aktuell: {}", info.version, CURRENT_VERSION);
-                    // KORRIGIERTER AUFRUF: Übergibt das gesamte 'info'-Objekt.
                     Platform.runLater(() -> showUpdateDialog(info));
                 } else {
-                    logger.info("Keine neue Version gefunden.");
+                    logger.info("Keine neue Version verfügbar. Online: {}, Aktuell: {}",
+                            info != null ? info.version : "N/A", CURRENT_VERSION);
                 }
             }
+
+            @Override
+            protected void failed() {
+                logger.warn("Update-Prüfung fehlgeschlagen: {}", getException().getMessage());
+            }
         };
-        new Thread(versionCheckTask).start();
+
+        Thread updateThread = new Thread(versionCheckTask, "update-check-thread");
+        updateThread.setDaemon(true);
+        updateThread.start();
     }
 
     private boolean isNewer(String onlineVersion, String currentVersion) {
         return onlineVersion.compareTo(currentVersion) > 0;
     }
 
-    // GELÖSCHT: Die alte, einfache showUpdateDialog(String newVersion) Methode wurde entfernt.
 
     // Fügen Sie diese Methode zu Ihrem MainController hinzu
     private void showUpdateDialog(UpdateInfo info) {
@@ -155,15 +231,27 @@ public class MainController implements Initializable {
     }
 
 
-
     // Ersetzen Sie Ihre alte startUpdateProcess-Methode durch diese
     private void startUpdateProcess(UpdateInfo info) {
         // 1. Pfade für Installer und Prüfsumme konstruieren
         Path versionFilePath = Paths.get(VERSION_FILE_PATH);
         Path baseDir = versionFilePath.getParent();
         String msiName = "VIAS Export Tool-" + info.version + ".msi";
-        String msiPath = baseDir.resolve(msiName).toString();
-        String checksumPath = baseDir.resolve(msiName + ".sha256").toString();
+        Path msiPath = baseDir.resolve(msiName);
+        Path checksumPath = baseDir.resolve(msiName + ".sha256");
+
+        // Prüfe ob die Dateien existieren
+        if (!Files.exists(msiPath)) {
+            showErrorDialog("Update-Fehler",
+                    "Installer-Datei nicht gefunden:\n" + msiPath.toString());
+            return;
+        }
+
+        if (!Files.exists(checksumPath)) {
+            logger.warn("Prüfsummen-Datei nicht gefunden: {}", checksumPath);
+            // Trotzdem fortfahren, aber ohne Integritätsprüfung
+        }
+
 
         // 2. UI für den Fortschritt erstellen
         Dialog<Void> progressDialog = new Dialog<>();
@@ -177,7 +265,7 @@ public class MainController implements Initializable {
 
         // 3. Update-Task erstellen
         UpdateService updateService = new UpdateService();
-        Task<File> downloadTask = updateService.createDownloadTask(msiPath);
+        Task<File> downloadTask = updateService.createDownloadTask(msiPath.toString());
 
         // 4. UI an den Task binden
         progressBar.progressProperty().bind(downloadTask.progressProperty());
@@ -193,7 +281,7 @@ public class MainController implements Initializable {
                 statusLabel.textProperty().unbind();
                 statusLabel.setText("Überprüfe Datei-Integrität...");
                 logger.info("Lade erwartete Prüfsumme von: {}", checksumPath);
-                String expectedChecksum = updateService.downloadExpectedChecksum(checksumPath);
+                String expectedChecksum = updateService.downloadExpectedChecksum(checksumPath.toString());
                 if (updateService.verifyChecksum(downloadedMsi, expectedChecksum)) {
                     logger.info("✅ Prüfsumme korrekt. Starte Installer.");
                     runInstallerAndExit(downloadedMsi);
@@ -220,8 +308,6 @@ public class MainController implements Initializable {
     private void runInstallerAndExit(File msiFile) {
         logger.info("Starte Installer: {}", msiFile.getAbsolutePath());
         try {
-            // Robuster Start via cmd /c start... msiexec.exe
-            // /passive -> Minimale UI, /norestart -> Verhindert automatischen Neustart
             ProcessBuilder pb = new ProcessBuilder(
                     "cmd", "/c", "start", "\"VIAS Update\"",
                     System.getenv("WINDIR") + "\\System32\\msiexec.exe",
@@ -244,14 +330,7 @@ public class MainController implements Initializable {
             Platform.exit();
         }
     }
-    // Fügen Sie diese neue Methode zu Ihrem MainController hinzu
-    private void showErrorDialog(String title, String message) {
-        Alert alert = new Alert(Alert.AlertType.ERROR);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
-    }
+
 
     // --- Methoden zum Wechseln der Ansichten ---
     @FXML private void showExtractionView() { mainBorderPane.setCenter(extractionView); }
@@ -261,7 +340,8 @@ public class MainController implements Initializable {
     @FXML private void showPivotView() { mainBorderPane.setCenter(pivotView); }
     @FXML private void showDashboardView() { mainBorderPane.setCenter(dashboardView); }
     @FXML private void showEnrichmentView() { mainBorderPane.setCenter(showEnrichmentView); }
-    @FXML  private void showOpListView() { mainBorderPane.setCenter(opListView);}
+    @FXML private void showOpListView() { mainBorderPane.setCenter(opListView);}
+    @FXML private void showSettingsView() { mainBorderPane.setCenter(settingsView); }
 
     @FXML private void closeApplication() {
         Platform.exit();

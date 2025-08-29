@@ -13,10 +13,28 @@ $jpackageLibsDir = Join-Path $jpackageInputDir "libs"
 $logoFileSource = Join-Path $projectDir "src\main\resources\images\logo.ico"
 $logoFileDest = Join-Path $jpackageLibsDir "logo.ico"
 $destLocal = "C:\jpackage_output"
-$destPublic = "X:\FREIE ZONE\Dongmo, Stephane\Vias-Tool\jpackage_output"
+$destPublic = "C:\VIAS_TOOL_PUBLIC\jpackage_output"
 $versionFilePublic = Join-Path $destPublic "version.txt"
 $changelogFilePublic = Join-Path $destPublic "changelog.txt"
 $archiveDirPublic = Join-Path $destPublic "archive"
+
+# Pruefe ob Zielverzeichnis existiert/erreichbar ist
+if (-not (Test-Path (Split-Path $destPublic -Parent))) {
+    Write-Host "[FEHLER] Laufwerk V:\ ist nicht verfuegbar!" -ForegroundColor Red
+    Write-Host "Bitte stellen Sie sicher, dass das Netzlaufwerk V: verbunden ist." -ForegroundColor Yellow
+    exit 1
+}
+
+# Erstelle Zielverzeichnis falls nicht vorhanden
+if (-not (Test-Path $destPublic)) {
+    try {
+        New-Item -ItemType Directory -Force -Path $destPublic | Out-Null
+        Write-Host "Zielverzeichnis erstellt: $destPublic" -ForegroundColor Green
+    } catch {
+        Write-Host "[FEHLER] Konnte Zielverzeichnis nicht erstellen: $destPublic" -ForegroundColor Red
+        exit 1
+    }
+}
 
 # --- 2. INFORMATIONEN SAMMELN ---
 Write-Host "==========================================================" -ForegroundColor Magenta
@@ -27,16 +45,52 @@ try {
     [xml]$pom = Get-Content $pomFile
     $currentVersion = $pom.project.version
     $versionParts = $currentVersion.Split('.')
-    $newPatchVersion = [int]$versionParts[2] + 1
-    $suggestedVersion = "$($versionParts[0]).$($versionParts[1]).$($newPatchVersion)"
+
+    # Aktuelle Version-Teile
+    $major = [int]$versionParts[0]
+    $minor = [int]$versionParts[1]
+    $patch = [int]$versionParts[2]
+
+    # Versionierungs-Logik
+    if ($patch -eq 29) {
+        # Naechste Version wird X.(Y+1).0
+        $newMajor = $major
+        $newMinor = $minor + 1
+        $newPatch = 0
+        $suggestedVersion = "$newMajor.$newMinor.$newPatch"
+        Write-Host "Patch-Version erreicht 30 - Minor-Version wird erhoeht!" -ForegroundColor Yellow
+    } elseif ($patch -lt 29) {
+        # Normale Patch-Erhoehung
+        $newMajor = $major
+        $newMinor = $minor
+        $newPatch = $patch + 1
+        $suggestedVersion = "$newMajor.$newMinor.$newPatch"
+    } else {
+        # Falls Patch bereits ueber 29 ist (Fallback)
+        Write-Host "Unerwartete Patch-Version ($patch). Bitte manuelle Eingabe." -ForegroundColor Red
+        $suggestedVersion = "$major.$minor.0"
+    }
+
 } catch {
-    Write-Host "[FEHLER] pom.xml konnte nicht gelesen werden. Breche ab." -ForegroundColor Red; exit
+    Write-Host "[FEHLER] pom.xml konnte nicht gelesen werden. Breche ab." -ForegroundColor Red
+    exit 1
 }
 
-# NEU: Version wird vorgeschlagen
-Write-Host "Aktuelle Version ist '$($currentVersion)'." -ForegroundColor Yellow
-$newVersion = Read-Host -Prompt "Bitte neue Versionsnummer bestaetigen oder eingeben (Vorschlag: $($suggestedVersion))"
-if (-not $newVersion) { $newVersion = $suggestedVersion }
+# NEU: Version wird vorgeschlagen mit verbesserter Ausgabe
+Write-Host "Aktuelle Version: $currentVersion" -ForegroundColor Cyan
+Write-Host "Vorgeschlagene neue Version: $suggestedVersion" -ForegroundColor Green
+
+$newVersion = Read-Host -Prompt "Neue Versionsnummer bestaetigen oder eigene eingeben (Enter fuer Vorschlag)"
+if (-not $newVersion -or $newVersion.Trim() -eq "") {
+    $newVersion = $suggestedVersion
+    Write-Host "Version $newVersion wird verwendet." -ForegroundColor Green
+}
+
+# Validierung der eingegebenen Version
+if ($newVersion -notmatch '^\d+\.\d+\.\d+$') {
+    Write-Host "[FEHLER] Ungueltiges Versionsformat. Erwartet: X.Y.Z" -ForegroundColor Red
+    exit 1
+}
 
 Write-Host "Bitte beschreibe die Aenderungen (beende mit 'ENDE' in einer neuen Zeile):" -ForegroundColor Yellow
 $commitLines = @()
@@ -79,13 +133,45 @@ if ($targetChoice -eq '1' -or $targetChoice -eq '3') {
 }
 if ($targetChoice -eq '2' -or $targetChoice -eq '3') {
     Write-Host "Erstelle oeffentlichen Installer..."
-    # NEU: Alten Installer archivieren
+    # NEU: Strukturierte Archivierung nach Major.Minor-Schema
     if (Test-Path $destPublic) {
         $oldInstaller = Get-ChildItem -Path $destPublic -Filter "*.msi" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
         if ($oldInstaller) {
-            if (-not (Test-Path $archiveDirPublic)) { New-Item -ItemType Directory -Force -Path $archiveDirPublic | Out-Null }
-            Move-Item -Path $oldInstaller.FullName -Destination $archiveDirPublic
-            Write-Host "--> Alter Installer '$($oldInstaller.Name)' wurde nach '$($archiveDirPublic)' verschoben." -ForegroundColor Cyan
+            # Extrahiere Version aus dem Dateinamen
+            if ($oldInstaller.Name -match "VIAS Export Tool-(\d+)\.(\d+)\.(\d+)\.msi") {
+                $oldMajor = $matches[1]
+                $oldMinor = $matches[2]
+                $oldPatch = $matches[3]
+                $majorMinorFolder = "$oldMajor.$oldMinor"
+
+                # Erstelle Ordner-Struktur: archive/1.0/, archive/1.1/, etc.
+                $specificArchiveDir = Join-Path $archiveDirPublic $majorMinorFolder
+                if (-not (Test-Path $specificArchiveDir)) {
+                    New-Item -ItemType Directory -Force -Path $specificArchiveDir | Out-Null
+                    Write-Host "--> Archiv-Ordner erstellt: '$specificArchiveDir'" -ForegroundColor Cyan
+                }
+
+                # Verschiebe Installer in den entsprechenden Ordner
+                $newInstallerPath = Join-Path $specificArchiveDir $oldInstaller.Name
+                Move-Item -Path $oldInstaller.FullName -Destination $newInstallerPath
+                Write-Host "--> Alter Installer '$($oldInstaller.Name)' wurde nach '$majorMinorFolder/' verschoben." -ForegroundColor Cyan
+
+                # Verschiebe zugehoerige .sha256 falls vorhanden
+                $oldChecksum = "$($oldInstaller.FullName).sha256"
+                if (Test-Path $oldChecksum) {
+                    $newChecksumPath = Join-Path $specificArchiveDir ([IO.Path]::GetFileName($oldChecksum))
+                    Move-Item -Path $oldChecksum -Destination $newChecksumPath
+                    Write-Host "--> Alte Pruefsumme wurde nach '$majorMinorFolder/' verschoben." -ForegroundColor Cyan
+                } else {
+                    Write-Host "--> Hinweis: Keine Pruefsumme fuer '$($oldInstaller.Name)' gefunden." -ForegroundColor Yellow
+                }
+            } else {
+                Write-Host "--> Warnung: Konnte Version aus Dateiname '$($oldInstaller.Name)' nicht extrahieren." -ForegroundColor Yellow
+                Write-Host "--> Verwende Fallback-Archivierung..." -ForegroundColor Yellow
+                # Fallback: In allgemeinen archive-Ordner verschieben
+                if (-not (Test-Path $archiveDirPublic)) { New-Item -ItemType Directory -Force -Path $archiveDirPublic | Out-Null }
+                Move-Item -Path $oldInstaller.FullName -Destination $archiveDirPublic
+            }
         }
     }
     jpackage $jpackageArgs --dest "`"$destPublic`""
@@ -97,21 +183,21 @@ if ($targetChoice -eq '2' -or $targetChoice -eq '3') {
     Copy-Item -Path $changelogFile -Destination $changelogFilePublic
     Write-Host "[OK] Release-Informationen aktualisiert." -ForegroundColor Green
 }
-# --- 6. PRÜFSUMME ERSTELLEN UND BEREITSTELLEN ---
+# --- 6. PRUEFSUMME ERSTELLEN UND BEREITSTELLEN ---
 Write-Host "----------------------------------------------------------"
-Write-Host "--> Erstelle SHA-256 Prüfsumme..." -ForegroundColor Cyan
+Write-Host "--> Erstelle SHA-256 Pruefsumme..." -ForegroundColor Cyan
 
 $installerName = "VIAS Export Tool-$($newVersion).msi"
 $localInstallerPath = Join-Path $destLocal $installerName
 $publicInstallerPath = Join-Path $destPublic $installerName
 
-# Funktion zum Erstellen der Prüfsumme
+# Funktion zum Erstellen der Pruefsumme
 function Create-Checksum($installerPath) {
     if (Test-Path $installerPath) {
         $checksumPath = "$($installerPath).sha256"
         $hash = (Get-FileHash -Path $installerPath -Algorithm SHA256).Hash
         Set-Content -Path $checksumPath -Value $hash
-        Write-Host "[OK] Prüfsumme erstellt für: $($installerPath)" -ForegroundColor Green
+        Write-Host "[OK] Pruefsumme erstellt fuer: $($installerPath)" -ForegroundColor Green
     }
 }
 

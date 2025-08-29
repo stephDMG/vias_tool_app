@@ -23,7 +23,7 @@
     <top>
         <VBox spacing="15.0" BorderPane.alignment="CENTER">
             <!-- Dieser Teil bleibt unverändert -->
-            <Label alignment="CENTER" maxWidth="Infinity" style="-fx-font-size: 20px; -fx-font-weight: bold;" text="VIAS Export Tool - Datenbank-Export" />
+            <Label alignment="CENTER" maxWidth="Infinity" style="-fx-font-size: 20px; -fx-font-weight: bold;" text="Datenbank-Export"  />
 
             <HBox alignment="CENTER_LEFT" spacing="10.0">
                 <Label minWidth="120.0" text="Bericht auswählen:" />

@@ -14,6 +14,10 @@ import service.op.OpListeProcessService;
  * Erweiterte Dependency Injection Factory für alle Services.
  * Singletons werden statisch initialisiert mit AI-Mode Support.
  */
+/**
+ * Zentrale Factory für Service-Singletons (Datenbank, Datei, OP-Liste, AI).
+ * Bietet Umschaltung des AI-Modus (LOCAL/HYBRID/AUTO) und Caching für DB.
+ */
 public final class ServiceFactory {
     private static final Logger logger = LoggerFactory.getLogger(ServiceFactory.class);
     private static final DatabaseService databaseService;

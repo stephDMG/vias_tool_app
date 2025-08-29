@@ -18,7 +18,7 @@
     </padding>
     <top>
         <VBox spacing="15.0" BorderPane.alignment="CENTER">
-            <Label alignment="CENTER" maxWidth="Infinity" style="-fx-font-size: 20px; -fx-font-weight: bold;" text="VIAS Export Tool - Datenanreicherungstool für Schäden" />
+            <Label alignment="CENTER" maxWidth="Infinity" style="-fx-font-size: 20px; -fx-font-weight: bold;" text="Datenanreicherungstool für Schäden"  />
             <!-- Manuelle Dateisuche -->
             <HBox alignment="CENTER_LEFT" spacing="10">
                 <Label minWidth="120" text="Datei suchen:" />

@@ -2,10 +2,8 @@ package gui.controller;
 
 import javafx.application.Platform;
 import javafx.concurrent.Task;
-import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
-import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import org.slf4j.Logger;
@@ -19,17 +17,26 @@ import java.time.format.DateTimeFormatter;
 import java.util.Map;
 import java.util.ResourceBundle;
 
+import static gui.controller.utils.Dialog.showErrorDialog;
+
 /**
  * Controller für die Dashboard-Ansicht.
  * Zeigt wichtige Statistiken aus der Datenbank an und ermöglicht deren Aktualisierung.
+ * Hinweis: Navigation zwischen Ansichten wird zentral im MainController umgesetzt (MainWindow.fxml).
  */
 public class DashboardViewController implements Initializable {
 
     private static final Logger logger = LoggerFactory.getLogger(DashboardViewController.class);
 
+    // Legacy label refs (fallback if old FXML is used)
     @FXML private Label activeContractsValueLabel;
     @FXML private Label openDamagesValueLabel;
     @FXML private Label brokerCountValueLabel;
+
+    // New reusable stat-card controls (present in current FXML)
+    @FXML private gui.components.StatCardControl activeContractsCard;
+    @FXML private gui.components.StatCardControl openDamagesCard;
+    @FXML private gui.components.StatCardControl brokerCountCard;
     @FXML private Button refreshButton;
     @FXML private Label statusLabel;
 
@@ -38,6 +45,12 @@ public class DashboardViewController implements Initializable {
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         this.databaseService = ServiceFactory.getDatabaseService();
+
+        // Titles for new stat cards (if present)
+        if (activeContractsCard != null) activeContractsCard.setTitle("Aktive Verträge");
+        if (openDamagesCard != null) openDamagesCard.setTitle("Offene Schäden");
+        if (brokerCountCard != null) brokerCountCard.setTitle("Anzahl Makler");
+
         // Lädt die Daten beim ersten Öffnen des Dashboards.
         refreshDashboard();
     }
@@ -88,9 +101,18 @@ public class DashboardViewController implements Initializable {
     private void updateDashboardUI(Map<String, Integer> stats) {
         // Platform.runLater stellt sicher, dass UI-Updates immer im richtigen Thread erfolgen.
         Platform.runLater(() -> {
-            activeContractsValueLabel.setText(String.valueOf(stats.getOrDefault("Aktive Verträge", 0)));
-            openDamagesValueLabel.setText(String.valueOf(stats.getOrDefault("Offene Schäden", 0)));
-            brokerCountValueLabel.setText(String.valueOf(stats.getOrDefault("Anzahl Makler", 0)));
+            int active = stats.getOrDefault("Aktive Verträge", 0);
+            int open = stats.getOrDefault("Offene Schäden", 0);
+            int brokers = stats.getOrDefault("Anzahl Makler", 0);
+
+            if (activeContractsCard != null) activeContractsCard.setValue(String.valueOf(active));
+            if (openDamagesCard != null) openDamagesCard.setValue(String.valueOf(open));
+            if (brokerCountCard != null) brokerCountCard.setValue(String.valueOf(brokers));
+
+            // Fallback for legacy labels if present
+            if (activeContractsValueLabel != null) activeContractsValueLabel.setText(String.valueOf(active));
+            if (openDamagesValueLabel != null) openDamagesValueLabel.setText(String.valueOf(open));
+            if (brokerCountValueLabel != null) brokerCountValueLabel.setText(String.valueOf(brokers));
         });
     }
 
@@ -107,36 +129,5 @@ public class DashboardViewController implements Initializable {
      */
     private String getCurrentTimestamp() {
         return LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm:ss"));
-    }
-
-    /**
-     * Zeigt eine Fehlerdialogbox an.
-     */
-    private void showErrorDialog(String title, String message) {
-        Alert alert = new Alert(Alert.AlertType.ERROR);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
-    }
-
-    public void showExtractionView(ActionEvent actionEvent) {
-        // Diese Methode wird in der MainController-Klasse aufgerufen, um die Extraktionsansicht anzuzeigen.
-        // Hier könnte
-        // eine Logik implementiert werden, um die Extraktionsansicht zu laden und anzuzeigen.
-        logger.info("Navigating to Extraction View...");
-        // Beispiel: mainBorderPane.setCenter(extractionView);
-        // mainBorderPane.setCenter(extractionView);
-
-
-    }
-
-    public void showDbExportView(ActionEvent actionEvent) {
-    }
-
-    public void showDataView(ActionEvent actionEvent) {
-    }
-
-    public void showPivotView(ActionEvent actionEvent) {
     }
 }

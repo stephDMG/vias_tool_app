@@ -7,6 +7,9 @@ import javafx.scene.control.ButtonType;
 import java.util.Optional;
 
 
+/**
+ * Utility-Klasse für standardisierte Dialoge (Fehler, Erfolg, Bestätigung) in der GUI.
+ */
 public class Dialog {
 
 

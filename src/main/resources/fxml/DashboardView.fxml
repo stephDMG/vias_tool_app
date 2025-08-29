@@ -1,26 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.geometry.Insets?>
-<?import javafx.scene.control.Button?>
-<?import javafx.scene.control.Label?>
-<?import javafx.scene.layout.AnchorPane?>
-<?import javafx.scene.layout.ColumnConstraints?>
-<?import javafx.scene.layout.GridPane?>
-<?import javafx.scene.layout.HBox?>
-<?import javafx.scene.layout.RowConstraints?>
-<?import javafx.scene.layout.VBox?>
-<?import javafx.scene.text.Font?>
+<?import gui.components.*?>
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.*?>
 
-<VBox prefHeight="626.0" prefWidth="854.0" spacing="15.0" styleClass="dashboard-background" xmlns="http://javafx.com/javafx/24.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.controller.DashboardViewController">
+<VBox prefHeight="626.0" prefWidth="854.0" spacing="15.0" styleClass="dashboard-background" xmlns:gc="gui.components" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.controller.DashboardViewController">
     <padding>
         <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
     </padding>
-    <HBox alignment="CENTER_LEFT" spacing="10.0">
-        <Label styleClass="dashboard-title" text="CS Dashboard" />
-        <Button fx:id="refreshButton" mnemonicParsing="false" onAction="#refreshDashboard" text="Aktualisieren" />
-    </HBox>
+    <VBox alignment="TOP_CENTER" prefHeight="98.0" prefWidth="814.0">
+        <Label alignment="CENTER" maxWidth="Infinity" prefHeight="30.0" prefWidth="825.0" style="-fx-font-size: 25px; -fx-font-weight: bold;" text="CS Dashboard" />
+    </VBox>
+    <Button fx:id="refreshButton" mnemonicParsing="false" onAction="#refreshDashboard" prefHeight="29.0" prefWidth="145.0" styleClass="aktualisieren-button" stylesheets="@../css/styles-atlantafx.css" text="Aktualisieren 🔄" textAlignment="CENTER">
+    </Button>
 
-    <GridPane alignment="TOP_CENTER" hgap="20.0" translateY="100.0" vgap="20.0">
+    <GridPane alignment="TOP_CENTER" hgap="20.0" translateY="50.0" vgap="20.0">
         <columnConstraints>
             <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
             <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
@@ -29,33 +25,16 @@
         <rowConstraints>
             <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
         </rowConstraints>
-        <!-- Statistische Karte 1: Aktive Verträge -->
-        <AnchorPane styleClass="stat-card">
-            <VBox spacing="5.0" AnchorPane.bottomAnchor="15.0" AnchorPane.leftAnchor="15.0" AnchorPane.rightAnchor="15.0" AnchorPane.topAnchor="15.0">
-                <Label fx:id="activeContractsValueLabel" styleClass="stat-value" text="-" />
-                <Label styleClass="stat-title" text="Aktive Verträge" />
-            </VBox>
-        </AnchorPane>
-        <!-- Statistische Karte 2: Offene Schäden -->
-        <AnchorPane styleClass="stat-card" GridPane.columnIndex="1">
-            <VBox spacing="5.0" AnchorPane.bottomAnchor="15.0" AnchorPane.leftAnchor="15.0" AnchorPane.rightAnchor="15.0" AnchorPane.topAnchor="15.0">
-                <Label fx:id="openDamagesValueLabel" styleClass="stat-value" text="-" />
-                <Label styleClass="stat-title" text="Offene Schäden" />
-            </VBox>
-        </AnchorPane>
-        <!-- Statistische Karte 3: Anzahl Makler -->
-        <AnchorPane styleClass="stat-card" GridPane.columnIndex="2">
-            <VBox spacing="5.0" AnchorPane.bottomAnchor="15.0" AnchorPane.leftAnchor="15.0" AnchorPane.rightAnchor="15.0" AnchorPane.topAnchor="15.0">
-                <Label fx:id="brokerCountValueLabel" styleClass="stat-value" text="-" />
-                <Label styleClass="stat-title" text="Anzahl Makler" />
-            </VBox>
-        </AnchorPane>
+        <children>
+            <gui.components.StatCardControl fx:id="activeContractsCard" />
+            <gui.components.StatCardControl fx:id="openDamagesCard" GridPane.columnIndex="1" />
+            <gui.components.StatCardControl fx:id="brokerCountCard" GridPane.columnIndex="2" />
+        </children>
     </GridPane>
     <VBox layoutY="500.0" prefHeight="81.0" prefWidth="575.0" translateY="100.0">
-        <Label fx:id="statusLabel" blendMode="DARKEN" prefHeight="80.0" prefWidth="578.0" text="Daten werden geladen..."
-               textAlignment="CENTER">
+        <Label fx:id="statusLabel"  prefHeight="80.0" prefWidth="578.0" text="Daten werden geladen..." textAlignment="CENTER">
           <font>
-              <Font size="14.0"/>
+              <Font size="14.0" />
           </font>
         </Label>
     </VBox>

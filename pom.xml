@@ -6,7 +6,7 @@
 
     <groupId>com.vias</groupId>
     <artifactId>export-tool</artifactId>
-    <version>1.1.2</version>
+    <version>1.2.0</version>
     <packaging>jar</packaging>
 
     <properties>
@@ -161,9 +161,6 @@
             <artifactId>logback-classic</artifactId>
             <version>1.4.11</version>
         </dependency>
-
-
-
        <!-- Kotlin.jvm -->
         <dependency>
             <groupId>org.jetbrains.kotlin</groupId>
@@ -189,6 +186,18 @@
             <groupId>com.github.ben-manes.caffeine</groupId>
             <artifactId>caffeine</artifactId>
             <version>3.1.8</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.sun.mail</groupId>
+            <artifactId>javax.mail</artifactId>
+            <version>1.6.2</version>
+        </dependency>
+
+        <dependency>
+            <groupId>io.github.mkpaz</groupId>
+            <artifactId>atlantafx-base</artifactId>
+            <version>2.1.0</version>
         </dependency>
 
     </dependencies>

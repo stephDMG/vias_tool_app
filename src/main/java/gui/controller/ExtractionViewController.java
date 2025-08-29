@@ -18,6 +18,9 @@ import java.io.File;
 import java.net.URL;
 import java.util.ResourceBundle;
 
+import static gui.controller.utils.Dialog.showErrorDialog;
+import static gui.controller.utils.Dialog.showSuccessDialog;
+
 // Diese Klasse enthält die gesamte Logik für die Extraktionsansicht
 public class ExtractionViewController implements Initializable {
 
@@ -190,7 +193,7 @@ public class ExtractionViewController implements Initializable {
                     setProcessingMode(false);
                     statusLabel.setText("Extraktion erfolgreich abgeschlossen");
                     appendLog("🎉 Alle Exports erfolgreich abgeschlossen!");
-                    showSuccessDialog();
+                    showSuccessDialog("Erfolg", "PDF-Extraktion erfolgreich abgeschlossen!");
                 });
             }
 
@@ -258,19 +261,4 @@ public class ExtractionViewController implements Initializable {
         logTextArea.clear();
     }
 
-    private void showErrorDialog(String title, String message) {
-        Alert alert = new Alert(Alert.AlertType.ERROR);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
-    }
-
-    private void showSuccessDialog() {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Erfolg");
-        alert.setHeaderText(null);
-        alert.setContentText("PDF-Extraktion erfolgreich abgeschlossen!");
-        alert.showAndWait();
-    }
 }

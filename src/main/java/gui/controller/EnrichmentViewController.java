@@ -31,6 +31,10 @@ import static gui.controller.utils.Dialog.showErrorDialog;
 import static gui.controller.utils.Dialog.showSuccessDialog;
 import static gui.controller.utils.format.FormatterService.exportWithFormat;
 
+/**
+ * Controller für die Datenanreicherung: Lädt Quelldateien, sucht Dateien,
+ * reichert per Datenbankinformationen an, zeigt Vorschau und exportiert CSV/XLSX.
+ */
 public class EnrichmentViewController implements Initializable {
 
     private static final Logger logger = LoggerFactory.getLogger(EnrichmentViewController.class);

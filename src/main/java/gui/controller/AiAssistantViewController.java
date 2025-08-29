@@ -23,12 +23,20 @@ import java.io.File;
 import java.net.URL;
 import java.util.*;
 import java.util.ResourceBundle;
-import java.util.stream.Collectors;
 
 import static gui.controller.utils.Dialog.showErrorDialog;
 import static gui.controller.utils.Dialog.showSuccessDialog;
 import static gui.controller.utils.format.FormatterService.exportWithFormat;
 
+/**
+ * Controller für die Ansicht "KI-Assistent".
+ * <p>
+ * Verantwortlich für die Interaktion mit dem KI-Service zur SQL-Generierung,
+ * das Ausführen der Abfrage gegen die Datenbank, die tabellarische Vorschau
+ * inklusive Spaltenverwaltung sowie den Export (CSV/XLSX). Bietet Hilfs-Chips
+ * mit Beispielprompts und Paginierung großer Ergebnismengen.
+ * </p>
+ */
 public class AiAssistantViewController implements Initializable {
     private static final Logger logger = LoggerFactory.getLogger( AiAssistantViewController.class);
     private static final int ROWS_PER_PAGE = 100;
@@ -62,6 +70,13 @@ public class AiAssistantViewController implements Initializable {
 
     private TableManager tableManager;
 
+    /**
+     * Initialisiert die Ansicht: Service-Factories, Paginierung, Tastenkürzel,
+     * Tabellen-Manager sowie Hilfe-/Beispielchips.
+     *
+     * @param location FXML-Standort
+     * @param resources Lokalisierungsressourcen
+     */
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         this.aiService = ServiceFactory.getAiService();
@@ -104,6 +119,10 @@ public class AiAssistantViewController implements Initializable {
     }
 
 
+    /**
+     * Erzeugt auf Basis der Benutzereingabe eine SQL-Abfrage mittels KI-Service.
+     * Setzt Statusmeldungen und behandelt Fehlerfälle.
+     */
     @FXML
     private void generateSql() {
         String userQuestion = questionTextArea.getText();
@@ -135,6 +154,10 @@ public class AiAssistantViewController implements Initializable {
         new Thread(generateTask, "ai-generate-sql").start();
     }
 
+    /**
+     * Führt die im SQL-Editor stehende Abfrage gegen die Datenbank aus und
+     * zeigt eine paginierte Vorschau. Schaltet Export-Buttons frei.
+     */
     @FXML
     private void executeQuery() {
         String sql = sqlTextArea.getText();
@@ -175,6 +198,12 @@ public class AiAssistantViewController implements Initializable {
         new Thread(queryTask, "ai-exec-sql").start();
     }
 
+    /**
+     * Exportiert die angezeigten Ergebnisse als CSV oder XLSX, abhängig vom
+     * geklickten Button. Nutzt FormatterService für konsistentes Mapping.
+     *
+     * @param event ActionEvent des Buttons (liefert das gewünschte Format)
+     */
     @FXML
     private void exportFullReport(javafx.event.ActionEvent event) {
 

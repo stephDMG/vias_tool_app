@@ -22,6 +22,12 @@ import java.util.List;
 import java.util.ResourceBundle;
 import java.util.stream.Collectors;
 
+import static gui.controller.utils.Dialog.showErrorDialog;
+
+/**
+ * Controller für die Datenansicht: Laden von CSV/XLSX-Dateien, einfache
+ * Volltextsuche über alle Zellen, Paginierung und Tabellenanzeige.
+ */
 public class DataViewController implements Initializable {
 
     private static final Logger logger = LoggerFactory.getLogger(DataViewController.class);
@@ -134,11 +140,4 @@ public class DataViewController implements Initializable {
         dataTableView.setItems(tableData);
     }
 
-    private void showErrorDialog(String title, String message) {
-        Alert alert = new Alert(Alert.AlertType.ERROR);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
-    }
 }

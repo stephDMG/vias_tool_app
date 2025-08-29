@@ -9,16 +9,31 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Wie Ihr alter AbstractDataWriter.
+ * Schnittstelle für schreibende Dateiformate (CSV/XLSX, etc.).
+ * Stellt Standardlogik für formatiertes Schreiben bereit und
+ * definiert die nötigen Methoden für konkrete Writer.
  */
 public interface DataWriter extends AutoCloseable {
 
+    /**
+     * Schreibt eine Kopfzeile in das Zielmedium.
+     * @param headers Spaltenüberschriften
+     * @throws IOException bei I/O-Fehlern
+     */
     void writeHeader(List<String> headers) throws IOException;
-    // Abstrakte Methode
+
+    /**
+     * Schreibt einen bereits formatierten Datensatz.
+     * @param formattedValues Werte in Header-Reihenfolge
+     * @throws IOException bei I/O-Fehlern
+     */
     void writeFormattedRecord(List<String> formattedValues) throws IOException;
 
     /**
-     * Schreibt formatierte Zeile - GENAU wie Ihr alter Code.
+     * Erzeugt eine formatierte Zeile anhand der RowData und delegiert an
+     * {@link #writeFormattedRecord(List)}.
+     * @param row Datenzeile
+     * @throws IOException bei I/O-Fehlern
      */
     default void writeFormattedRow(RowData row) throws IOException {
         List<String> formatted = row.getValues().keySet().stream()
@@ -27,10 +42,20 @@ public interface DataWriter extends AutoCloseable {
         writeFormattedRecord(formatted);
     }
 
-    void writeRow(RowData row) throws IOException;
+    /**
+         * Schreibt eine einzelne RowData-Zeile (ggf. mit Formatierung in der Implementierung).
+         * @param row Datenzeile
+         * @throws IOException bei I/O-Fehlern
+         */
+        void writeRow(RowData row) throws IOException;
 
     /**
-     * Schreibt Custom Data mit Formatierung - GENAU wie Ihr alter Code.
+     * Schreibt eine Liste von Zeilen mit vorgegebenen Headern.
+     * Implementiert Standardlogik: Header schreiben und jede Zeile in der
+     * Reihenfolge der Header schreiben (ohne zusätzliche Formatierung).
+     * @param data Zeilen
+     * @param headers Spalten in Zielreihenfolge
+     * @throws IOException bei I/O-Fehlern
      */
     default void writeCustomData(List<RowData> data, List<String> headers) throws IOException {
         writeHeader(headers);

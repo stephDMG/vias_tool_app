@@ -21,7 +21,7 @@
     <padding>
         <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
     </padding>
-    <Label alignment="CENTER" maxWidth="Infinity" style="-fx-font-size: 20px; -fx-font-weight: bold;" text="VIAS Export Tool - Pivot-Tabellen-Generator" textFill="#263240" />
+    <Label alignment="CENTER" maxWidth="Infinity" style="-fx-font-size: 20px; -fx-font-weight: bold;" text="Pivot-Tabellen-Generator" />
 
     <HBox alignment="CENTER_LEFT" spacing="10.0">
         <Label minWidth="120.0" text="Quelldatei:" />

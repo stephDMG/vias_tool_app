@@ -9,7 +9,7 @@
         <Insets bottom="20.0" left="20.0" right="20.0" top="20.0"/>
     </padding>
 
-    <Label style="-fx-font-size: 20px; -fx-font-weight: bold;" text="VIAS Export Tool - KI-Assistent"/>
+     <Label alignment="CENTER" maxWidth="Infinity" style="-fx-font-size: 20px; -fx-font-weight: bold;"  text="KI-Assistent (ChatBoot)" />
 
     <SplitPane dividerPositions="0.35" VBox.vgrow="ALWAYS">
         <!-- Linke Spalte: Eingabe + Hilfe -->

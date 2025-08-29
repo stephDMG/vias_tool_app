@@ -92,7 +92,7 @@ public class XlsxFileHandler implements FileHandler {
     public void writePivot(List<RowData> data, PivotConfig config, String outputPath) {
         PivotProcessor processor = new PivotProcessor();
 
-
+        // Validierung, ob die Pivot-Transformation möglich ist.
         if (!processor.canPivot(data, config)) {
             throw new IllegalArgumentException("Pivot-Transformation nicht möglich für diese Daten");
         }
@@ -111,6 +111,13 @@ public class XlsxFileHandler implements FileHandler {
         System.out.println("✅ Pivot-Export abgeschlossen: " + outputPath);
     }
 
+    /**
+     * Schreibt eine OP-Liste in eine XLSX-Datei.
+     * Diese Methode verwendet einen neuen {@link XlsxWriter}, um die Daten zu exportieren
+     * @param data
+     * @param headers
+     * @param outputPath
+     */
     public void writeOpList(List<RowData> data, List<String> headers, String outputPath) {
         try (XlsxWriter writer = new XlsxWriter(outputPath)) {
             writer.writeOpList(data, headers);

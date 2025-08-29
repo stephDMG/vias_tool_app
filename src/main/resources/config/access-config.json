@@ -1,0 +1,24 @@
+{
+  "users": {
+    "stephane.dongmo": {
+      "role": "admin",
+      "permissions": ["all"]
+    },
+    "carl.schroeter": {
+      "role": "user",
+      "permissions": ["view", "export"]
+    },
+    "christian.behrendt":{
+      "role": "user",
+      "permissions": ["op-list"]
+    },
+    "walter.jonas": {
+      "role": "user",
+      "permissions": ["view", "export"]
+    },
+    "sabine.blume": {
+      "role": "guest",
+      "permissions": ["view"]
+    }
+  }
+}

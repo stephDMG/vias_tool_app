@@ -17,7 +17,7 @@
     </padding>
     <top>
         <VBox spacing="10.0" BorderPane.alignment="CENTER">
-            <Label alignment="CENTER" maxWidth="Infinity" style="-fx-font-size: 20px; -fx-font-weight: bold;" text="VIAS Export Tool - Daten-Anzeige" textFill="#263240" />
+            <Label alignment="CENTER" maxWidth="Infinity" style="-fx-font-size: 20px; -fx-font-weight: bold;" text="Daten-Anzeige" />
 
             <Label text="Laden Sie eine CSV- oder XLSX-Datei, um die extrahierten Daten anzuzeigen und zu durchsuchen." textAlignment="CENTER">
             <font>

@@ -14,6 +14,11 @@ import java.sql.*;
 import java.util.*;
 import java.util.function.Consumer;
 
+/**
+ * Standard-Implementierung des {@link service.interfaces.DatabaseService}.
+ * Kapselt JDBC-Zugriffe (Query-Ausführung, Export, Dashboard-Kennzahlen) und
+ * nutzt {@link service.interfaces.FileService} für Dateiexporte.
+ */
 public class DatabaseServiceImpl implements DatabaseService {
 
     private static final Logger log = LoggerFactory.getLogger(DatabaseServiceImpl.class);

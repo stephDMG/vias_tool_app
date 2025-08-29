@@ -8,6 +8,10 @@ import javafx.fxml.Initializable;
 import javafx.scene.control.*;
 import model.RowData;
 import model.enums.ExportFormat;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import service.AccessControlService;
+import service.LoginService;
 import service.ServiceFactory;
 import service.op.OpListeProcessService;
 import service.op.OpListeTask;
@@ -19,8 +23,14 @@ import java.util.ResourceBundle;
 import static gui.controller.utils.Dialog.showErrorDialog;
 import static gui.controller.utils.Dialog.showSuccessDialog;
 
+/**
+ * Controller für den OP-Listen-Export.
+ * Kümmert sich um Start/Stop des Exportprozesses, Statuswechsel,
+ * Ergebnisanzeige und Export der selektierten Daten.
+ */
 public class OpListTableViewController implements Initializable {
 
+    private static final Logger log = LoggerFactory.getLogger(OpListTableViewController.class);
     // --- UI ---
     @FXML private ComboBox<String> filterComboBox;
     @FXML private RadioButton deRadioButton;
@@ -52,25 +62,29 @@ public class OpListTableViewController implements Initializable {
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-        this.opListeProcessService = new OpListeProcessService(
-                ServiceFactory.getDatabaseService(),
-                ServiceFactory.getFileService()
-        );
 
-        filterComboBox.getItems().addAll("Kunde", "Makler", "Intern");
-        filterComboBox.getSelectionModel().select("Kunde");
 
-        deRadioButton.setToggleGroup(languageToggleGroup);
-        enRadioButton.setToggleGroup(languageToggleGroup);
-        deRadioButton.setSelected(true);
 
-        excelRadioButton.setToggleGroup(formatToggleGroup);
-        pdfRadioButton.setToggleGroup(formatToggleGroup);
-        excelRadioButton.setSelected(true);
+            this.opListeProcessService = new OpListeProcessService(
+                    ServiceFactory.getDatabaseService(),
+                    ServiceFactory.getFileService()
+            );
 
-        stepsListView.setItems(steps);
+            filterComboBox.getItems().addAll("Kunde", "Makler", "Intern");
+            filterComboBox.getSelectionModel().select("Kunde");
 
-        setIdleState();
+            deRadioButton.setToggleGroup(languageToggleGroup);
+            enRadioButton.setToggleGroup(languageToggleGroup);
+            deRadioButton.setSelected(true);
+
+            excelRadioButton.setToggleGroup(formatToggleGroup);
+            pdfRadioButton.setToggleGroup(formatToggleGroup);
+            excelRadioButton.setSelected(true);
+
+            stepsListView.setItems(steps);
+
+            setIdleState();
+
     }
 
     private void setIdleState() {

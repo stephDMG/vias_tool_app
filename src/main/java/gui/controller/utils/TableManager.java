@@ -17,6 +17,10 @@ import java.util.stream.Collectors;
 
 import static gui.controller.utils.Dialog.showWarningDialog;
 
+/**
+ * Hilfsklasse zur Verwaltung der TableView (Spaltenaufbau, Kontextmenü,
+ * Auswahl/Löschung, Formatierung der Zellwerte für die Anzeige).
+ */
 public class TableManager {
     private static final Logger logger = LoggerFactory.getLogger(TableManager.class);
 

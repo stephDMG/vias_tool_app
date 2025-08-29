@@ -23,6 +23,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.ResourceBundle;
 
+import static gui.controller.utils.Dialog.showErrorDialog;
+import static gui.controller.utils.Dialog.showSuccessDialog;
+
+/**
+ * Controller zur Erstellung einer Pivot-Tabelle aus geladenen CSV/XLSX-Daten,
+ * inklusive Vorschau und Export nach XLSX mit konfigurierbaren Spalten.
+ */
 public class PivotViewController implements Initializable {
 
     private static final Logger logger = LoggerFactory.getLogger(PivotViewController.class);
@@ -188,19 +195,5 @@ public class PivotViewController implements Initializable {
         return (Stage) exportButton.getScene().getWindow();
     }
 
-    private void showErrorDialog(String title, String message) {
-        Alert alert = new Alert(Alert.AlertType.ERROR);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
-    }
 
-    private void showSuccessDialog(String title, String message) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
-    }
 }

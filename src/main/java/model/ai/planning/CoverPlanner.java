@@ -16,12 +16,25 @@ import java.util.stream.Collectors;
  * - {CONDITIONS} enthält dynamische WHERE-Bedingungen aus den Predicates.
  * - Parameter werden als PreparedStatement-Parameter gesammelt.
  */
+/**
+ * Erzeugt aus einer domänenspezifischen Zwischenrepräsentation (IR) einen
+ * konkreten SQL-Plan inklusive Spaltenliste, WHERE-Bedingungen und Parameter-
+ * Bindings. Nutzt dazu eine AiReportTemplate-Vorlage und ein Mapping von
+ * Keywords auf Spaltenspezifikationen.
+ */
 public class CoverPlanner {
 
     private final AiReportTemplate template;
     private final Map<String, AiColumnSpec> columnLibrary;
 
-    private String parseAndFormatDate(String dateStr){
+    /**
+         * Versucht, verschiedene Datumsformate aus der UI/Prompts zu parsen und
+         * ins DB-Format yyyyMMdd zu konvertieren.
+         *
+         * @param dateStr Eingabestring (z. B. 01.01.2024)
+         * @return formatierte Zeichenkette oder null bei Fehlschlag
+         */
+        private String parseAndFormatDate(String dateStr){
         DateTimeFormatter[] inputFormatters = {
                 DateTimeFormatter.ofPattern("dd.MM.yyyy"),
                 DateTimeFormatter.ofPattern("d.M.yyyy"),
@@ -42,7 +55,13 @@ public class CoverPlanner {
         return null;
     }
 
-    public CoverPlanner(AiReportTemplate template) {
+    /**
+         * Erstellt einen Planner mit der angegebenen Report-Vorlage und baut eine
+         * durchsuchbare Spaltenbibliothek aus deren Definitionen auf.
+         *
+         * @param template Reportvorlage mit SQL-Template und verfügbaren Spalten
+         */
+        public CoverPlanner(AiReportTemplate template) {
         this.template = template;
         this.columnLibrary = new HashMap<>();
         // Erstelle eine durchsuchbare Bibliothek, die Keywords auf Specs abbildet
@@ -59,7 +78,14 @@ public class CoverPlanner {
         });
     }
 
-    public SqlPlan fromIR(QueryIR ir) {
+    /**
+         * Übersetzt die Query-IR in einen konkreten SQL-Plan (SQL-Text, Header,
+         * Parameter). Fügt optional ORDER BY und LIMIT hinzu.
+         *
+         * @param ir Zwischenrepräsentation der Anfrage
+         * @return fertiger SQL-Plan
+         */
+        public SqlPlan fromIR(QueryIR ir) {
         SqlPlan plan = new SqlPlan();
 
 
@@ -85,7 +111,7 @@ public class CoverPlanner {
                     conditions.add("(RTRIM(LTRIM(V05.LU_LANDNAME)) = ? OR RTRIM(LTRIM(LUM.LU_NAT)) = ?)");
                     plan.params.add(p.value.toString().trim().toUpperCase());
                     plan.params.add(p.value.toString().trim().toUpperCase());
-                } else if ("beginn".equalsIgnoreCase(p.field) && p.op == Op.BETWEEN) { // <-- Korrektur: else if
+                } else if ("beginn".equalsIgnoreCase(p.field) && p.op == Op.BETWEEN) {
                     if (p.value instanceof List<?> dates && dates.size() == 2) {
                         conditions.add("LAL.LU_BEG BETWEEN ? AND ?");
                         plan.params.add(parseAndFormatDate(dates.get(0).toString()));
@@ -141,7 +167,7 @@ public class CoverPlanner {
                     .collect(Collectors.joining(", "));
             sql += "\nORDER BY " + orderByPart;
         }
-        // 5. LIMIT-Klausel hinzufügen
+
         if (ir.limit != null && ir.limit > 0) {
             sql += "\nLIMIT ?";
             plan.params.add(ir.limit);
@@ -156,7 +182,15 @@ public class CoverPlanner {
 
 
     // Korrektur: Logik für Whitelist- und Blacklist-Projektionen
-    private List<AiColumnSpec> calculateFinalColumns(List<Projection> projections) {
+    /**
+         * Ermittelt die finale Spaltenliste anhand der Projektionen:
+         * - Wenn Excludes vorhanden: Basisspalten minus ausgeschlossene (Blacklist)
+         * - Sonst: nur explizit gewünschte Spalten, wobei order==0 zuerst kommt (Whitelist)
+         *
+         * @param projections vom Parser/IR gelieferte Spaltenwünsche
+         * @return finale, geordnete Spaltenliste
+         */
+        private List<AiColumnSpec> calculateFinalColumns(List<Projection> projections) {
         // Die Basis-Spalten aus der Vorlage
         List<AiColumnSpec> base = new ArrayList<>(template.getAvailableColumns().values());
 

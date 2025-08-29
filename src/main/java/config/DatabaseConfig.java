@@ -12,6 +12,12 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.Properties;
 
+/**
+ * Datenbank-Konfigurationsklasse, die die Verbindungseinstellungen aus einer Konfigurationsdatei laden kann.
+ *
+ * @author stephane.dongmo
+ * @since 15/07/2025
+ */
 public final class DatabaseConfig {
 
     private static final Logger log = LoggerFactory.getLogger(DatabaseConfig.class);
@@ -64,13 +70,18 @@ public final class DatabaseConfig {
         }
     }
 
-    // Die getConnection Methode bleibt unverändert
+    /**
+     * Diese Methode liefert eine Verbindung zur Datenbank.
+     *
+     * @return  Liefert eine Verbindung zur Datenbank.
+     * @throws SQLException Die Verbindung konnte nicht hergestellt werden.
+     * @throws ClassNotFoundException Der JDBC-Treiber konnte nicht gefunden werden.
+     */
     public static Connection getConnection() throws SQLException, ClassNotFoundException {
         Class.forName(DRIVER);
         return DriverManager.getConnection(URL, USER, PASSWORD);
     }
 
-    // --- GEÄNDERT: Der static-Block initialisiert die Felder jetzt aus dem geladenen BUNDLE ---
     static {
         URL = BUNDLE.getProperty("db.url");
         USER = BUNDLE.getProperty("db.user");

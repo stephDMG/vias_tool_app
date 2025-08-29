@@ -21,7 +21,7 @@
     <center>
         <VBox spacing="10">
             <!-- Titel -->
-            <Label alignment="CENTER" maxWidth="Infinity" style="-fx-font-size: 20px; -fx-font-weight: bold;" text="VIAS Export Tool - PDF Extraktion" textFill="#263240" />
+            <Label alignment="CENTER" maxWidth="Infinity" style="-fx-font-size: 20px; -fx-font-weight: bold;" text="PDF Extraktion"/>
 
             <!-- Manuelle Dateisuche -->
             <HBox alignment="CENTER_LEFT" spacing="10">

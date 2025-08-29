@@ -55,6 +55,15 @@ public class PdfFileHandler implements FileHandler {
     }
 
 
+    /**
+     * Schreibt eine OP-Liste als PDF-Datei.
+     * Diese Methode verwendet einen neuen {@link PdfWriter}, um die Daten zu exportieren.
+     *
+     * @param data       Die zu exportierenden {@link RowData}-Objekte.
+     * @param headers    Die Header der OP-Liste.
+     * @param outputPath Der Pfad zur Ausgabedatei.
+     * @throws RuntimeException Falls ein Fehler beim Schreiben der PDF-Datei auftritt.
+     */
     public void writeOpList(List<RowData> data, List<String> headers, String outputPath) {
         try(PdfWriter writer = new PdfWriter()) {
             writer.writeCustomData(data, headers, outputPath);

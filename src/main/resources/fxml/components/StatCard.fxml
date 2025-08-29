@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.geometry.Insets?>
+
+<fx:root type="AnchorPane" xmlns="http://javafx.com/javafx/24.0.1" xmlns:fx="http://javafx.com/fxml/1">
+    <VBox spacing="5.0" AnchorPane.topAnchor="15.0" AnchorPane.rightAnchor="15.0"
+          AnchorPane.bottomAnchor="15.0" AnchorPane.leftAnchor="15.0">
+        <Label fx:id="valueLabel" styleClass="stat-value" text="-"/>
+        <Label fx:id="titleLabel" styleClass="stat-title" text="Statistik"/>
+    </VBox>
+</fx:root>

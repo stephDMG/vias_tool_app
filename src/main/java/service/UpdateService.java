@@ -19,6 +19,11 @@ import java.security.MessageDigest;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+/**
+ * Service für Update-Operationen: Download des Installers mit Fortschritt,
+ * Laden und Prüfen der erwarteten SHA-256-Prüfsumme sowie Hilfsfunktionen
+ * zur Pfad-/Bytes-Konvertierung.
+ */
 public class UpdateService {
 
     private static final Logger logger = LoggerFactory.getLogger(UpdateService.class);
@@ -39,7 +44,7 @@ public class UpdateService {
                     logger.warn("Dateigröße unbekannt (Server liefert kein Content-Length).");
                 }
 
-                Path tempFile = Files.createTempFile("VIAS-Export-Tool-Update-", ".msi");
+                Path tempFile = Files.createTempFile("VIAS-Export-Tool-Update-", ".exe");
                 long transferredBytes = 0;
                 byte[] buffer = new byte[8192]; // 8 KB Puffer
 
