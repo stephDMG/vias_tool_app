@@ -59,6 +59,18 @@ public class Dialog {
     }
 
 
+    public static boolean showWarningDialog(String spalte, String s) {
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle(spalte);
+        alert.setHeaderText(spalte);
+        alert.setContentText(s);
 
-
+        final boolean[] result = {false};
+        alert.showAndWait().ifPresent(response -> {
+            if (response == ButtonType.OK) {
+                result[0] = true;
+            }
+        });
+        return result[0];
+    }
 }

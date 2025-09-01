@@ -5,9 +5,7 @@
 <?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ListView?>
-<?import javafx.scene.control.Pagination?>
 <?import javafx.scene.control.ProgressBar?>
-<?import javafx.scene.control.TableView?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.ColumnConstraints?>
@@ -22,15 +20,16 @@
     </padding>
     <top>
         <VBox spacing="15.0" BorderPane.alignment="CENTER">
-            <!-- Dieser Teil bleibt unverändert -->
-            <Label alignment="CENTER" maxWidth="Infinity" style="-fx-font-size: 20px; -fx-font-weight: bold;" text="Datenbank-Export"  />
+            <!-- Header und Parameter-Bereich bleibt unverändert -->
+            <Label alignment="CENTER" maxWidth="Infinity" style="-fx-font-size: 20px; -fx-font-weight: bold;" text="Datenbank-Export" />
 
             <HBox alignment="CENTER_LEFT" spacing="10.0">
                 <Label minWidth="120.0" text="Bericht auswählen:" />
                 <ComboBox fx:id="reportComboBox" maxWidth="1.7976931348623157E308" HBox.hgrow="ALWAYS" />
-                <Button fx:id="helpButton" mnemonicParsing="false" onAction="#showHelp" style="-fx-border-color: #2e6da4;;" styleClass="help-button" stylesheets="@../css/bootstrap3.css" text="?" />
+                <Button fx:id="helpButton" mnemonicParsing="false" onAction="#showHelp" style="-fx-border-color: #2e6da4;" styleClass="help-button" stylesheets="@../css/bootstrap3.css" text="?" />
             </HBox>
 
+            <!-- Parameter-Listen-Ansicht (für spezielle Queries) -->
             <VBox fx:id="parameterListBox" managed="false" spacing="5.0" visible="false">
                 <Label text="Parameter (eine oder mehrere Schaden Nrn.):" />
                 <HBox spacing="10.0">
@@ -41,12 +40,15 @@
                 <ListView fx:id="parameterListView" prefHeight="100.0" />
             </VBox>
 
+            <!-- Parameter-Grid-Ansicht (für Standard-Queries) -->
             <GridPane fx:id="parameterGrid" hgap="10.0" vgap="10.0">
                 <columnConstraints>
                     <ColumnConstraints hgrow="SOMETIMES" minWidth="120.0" prefWidth="120.0" />
                     <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
                 </columnConstraints>
             </GridPane>
+
+            <!-- Ausführungs-Bereich -->
             <HBox alignment="CENTER_LEFT" spacing="10.0">
                 <Button fx:id="executeQueryButton" mnemonicParsing="false" onAction="#executeQuery" text="Daten laden" />
                 <ProgressBar fx:id="progressBar" prefWidth="200.0" visible="false" />
@@ -54,36 +56,21 @@
             </HBox>
         </VBox>
     </top>
+
+    <!-- Zentraler Bereich: Nur Container für die dynamische Tabelle -->
     <center>
-        <VBox spacing="10.0" BorderPane.alignment="CENTER">
+        <VBox spacing="15.0" BorderPane.alignment="CENTER">
             <BorderPane.margin>
                 <Insets top="20.0" />
             </BorderPane.margin>
-            <HBox alignment="CENTER_LEFT">
-                <Label text="Ergebnis-Vorschau">
-                    <font>
-                        <Font name="System Bold" size="14.0" />
-                    </font>
-                </Label>
-                <Label fx:id="resultsCountLabel" style="-fx-padding: 0 0 0 10;" />
-            </HBox>
 
-            <TableView fx:id="previewTableView" editable="true" styleClass="data-table" VBox.vgrow="ALWAYS">
-                <columnResizePolicy>
-                    <TableView fx:constant="UNCONSTRAINED_RESIZE_POLICY" />
-                </columnResizePolicy>
-            </TableView>
-            <HBox alignment="CENTER_RIGHT" spacing="10.0">
-                <Label text="Ausgewählte Spalten löschen:" />
-                <Button fx:id="deleteColumnsButton" onAction="#handleDeleteSelectedColumns" styleClass="button-danger" text="Löschen" />
-            </HBox>
-            <!-- NEU: Pagination Control -->
-            <Pagination fx:id="pagination" maxPageIndicatorCount="10" pageCount="0" />
-            <HBox alignment="CENTER_RIGHT" spacing="10.0">
-                <Label text="Vollständigen Bericht exportieren als:" />
-                <Button fx:id="exportCsvButton" mnemonicParsing="false" onAction="#exportFullReport" text="CSV" />
-                <Button fx:id="exportXlsxButton" mnemonicParsing="false" onAction="#exportFullReport" text="XLSX" />
-            </HBox>
+            <!-- Header für den Ergebnis-Bereich -->
+            <Label text="Ergebnis-Vorschau" style="-fx-font-size: 14px; -fx-font-weight: bold;" />
+
+            <!-- CONTAINER für die dynamische Tabelle vom EnhancedTableManager -->
+            <VBox fx:id="resultsContainer" spacing="10" VBox.vgrow="ALWAYS">
+                <!-- Hier wird die UniversalTableView.fxml dynamisch eingefügt -->
+            </VBox>
         </VBox>
     </center>
 </BorderPane>

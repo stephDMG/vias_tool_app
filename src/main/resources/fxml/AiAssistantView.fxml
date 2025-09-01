@@ -54,26 +54,12 @@
                     <padding><Insets top="5.0" right="5.0" left="5.0" bottom="5.0"/></padding>
                     <HBox alignment="CENTER_LEFT">
                         <Label text="Ergebnis-Vorschau" style="-fx-font-weight: bold;"/>
-                        <Label fx:id="resultsCountLabel" style="-fx-padding: 0 0 0 10;"/>
                     </HBox>
 
-                    <TableView fx:id="previewTableView" styleClass="data-table" editable="true" VBox.vgrow="ALWAYS">
-                        <columnResizePolicy>
-                            <TableView fx:constant="UNCONSTRAINED_RESIZE_POLICY"/>
-                        </columnResizePolicy>
-                    </TableView>
-                    <HBox alignment="CENTER_RIGHT" spacing="10.0">
-                        <Label text="Ausgewählte Spalten löschen:" />
-                        <Button fx:id="deleteColumnsButton" onAction="#handleDeleteSelectedColumns" styleClass="button-danger" text="Löschen" />
-                    </HBox>
-
-
-                    <Pagination fx:id="pagination"/>
-                    <HBox alignment="CENTER_RIGHT" spacing="10.0">
-                        <Label text="Vollständigen Bericht exportieren als:"/>
-                        <Button fx:id="exportCsvButton" disable="true" onAction="#exportFullReport" text="CSV"/>
-                        <Button fx:id="exportXlsxButton" disable="true" onAction="#exportFullReport" text="XLSX"/>
-                    </HBox>
+                    <!-- In AiAssistantView.fxml ersetzen Sie den Tabellenbereich durch: -->
+                    <VBox fx:id="resultsContainer" spacing="10" VBox.vgrow="ALWAYS">
+                        <!-- TableViewBuilder fügt hier dynamisch die Tabelle ein -->
+                    </VBox>
                 </VBox>
 
             </SplitPane>

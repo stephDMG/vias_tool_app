@@ -75,8 +75,13 @@ public class EnrichmentViewController implements Initializable {
         logger.info( "✅ EnrichmentViewController initialized successfully.");
     }
 
+    /*
     @FXML
-    private void handleDeleteSelectedColumns() { tableManager.handleDeleteSelectedColumns(fullResults);}
+    private void handleDeleteSelectedColumns() {
+        tableManager.handleDeleteSelectedColumns(fullResults);
+    }
+    */
+
 
    @ FXML
     private void selectSourceFile() {

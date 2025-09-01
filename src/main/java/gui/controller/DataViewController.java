@@ -1,11 +1,10 @@
 package gui.controller;
 
-import javafx.beans.property.SimpleStringProperty;
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
+import gui.controller.manager.TableViewBuilder;
+import gui.controller.utils.EnhancedTableManager;
+import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
-import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
@@ -20,46 +19,127 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.ResourceBundle;
-import java.util.stream.Collectors;
 
 import static gui.controller.utils.Dialog.showErrorDialog;
+import static gui.controller.utils.Dialog.showSuccessDialog;
 
 /**
- * Controller für die Datenansicht: Laden von CSV/XLSX-Dateien, einfache
- * Volltextsuche über alle Zellen, Paginierung und Tabellenanzeige.
+ * Controller für die Datenansicht.
+ *
+ * <p><strong>Funktionalität:</strong></p>
+ * <ul>
+ * <li>Laden von CSV/XLSX-Dateien über einen FileChooser</li>
+ * <li>Verwaltung der geladenen Daten über den {@link EnhancedTableManager}</li>
+ * <li>Paginierung und Echtzeit-Volltextsuche in der Tabelle</li>
+ * <li>Spaltenmanagement, Umbenennung und Löschung</li>
+ * <li>Export der gefilterten Daten (optional, kann über FXML aktiviert werden)</li>
+ * </ul>
+ *
+ * <p><strong>Technische Verbesserungen:</strong></p>
+ * <ul>
+ * <li>Verwendet {@link TableViewBuilder} und {@link EnhancedTableManager} für eine standardisierte Tabellenlogik.</li>
+ * <li>Der Code ist schlanker, da die Logik für Suche, Pagination und Spaltenverwaltung ausgelagert ist.</li>
+ * <li>Asynchroner Dateiladevorgang über einen {@link Task}, um die UI nicht zu blockieren.</li>
+ * </ul>
+ *
+ * @author Stephane Dongmo
+ * @version 2.0
+ * @since 1.0
  */
 public class DataViewController implements Initializable {
 
     private static final Logger logger = LoggerFactory.getLogger(DataViewController.class);
-    private static final int ROWS_PER_PAGE = 100;
 
+    // === FXML-Komponenten ===
     @FXML private Button loadFileButton;
-    @FXML private TextField searchField;
-    @FXML private Label resultsCountLabel;
-    @FXML private TableView<ObservableList<String>> dataTableView;
-    @FXML private Pagination pagination;
+    @FXML private VBox resultsContainer; // Container für die Tabelle aus dem Builder
 
+    // === Services und Datenmodell ===
     private FileService fileService;
     private List<RowData> fullDataList = new ArrayList<>();
-    private List<RowData> filteredDataList = new ArrayList<>();
 
+    // === Tabellenverwaltung ===
+    private EnhancedTableManager tableManager;
+
+    /**
+     * Initialisiert den Controller und die UI-Komponenten.
+     *
+     * <p>Führt folgende Initialisierung durch:</p>
+     * <ol>
+     * <li>Service-Injection über ServiceFactory.</li>
+     * <li>Setup der erweiterten Tabellenverwaltung mit Such- und Paginations-Features.</li>
+     * </ol>
+     *
+     * @param location  Die FXML-Ressourcen-URL (automatisch injiziert).
+     * @param resources Die Lokalisierungsressourcen (automatisch injiziert).
+     */
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-        this.fileService = ServiceFactory.getFileService();
-        pagination.setPageFactory(this::createPage);
-        pagination.setVisible(false);
+        logger.info("Initialisiere DataViewController mit verbesserter Tabellenverwaltung");
 
-        // Listener für das Suchfeld hinzufügen
-        searchField.textProperty().addListener((observable, oldValue, newValue) -> {
-            filterData(newValue);
-        });
+        // Service-Injection
+        this.fileService = ServiceFactory.getFileService();
+
+        // Setup der adaptiven Tabellenverwaltung
+        setupAdvancedTableManagement();
+
+        logger.info("DataViewController erfolgreich initialisiert");
     }
 
+    /**
+     * Konfiguriert die erweiterte Tabellenverwaltung.
+     *
+     * <p>Erstellt eine adaptive Tabellenkomponente mit:</p>
+     * <ul>
+     * <li>Echtzeit-Suchfunktionalität.</li>
+     * <li>Spaltenauswahl und -löschung.</li>
+     * <li>Paginierung (100 Zeilen pro Seite).</li>
+     * <li>Dynamischer Ergebniszähler.</li>
+     * </ul>
+     */
+    private void setupAdvancedTableManagement() {
+        TableViewBuilder builder = TableViewBuilder.create()
+                .withFeatures(
+                        TableViewBuilder.Feature.SEARCH,
+                        TableViewBuilder.Feature.SELECTION,
+                        TableViewBuilder.Feature.PAGINATION,
+                        TableViewBuilder.Feature.EXPORT
+                        // Könnte bei Bedarf hinzugefügt werden.
+                )
+                .withActionsLabel("Ausgewählte Spalten löschen:");
+
+        this.tableManager = builder.buildManager()
+                .enableSearch()
+                .enableSelection()
+                .enablePagination(100);
+
+        // Tabellen-Container in die UI einbinden
+        resultsContainer.getChildren().clear();
+        resultsContainer.getChildren().add(builder.getTableContainer());
+
+        // Event-Handler für den Delete-Button aus dem Builder
+        Button deleteButton = builder.getDeleteColumnsButton();
+        if (deleteButton != null) {
+            deleteButton.setOnAction(e -> tableManager.handleDeleteSelectedColumns());
+        }
+
+        logger.debug("Erweiterte Tabellenverwaltung für DataView konfiguriert");
+    }
+
+    /**
+     * Öffnet einen {@link FileChooser}, um eine Datei auszuwählen, und lädt die Daten asynchron.
+     *
+     * <p><strong>Ablauf:</strong></p>
+     * <ol>
+     * <li>Konfiguriert den FileChooser für CSV- und XLSX-Dateien.</li>
+     * <li>Startet einen Hintergrund-Task, um die Datei zu laden.</li>
+     * <li>Aktualisiert die UI bei Erfolg oder zeigt eine Fehlermeldung bei Misserfolg.</li>
+     * </ol>
+     */
     @FXML
     private void loadFile() {
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Datei auswählen");
-        // GEÄNDERT: Akzeptiert jetzt CSV und XLSX
         fileChooser.getExtensionFilters().addAll(
                 new FileChooser.ExtensionFilter("Tabellendateien", "*.csv", "*.xlsx"),
                 new FileChooser.ExtensionFilter("CSV-Dateien", "*.csv"),
@@ -68,76 +148,27 @@ public class DataViewController implements Initializable {
         File file = fileChooser.showOpenDialog(loadFileButton.getScene().getWindow());
 
         if (file != null) {
-            try {
-                fullDataList = fileService.readFile(file.getAbsolutePath());
-                logger.info("{} Zeilen aus {} geladen.", fullDataList.size(), file.getName());
-                filterData(""); // Initial alle Daten anzeigen
-            } catch (Exception e) {
-                logger.error("Fehler beim Laden der Datei", e);
-                showErrorDialog("Fehler beim Laden", "Die Datei konnte nicht gelesen werden: " + e.getMessage());
-            }
-        }
-    }
-
-    private void filterData(String filterText) {
-        String lowerCaseFilter = filterText.toLowerCase();
-
-        if (lowerCaseFilter.isEmpty()) {
-            filteredDataList = new ArrayList<>(fullDataList);
-        } else {
-            filteredDataList = fullDataList.stream()
-                    .filter(row -> row.getValues().values().stream()
-                            .anyMatch(cell -> cell.toLowerCase().contains(lowerCaseFilter)))
-                    .collect(Collectors.toList());
-        }
-        setupPagination();
-    }
-
-    private void setupPagination() {
-        int totalItems = filteredDataList.size();
-        resultsCountLabel.setText(totalItems + " Ergebnis(se)");
-        int pageCount = (int) Math.ceil((double) totalItems / ROWS_PER_PAGE);
-        pagination.setPageCount(pageCount > 0 ? pageCount : 1);
-        pagination.setCurrentPageIndex(0);
-        pagination.setVisible(totalItems > 0);
-
-        createPage(0); // Erste Seite anzeigen
-    }
-
-    private Node createPage(int pageIndex) {
-        int fromIndex = pageIndex * ROWS_PER_PAGE;
-        int toIndex = Math.min(fromIndex + ROWS_PER_PAGE, filteredDataList.size());
-
-        List<RowData> pageData = filteredDataList.subList(fromIndex, toIndex);
-        populateTableView(pageData);
-
-        return new VBox(); // Platzhalter, da die Tabelle bereits im Scene Graph ist
-    }
-
-    private void populateTableView(List<RowData> data) {
-        // Spalten nur erstellen, wenn sie noch nicht existieren
-        if (dataTableView.getColumns().isEmpty() && !fullDataList.isEmpty()) {
-            List<String> headers = new ArrayList<>(fullDataList.get(0).getValues().keySet());
-            for (int i = 0; i < headers.size(); i++) {
-                final int finalI = i;
-                TableColumn<ObservableList<String>, String> column = new TableColumn<>(headers.get(i));
-                column.setCellValueFactory(param -> new SimpleStringProperty(param.getValue().get(finalI)));
-                dataTableView.getColumns().add(column);
-            }
-        }
-
-        ObservableList<ObservableList<String>> tableData = FXCollections.observableArrayList();
-        if (!data.isEmpty()) {
-            List<String> headers = new ArrayList<>(data.get(0).getValues().keySet());
-            for (RowData row : data) {
-                ObservableList<String> rowValues = FXCollections.observableArrayList();
-                for (String header : headers) {
-                    rowValues.add(row.getValues().getOrDefault(header, ""));
+            Task<List<RowData>> loadTask = new Task<>() {
+                @Override
+                protected List<RowData> call() throws Exception {
+                    return fileService.readFile(file.getAbsolutePath());
                 }
-                tableData.add(rowValues);
-            }
-        }
-        dataTableView.setItems(tableData);
-    }
+            };
 
+            loadTask.setOnSucceeded(e -> {
+                fullDataList = loadTask.getValue();
+                logger.info("{} Zeilen aus {} geladen.", fullDataList.size(), file.getName());
+                tableManager.populateTableView(fullDataList);
+                showSuccessDialog("Laden erfolgreich", "Die Datei wurde erfolgreich geladen.");
+            });
+
+            loadTask.setOnFailed(e -> {
+                logger.error("Fehler beim Laden der Datei", loadTask.getException());
+                showErrorDialog("Fehler beim Laden", "Die Datei konnte nicht gelesen werden:\n" + loadTask.getException().getMessage());
+            });
+
+            // Starten Sie den Task in einem neuen Thread
+            new Thread(loadTask, "file-load-thread").start();
+        }
+    }
 }

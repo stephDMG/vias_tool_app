@@ -11,6 +11,14 @@ import java.time.format.DateTimeParseException;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ *  Die Klasse OpListeFormatter dient zum Formatieren der OP-Liste aus dem Excel-Dokument.
+ *
+ *  <p><strong>Funktionalität:</strong></p>
+ *  <ul>
+ *      <li>Formatieren der Rohdaten in ein benutzerfreundliches Format.</li>
+ *  </ul>
+ */
 public class OpListeFormatter {
     private static final Logger logger = LoggerFactory.getLogger(OpListeFormatter.class);
 

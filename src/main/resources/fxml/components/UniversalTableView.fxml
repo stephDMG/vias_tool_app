@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox fx:id="tableContainer" spacing="10" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1">
+
+    <!-- Search Section - wird dynamisch ein/ausgeblendet -->
+    <HBox fx:id="searchSection" alignment="CENTER_LEFT" spacing="10" managed="false" visible="false">
+        <Label text="Suchen:" />
+        <TextField fx:id="searchField" promptText="Suchbegriff eingeben..." HBox.hgrow="ALWAYS" />
+        <Label fx:id="resultsCountLabel" />
+    </HBox>
+
+    <!-- Main Table -->
+    <TableView fx:id="tableView" styleClass="data-table" editable="true" VBox.vgrow="ALWAYS">
+        <columnResizePolicy>
+            <TableView fx:constant="UNCONSTRAINED_RESIZE_POLICY"/>
+        </columnResizePolicy>
+    </TableView>
+
+    <!-- Actions Section - wird dynamisch konfiguriert -->
+    <HBox fx:id="actionsSection" alignment="CENTER_RIGHT" spacing="10" managed="false" visible="false">
+        <Label fx:id="actionsLabel" text="Ausgewählte Spalten löschen:" />
+        <Button fx:id="deleteColumnsButton" styleClass="button-danger" text="Löschen" />
+    </HBox>
+
+    <!-- Pagination Section - wird dynamisch ein/ausgeblendet -->
+    <Pagination fx:id="pagination" maxPageIndicatorCount="10" pageCount="0" managed="false" visible="false"/>
+
+    <!-- Export Section - wird dynamisch konfiguriert -->
+    <HBox fx:id="exportSection" alignment="CENTER_RIGHT" spacing="10" managed="false" visible="false">
+        <Label fx:id="exportLabel" text="Vollständigen Bericht exportieren als:" />
+        <Button fx:id="exportCsvButton" text="CSV" disable="true" />
+        <Button fx:id="exportXlsxButton" text="XLSX" disable="true" />
+    </HBox>
+
+</VBox>

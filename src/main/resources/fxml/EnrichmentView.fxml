@@ -60,7 +60,7 @@
             </TableView>
             <HBox alignment="CENTER_RIGHT" spacing="10.0">
                 <Label text="Ausgewählte Spalten löschen:" />
-                <Button fx:id="deleteColumnsButton" onAction="#handleDeleteSelectedColumns" styleClass="button-danger" text="Löschen" />
+                <Button fx:id="deleteColumnsButton" styleClass="button-danger" text="Löschen" />
             </HBox>
             <Pagination fx:id="pagination" pageCount="0" />
             <HBox alignment="CENTER_RIGHT" spacing="10.0">

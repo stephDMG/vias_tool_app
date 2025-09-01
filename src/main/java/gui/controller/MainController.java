@@ -47,8 +47,8 @@ public class MainController implements Initializable {
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(MainController.class);
 
     private static final Logger logger = LoggerFactory.getLogger(MainController.class);
-    private static final String VERSION_FILE_PATH = "C:\\VIAS_TOOL_PUBLIC\\jpackage_output\\version.txt";
-    private static final String CHANGELOG_FILE_PATH = "C:\\VIAS_TOOL_PUBLIC\\jpackage_output\\changelog.txt";
+    private static final String VERSION_FILE_PATH = "X:\\EDV\\Client_WIN_11\\Software\\VIAS_TOOL_PUBLIC\\jpackage_outputt\\version.txt";
+    private static final String CHANGELOG_FILE_PATH = "X:\\EDV\\Client_WIN_11\\Software\\VIAS_TOOL_PUBLIC\\jpackage_output\\changelog.txt";
     private String CURRENT_VERSION = "N/A";
     private Parent opListView;
 
