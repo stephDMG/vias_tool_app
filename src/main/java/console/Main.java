@@ -1,15 +1,6 @@
 package console;
 
 import gui.VIASGuiApplication;
-import model.enums.ExportFormat;
-import service.ExtractionService;
-import service.ServiceFactory;
-import service.interfaces.AiService;
-import service.interfaces.FileService;
-import util.FileSearchTool;
-import util.FileUtil;
-
-import java.util.List;
 
 /**
  * Die Main-Klasse dient als Einstiegspunkt für die Anwendung.

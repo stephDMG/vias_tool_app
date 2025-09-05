@@ -20,16 +20,25 @@ import java.util.Properties;
  */
 public final class DatabaseConfig {
 
-    private static final Logger log = LoggerFactory.getLogger(DatabaseConfig.class);
-
-    // --- GEÄNDERT: Die Properties werden jetzt durch eine Methode geladen ---
-    private static final Properties BUNDLE = loadProperties();
-
     // Die Felder bleiben gleich, werden aber jetzt aus dem Properties-Objekt initialisiert
     public static final String URL;
     public static final String USER;
     public static final String PASSWORD;
     public static final String DRIVER;
+    private static final Logger log = LoggerFactory.getLogger(DatabaseConfig.class);
+    // --- GEÄNDERT: Die Properties werden jetzt durch eine Methode geladen ---
+    private static final Properties BUNDLE = loadProperties();
+
+    static {
+        URL = BUNDLE.getProperty("db.url");
+        USER = BUNDLE.getProperty("db.user");
+        PASSWORD = BUNDLE.getProperty("db.password");
+        DRIVER = BUNDLE.getProperty("db.driver");
+
+        if (URL == null || USER == null || PASSWORD == null || DRIVER == null) {
+            throw new RuntimeException("Einige Datenbank-Eigenschaften (url, user, password, driver) fehlen in der Konfigurationsdatei!");
+        }
+    }
 
     private DatabaseConfig() {
         // Privater Konstruktor bleibt
@@ -73,23 +82,12 @@ public final class DatabaseConfig {
     /**
      * Diese Methode liefert eine Verbindung zur Datenbank.
      *
-     * @return  Liefert eine Verbindung zur Datenbank.
-     * @throws SQLException Die Verbindung konnte nicht hergestellt werden.
+     * @return Liefert eine Verbindung zur Datenbank.
+     * @throws SQLException           Die Verbindung konnte nicht hergestellt werden.
      * @throws ClassNotFoundException Der JDBC-Treiber konnte nicht gefunden werden.
      */
     public static Connection getConnection() throws SQLException, ClassNotFoundException {
         Class.forName(DRIVER);
         return DriverManager.getConnection(URL, USER, PASSWORD);
-    }
-
-    static {
-        URL = BUNDLE.getProperty("db.url");
-        USER = BUNDLE.getProperty("db.user");
-        PASSWORD = BUNDLE.getProperty("db.password");
-        DRIVER = BUNDLE.getProperty("db.driver");
-
-        if (URL == null || USER == null || PASSWORD == null || DRIVER == null) {
-            throw new RuntimeException("Einige Datenbank-Eigenschaften (url, user, password, driver) fehlen in der Konfigurationsdatei!");
-        }
     }
 }

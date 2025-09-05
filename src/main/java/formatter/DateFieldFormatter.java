@@ -17,15 +17,15 @@ import java.time.format.DateTimeParseException;
  */
 public class DateFieldFormatter {
 
-    private static final DateTimeFormatter INPUT_FMT  = ApplicationConfig.DATE_INPUT;
+    private static final DateTimeFormatter INPUT_FMT = ApplicationConfig.DATE_INPUT;
     private static final DateTimeFormatter OUTPUT_FMT = ApplicationConfig.DATE_OUTPUT;
 
     public static String tryFormat(String column, String value) {
-        if (value == null ) {
+        if (value == null) {
             return value;
         }
 
-        if(FormatterService.isDateField(column) && isLikelyDate(value)) {
+        if (FormatterService.isDateField(column) && isLikelyDate(value)) {
             return reformat(value);
         }
 

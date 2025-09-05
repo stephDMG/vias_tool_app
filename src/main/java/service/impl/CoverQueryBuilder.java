@@ -68,7 +68,7 @@ public class CoverQueryBuilder implements AiQueryBuilder {
     //private static final Pattern MAKLER_ID_PATTERN = Pattern.compile("(?:makler|vermittler id|makler nr|vermittler nr)\\s+([a-zA-Z0-9]{6,})", Pattern.CASE_INSENSITIVE);
     // Korrektur: Der RegEx erkennt nun 'makler id' und 'makler nr'
     //private static final Pattern MAKLER_ID_PATTERN = Pattern.compile("(?:makler|vermittler)(?:\\s+(id|nr))?\\s+([a-zA-Z0-9]{6,})", Pattern.CASE_INSENSITIVE);
-    private static final Pattern MAKLER_ID_PATTERN = Pattern.compile("(?:makler|vermittler)(?:\\s+(?:id|nr))?\\s+([a-zA-Z0-9]{6,})",Pattern.CASE_INSENSITIVE);
+    private static final Pattern MAKLER_ID_PATTERN = Pattern.compile("(?:makler|vermittler)(?:\\s+(?:id|nr))?\\s+([a-zA-Z0-9]{6,})", Pattern.CASE_INSENSITIVE);
 
     private static final Pattern VSN_PATTERN = Pattern.compile("vsn\\s+([a-zA-Z0-9-]+)", Pattern.CASE_INSENSITIVE);
     private static final Pattern STATUS_PATTERN = Pattern.compile("status\\s+'?([a-zA-Z0-9]+)'?", Pattern.CASE_INSENSITIVE);
@@ -96,6 +96,7 @@ public class CoverQueryBuilder implements AiQueryBuilder {
 
     /**
      * Generiert eine SQL-Abfrage basierend auf der Benutzeranfrage.
+     *
      * @param description Die vollständige, normalisierte Anfrage des Benutzers.
      * @return Die generierte SQL-Abfrage oder eine Fehlermeldung, wenn keine gültigen Filterkriterien gefunden wurden.
      */
@@ -128,7 +129,7 @@ public class CoverQueryBuilder implements AiQueryBuilder {
      * Unterstützt Formate wie "dd.MM.yyyy", "d.M.yyyy", "dd/MM/yyyy" und "d/M/yyyy".
      * Gibt null zurück, wenn das Datum nicht erkannt wird.
      */
-    private String parseAndFormatDate(String dateStr){
+    private String parseAndFormatDate(String dateStr) {
         DateTimeFormatter[] inputFormatters = {
                 DateTimeFormatter.ofPattern("dd.MM.yyyy"),
                 DateTimeFormatter.ofPattern("d.M.yyyy"),
@@ -152,6 +153,7 @@ public class CoverQueryBuilder implements AiQueryBuilder {
 
     /**
      * Baut die WHERE-Klausel basierend auf den erkannten Kriterien.
+     *
      * @param criteriaBlock Der Textblock, der die Filterkriterien enthält.
      * @return Eine Liste von Bedingungen für die WHERE-Klausel.
      */
@@ -167,10 +169,10 @@ public class CoverQueryBuilder implements AiQueryBuilder {
             if (name.contains("%")) {
                 conditions.add("UPPER(RTRIM(LTRIM(MAK.LU_NAM))) LIKE '" + name.toUpperCase() + "'");
             } else if (name.startsWith("*") && name.endsWith("*")) {
-                name = "%" + name.substring(1, name.length()-1) + "%";
+                name = "%" + name.substring(1, name.length() - 1) + "%";
                 conditions.add("UPPER(RTRIM(LTRIM(MAK.LU_NAM))) LIKE '" + name.toUpperCase() + "'");
             } else if (name.endsWith("*")) {
-                name = name.substring(0, name.length()-1) + "%";
+                name = name.substring(0, name.length() - 1) + "%";
                 conditions.add("UPPER(RTRIM(LTRIM(MAK.LU_NAM))) LIKE '" + name.toUpperCase() + "'");
             } else if (name.startsWith("*")) {
                 name = "%" + name.substring(1);
@@ -270,7 +272,9 @@ public class CoverQueryBuilder implements AiQueryBuilder {
      * @return Eine Liste der angeforderten Felder, bereinigt und normalisiert.
      */
     private List<String> extractRequestedFields(String fieldsBlock) {
-        if (fieldsBlock == null || fieldsBlock.isEmpty()) { return new ArrayList<>(); }
+        if (fieldsBlock == null || fieldsBlock.isEmpty()) {
+            return new ArrayList<>();
+        }
         String normalizedString = fieldsBlock.toLowerCase().replaceAll("\\s+und\\s+", ",");
         return Arrays.stream(normalizedString.split(","))
                 .map(String::trim)
@@ -281,8 +285,9 @@ public class CoverQueryBuilder implements AiQueryBuilder {
 
     /**
      * Baut die finale SQL-Abfrage basierend auf der Vorlage, den Bedingungen und den angeforderten Feldern.
-     * @param template Die Vorlage, die die SQL-Struktur definiert.
-     * @param conditions Die Bedingungen für die WHERE-Klausel.
+     *
+     * @param template        Die Vorlage, die die SQL-Struktur definiert.
+     * @param conditions      Die Bedingungen für die WHERE-Klausel.
      * @param requestedFields Die angeforderten Felder, die in der Abfrage enthalten sein sollen.
      * @return Die generierte SQL-Abfrage als String.
      */

@@ -1,10 +1,12 @@
 package file.writer;
 
 import model.RowData;
-import org.apache.commons.csv.*;
-import java.io.OutputStreamWriter;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVPrinter;
+
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
@@ -32,13 +34,13 @@ public class CsvWriter implements DataWriter {
     private final CSVPrinter printer;
 
     /**
-         * Erstellt einen CSV-Writer für den angegebenen Ausgabepfad.
-         * Schreibt zu Beginn die UTF-8 BOM und konfiguriert das Trennzeichen.
-         *
-         * @param path Zielpfad der CSV-Datei
-         * @throws IOException wenn der Stream nicht geöffnet/geschrieben werden kann
-         */
-        public CsvWriter(String path) throws IOException {
+     * Erstellt einen CSV-Writer für den angegebenen Ausgabepfad.
+     * Schreibt zu Beginn die UTF-8 BOM und konfiguriert das Trennzeichen.
+     *
+     * @param path Zielpfad der CSV-Datei
+     * @throws IOException wenn der Stream nicht geöffnet/geschrieben werden kann
+     */
+    public CsvWriter(String path) throws IOException {
         OutputStreamWriter writer = new OutputStreamWriter(new FileOutputStream(path), StandardCharsets.UTF_8);
         writer.write(CSV_BOM);
         this.printer = new CSVPrinter(writer, CSVFormat.DEFAULT.withDelimiter(CSV_DELIMITER));
@@ -46,6 +48,7 @@ public class CsvWriter implements DataWriter {
 
     /**
      * Schreibt die Kopfzeile der CSV-Datei.
+     *
      * @param headers Spaltenüberschriften in Anzeigereihenfolge
      * @throws IOException bei I/O-Fehlern
      */
@@ -57,6 +60,7 @@ public class CsvWriter implements DataWriter {
     /**
      * Schreibt eine einzelne Datenzeile unter Verwendung der Formatierungslogik
      * aus DataWriter#writeFormattedRow(RowData).
+     *
      * @param row Zeilenobjekt
      * @throws IOException bei I/O-Fehlern
      */
@@ -69,7 +73,8 @@ public class CsvWriter implements DataWriter {
     /**
      * Schreibt eine Datenliste mit benutzerdefinierten Headern in die CSV.
      * Ist die Liste leer, werden nur die Header geschrieben.
-     * @param data Datenzeilen
+     *
+     * @param data    Datenzeilen
      * @param headers Reihenfolge/Bezeichner der Spalten
      * @throws IOException bei I/O-Fehlern
      */
@@ -84,7 +89,7 @@ public class CsvWriter implements DataWriter {
 
         for (RowData row : data) {
             List<String> values = headers.stream()
-                    .map(header ->  row.getValues().getOrDefault(header, ""))
+                    .map(header -> row.getValues().getOrDefault(header, ""))
                     .toList();
             printer.printRecord(values);
         }
@@ -92,6 +97,7 @@ public class CsvWriter implements DataWriter {
 
     /**
      * Schreibt eine bereits formatierte Datensatzzeile in die CSV-Datei.
+     *
      * @param formattedValues Werte in der Reihenfolge der zuvor geschriebenen Header
      * @throws IOException bei I/O-Fehlern
      */
@@ -102,6 +108,7 @@ public class CsvWriter implements DataWriter {
 
     /**
      * Flusht und schließt den zugrunde liegenden CSVPrinter/Writer.
+     *
      * @throws IOException bei I/O-Fehlern
      */
     @Override

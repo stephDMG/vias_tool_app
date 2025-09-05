@@ -1,34 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.geometry.*?>
+<?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
-<?import javafx.scene.layout.*?>
-
-<VBox alignment="TOP_CENTER" prefHeight="448.0" prefWidth="599.0" spacing="15" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.controller.settings.SettingsViewController">
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<VBox xmlns:fx="http://javafx.com/fxml/1" alignment="TOP_CENTER" prefHeight="448.0" prefWidth="599.0" spacing="15"
+      xmlns="http://javafx.com/javafx/17.0.12" fx:controller="gui.controller.settings.SettingsViewController">
 
     <fx:define>
-        <ToggleGroup fx:id="themeToggleGroup" />
+        <ToggleGroup fx:id="themeToggleGroup"/>
     </fx:define>
 
     <padding>
-        <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
+        <Insets bottom="20.0" left="20.0" right="20.0" top="20.0"/>
     </padding>
-    <Label alignment="CENTER" maxWidth="Infinity" style="-fx-font-size: 20px; -fx-font-weight: bold;" text="Einstellungen" />
+    <Label alignment="CENTER" maxWidth="Infinity" style="-fx-font-size: 20px; -fx-font-weight: bold;"
+           text="Einstellungen"/>
 
     <HBox alignment="CENTER_LEFT" spacing="10.0">
 
-    <TitledPane collapsible="false" text="Theme-Auswahl">
-        <VBox spacing="10">
-            <RadioButton fx:id="primerLightRadio" text="Primer Light">
-               <toggleGroup>
-                  <ToggleGroup fx:id="themeToggleGroup" />
-               </toggleGroup></RadioButton>
-            <RadioButton fx:id="primerDarkRadio" text="Primer Dark" toggleGroup="$themeToggleGroup" />
-            <RadioButton fx:id="nordLightRadio" text="Nord Light" toggleGroup="$themeToggleGroup" />
-            <RadioButton fx:id="nordDarkRadio" text="Nord Dark" toggleGroup="$themeToggleGroup" />
-        </VBox>
-    </TitledPane>
-      <HBox prefHeight="100.0" prefWidth="200.0" />
+        <TitledPane collapsible="false" text="Theme-Auswahl">
+            <VBox spacing="10">
+                <RadioButton fx:id="primerLightRadio" text="Primer Light">
+                    <toggleGroup>
+                        <ToggleGroup fx:id="themeToggleGroup"/>
+                    </toggleGroup>
+                </RadioButton>
+                <RadioButton fx:id="primerDarkRadio" text="Primer Dark" toggleGroup="$themeToggleGroup"/>
+                <RadioButton fx:id="nordLightRadio" text="Nord Light" toggleGroup="$themeToggleGroup"/>
+                <RadioButton fx:id="nordDarkRadio" text="Nord Dark" toggleGroup="$themeToggleGroup"/>
+            </VBox>
+        </TitledPane>
+        <HBox prefHeight="100.0" prefWidth="200.0"/>
     </HBox>
- <Button onAction="#handleSave" text="Speichern" />
+    <Button onAction="#handleSave" text="Speichern"/>
 </VBox>

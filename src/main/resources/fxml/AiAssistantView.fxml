@@ -1,15 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
+
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
-
-<VBox spacing="15.0" xmlns="http://javafx.com/javafx/24.0.1" xmlns:fx="http://javafx.com/fxml/1"
+<VBox xmlns:fx="http://javafx.com/fxml/1" spacing="15.0" xmlns="http://javafx.com/javafx/24.0.1"
       fx:controller="gui.controller.AiAssistantViewController">
     <padding>
         <Insets bottom="20.0" left="20.0" right="20.0" top="20.0"/>
     </padding>
 
-     <Label alignment="CENTER" maxWidth="Infinity" style="-fx-font-size: 20px; -fx-font-weight: bold;"  text="KI-Assistent (ChatBoot)" />
+    <Label alignment="CENTER" maxWidth="Infinity" style="-fx-font-size: 20px; -fx-font-weight: bold;"
+           text="KI-Assistent (ChatBoot)"/>
 
     <SplitPane dividerPositions="0.35" VBox.vgrow="ALWAYS">
         <!-- Linke Spalte: Eingabe + Hilfe -->
@@ -41,17 +42,23 @@
             <SplitPane dividerPositions="0.4" orientation="VERTICAL" VBox.vgrow="ALWAYS">
 
                 <VBox spacing="10.0">
-                    <padding><Insets top="5.0" right="5.0" left="5.0" bottom="5.0"/></padding>
+                    <padding>
+                        <Insets top="5.0" right="5.0" left="5.0" bottom="5.0"/>
+                    </padding>
                     <HBox alignment="CENTER_LEFT" spacing="10">
                         <Label text="SQL Vorschau" style="-fx-font-weight: bold;"/>
                         <Region HBox.hgrow="ALWAYS"/>
-                        <Button fx:id="executeQueryButton" disable="true" onAction="#executeQuery" text="Abfrage ausführen"/>
+                        <Button fx:id="executeQueryButton" disable="true" onAction="#executeQuery"
+                                text="Abfrage ausführen"/>
                     </HBox>
-                    <TextArea fx:id="sqlTextArea" editable="false" styleClass="text-area-code" wrapText="true" VBox.vgrow="ALWAYS"/>
+                    <TextArea fx:id="sqlTextArea" editable="false" styleClass="text-area-code" wrapText="true"
+                              VBox.vgrow="ALWAYS"/>
                 </VBox>
 
                 <VBox spacing="10.0">
-                    <padding><Insets top="5.0" right="5.0" left="5.0" bottom="5.0"/></padding>
+                    <padding>
+                        <Insets top="5.0" right="5.0" left="5.0" bottom="5.0"/>
+                    </padding>
                     <HBox alignment="CENTER_LEFT">
                         <Label text="Ergebnis-Vorschau" style="-fx-font-weight: bold;"/>
                     </HBox>

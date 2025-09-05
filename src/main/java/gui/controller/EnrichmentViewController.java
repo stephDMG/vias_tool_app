@@ -1,5 +1,6 @@
 package gui.controller;
 
+
 import gui.controller.utils.TableManager;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
@@ -27,8 +28,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.ResourceBundle;
 
-import static gui.controller.utils.Dialog.showErrorDialog;
-import static gui.controller.utils.Dialog.showSuccessDialog;
+import static gui.controller.dialog.Dialog.showErrorDialog;
+import static gui.controller.dialog.Dialog.showSuccessDialog;
 import static gui.controller.utils.format.FormatterService.exportWithFormat;
 
 /**
@@ -39,40 +40,50 @@ public class EnrichmentViewController implements Initializable {
 
     private static final Logger logger = LoggerFactory.getLogger(EnrichmentViewController.class);
     private static final int ROWS_PER_PAGE = 100;
-
-    @FXML private TextField sourceFileField;
-    @FXML private Button selectFileButton;
-    @FXML private TextField searchField;
-    @FXML private Button searchButton;
-    @FXML private Button enrichButton;
-    @FXML private ProgressBar progressBar;
-    @FXML private Label statusLabel;
-    @FXML private Label resultsCountLabel;
-    @FXML private TableView<ObservableList<String>> previewTableView;
-    @FXML private Pagination pagination;
-    @FXML private Button exportCsvButton;
-    @FXML private Button exportXlsxButton;
-    @FXML private Button deleteColumnsButton;
-
+    private final List<RowData> fullResults = new ArrayList<>();
+    @FXML
+    private TextField sourceFileField;
+    @FXML
+    private Button selectFileButton;
+    @FXML
+    private TextField searchField;
+    @FXML
+    private Button searchButton;
+    @FXML
+    private Button enrichButton;
+    @FXML
+    private ProgressBar progressBar;
+    @FXML
+    private Label statusLabel;
+    @FXML
+    private Label resultsCountLabel;
+    @FXML
+    private TableView<ObservableList<String>> previewTableView;
+    @FXML
+    private Pagination pagination;
+    @FXML
+    private Button exportCsvButton;
+    @FXML
+    private Button exportXlsxButton;
+    @FXML
+    private Button deleteColumnsButton;
     private DatenanreicherungService enrichmentService;
     private FileService fileService;
     private List<RowData> enrichedData = new ArrayList<>();
     private File selectedSourceFile;
-
     private TableManager tableManager;
-    private List<RowData> fullResults = new ArrayList<>();
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         this.fileService = ServiceFactory.getFileService();
         this.enrichmentService = new DatenanreicherungService(fileService, ServiceFactory.getDatabaseService());
 
-        this.tableManager =  new TableManager(previewTableView);
+        this.tableManager = new TableManager(previewTableView);
         this.tableManager.allowSelection(deleteColumnsButton);
 
         pagination.setPageFactory(this::createPage);
         pagination.setVisible(false);
-        logger.info( "✅ EnrichmentViewController initialized successfully.");
+        logger.info("✅ EnrichmentViewController initialized successfully.");
     }
 
     /*
@@ -83,7 +94,7 @@ public class EnrichmentViewController implements Initializable {
     */
 
 
-   @ FXML
+    @FXML
     private void selectSourceFile() {
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Quelldatei für Anreicherung auswählen");
@@ -138,7 +149,6 @@ public class EnrichmentViewController implements Initializable {
     }
 
 
-
     @FXML
     private void startEnrichment() {
         if (selectedSourceFile == null) {
@@ -182,7 +192,7 @@ public class EnrichmentViewController implements Initializable {
     private void exportEnrichedData(ActionEvent event) {
         if (fullResults == null || fullResults.isEmpty() || fullResults.get(0).getValues().isEmpty()) {
             logger.warn("Warnung: Datenliste ist leer. Header können nicht bestimmt werden.");
-            return ;
+            return;
         }
 
         // Anzeige-Header (sichtbar) und Original-Keys (für Formatlogik) ermitteln

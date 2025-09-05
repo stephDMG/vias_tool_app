@@ -1,17 +1,16 @@
 package gui;
 
 
+import atlantafx.base.theme.PrimerLight;
+import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
-
 import javafx.scene.Scene;
 import javafx.scene.image.Image;
 import javafx.scene.layout.BorderPane;
+import javafx.stage.Stage;
 import org.kordamp.bootstrapfx.scene.layout.Panel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import javafx.application.Application;
-import javafx.stage.Stage;
 
 import java.io.InputStream;
 
@@ -34,9 +33,27 @@ import java.io.InputStream;
  * Oder programmatisch mittels {@link #launchGui()} aus einem anderen Thread.
  * </p>
  */
-public class VIASGuiApplication  extends Application {
+public class VIASGuiApplication extends Application {
 
     private static final Logger logger = LoggerFactory.getLogger(VIASGuiApplication.class);
+
+    /**
+     * Hauptmethode zum Starten der GUI im Standardmodus.
+     * Delegiert an {@link Application#launch(String...)}.
+     *
+     * @param args Kommandozeilenargumente
+     */
+    public static void main(String[] args) {
+        launch(args);
+    }
+
+    /**
+     * Startet die GUI-Anwendung programmatisch in einem separaten Thread.
+     * Nützlich, wenn die GUI aus einer anderen Anwendungsschicht gestartet werden soll (z. B. Konsole).
+     */
+    public static void launchGui() {
+        new Thread(Application::launch).start();
+    }
 
     /**
      * Startet die JavaFX-Anwendung und initialisiert die Hauptbühne (Stage).
@@ -46,7 +63,7 @@ public class VIASGuiApplication  extends Application {
      * @param primaryStage die Hauptbühne, die von der JavaFX-Laufzeit übergeben wird
      */
     @Override
-    public void start(Stage primaryStage){
+    public void start(Stage primaryStage) {
         try {
             logger.info("🚀 VIAS GUI-Anwendung wird gestartet...");
 
@@ -56,6 +73,7 @@ public class VIASGuiApplication  extends Application {
 
             panel.setBody(content);
 
+            Application.setUserAgentStylesheet(new PrimerLight().getUserAgentStylesheet());
 
             java.net.URL fxmlLocation = getClass().getResource("/fxml/MainWindow.fxml");
             FXMLLoader loader = new FXMLLoader(fxmlLocation);
@@ -101,23 +119,5 @@ public class VIASGuiApplication  extends Application {
     @Override
     public void stop() {
         logger.info("🛑 VIAS GUI-Anwendung wird beendet");
-    }
-
-    /**
-     * Hauptmethode zum Starten der GUI im Standardmodus.
-     * Delegiert an {@link Application#launch(String...)}.
-     *
-     * @param args Kommandozeilenargumente
-     */
-    public static void main(String[] args) {
-        launch(args);
-    }
-
-    /**
-     * Startet die GUI-Anwendung programmatisch in einem separaten Thread.
-     * Nützlich, wenn die GUI aus einer anderen Anwendungsschicht gestartet werden soll (z. B. Konsole).
-     */
-    public static void launchGui() {
-        new Thread(Application::launch).start();
     }
 }

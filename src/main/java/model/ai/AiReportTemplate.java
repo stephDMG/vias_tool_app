@@ -19,8 +19,19 @@ public class AiReportTemplate {
         this.sqlTemplate = sqlTemplate;
     }
 
-    public String getReportName() { return reportName; }
-    public List<String> getMainKeywords() { return mainKeywords; }
-    public Map<String, AiColumnSpec> getAvailableColumns() { return availableColumns; }
-    public String getSqlTemplate() { return sqlTemplate; }
+    public String getReportName() {
+        return reportName;
+    }
+
+    public List<String> getMainKeywords() {
+        return mainKeywords;
+    }
+
+    public Map<String, AiColumnSpec> getAvailableColumns() {
+        return availableColumns;
+    }
+
+    public String getSqlTemplate() {
+        return sqlTemplate;
+    }
 }

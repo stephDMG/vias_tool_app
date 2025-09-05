@@ -1,8 +1,8 @@
 package config;
 
+import java.text.NumberFormat;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
-import java.text.NumberFormat;
 
 /**
  * Konfiguration für Anwendungseinstellungen.
@@ -15,26 +15,44 @@ import java.text.NumberFormat;
  */
 public final class ApplicationConfig {
 
-    /** Der Name der Anwendung. */
+    /**
+     * Der Name der Anwendung.
+     */
     public static final String APP_NAME = "VIAS Export Tool";
-    /** Die Version der Anwendung. */
+    /**
+     * Die Version der Anwendung.
+     */
     public static final String APP_VERSION = "1.0.0";
 
-    /** Der Standardausgabeordner für exportierte Dateien. */
+    /**
+     * Der Standardausgabeordner für exportierte Dateien.
+     */
     public static final String DEFAULT_OUTPUT_DIR = "output/";
-    /** Die maximale Anzahl von Zeilen pro Exportdatei. */
+    /**
+     * Die maximale Anzahl von Zeilen pro Exportdatei.
+     */
     public static final int MAX_ROWS_PER_FILE = 100_000;
-    /** Die Standardkodierung für exportierte Dateien, z.B. UTF-8. */
+    /**
+     * Die Standardkodierung für exportierte Dateien, z.B. UTF-8.
+     */
     public static final String DEFAULT_ENCODING = "UTF-8";
 
-    /** Der Ordner für E-Mail-Anhänge. */
+    /**
+     * Der Ordner für E-Mail-Anhänge.
+     */
     public static final String EMAIL_ATTACHMENTS_DIR = "attachments/";
-    /** Der temporäre Ordner für Zwischenspeicherungen. */
+    /**
+     * Der temporäre Ordner für Zwischenspeicherungen.
+     */
     public static final String TEMP_DIR = "temp/";
 
-    /** Der Byte Order Mark (BOM) für CSV-Dateien, um die korrekte Zeichenkodierung sicherzustellen. */
+    /**
+     * Der Byte Order Mark (BOM) für CSV-Dateien, um die korrekte Zeichenkodierung sicherzustellen.
+     */
     public static final String CSV_BOM = "\uFEFF";
-    /** Das Trennzeichen für CSV-Dateien. */
+    /**
+     * Das Trennzeichen für CSV-Dateien.
+     */
     public static final char CSV_DELIMITER = ';';
 
     /**

@@ -30,19 +30,29 @@ public class AiColumnSpec {
         this(dbColumn, columnAlias, tableAlias, keywords, false);
     }
 
-    public String getDbColumn(){
+    public String getDbColumn() {
         return dbColumn;
     }
 
-    public List<String> getKeywords(){
+    public List<String> getKeywords() {
         return keywords;
     }
-    public final boolean isNumeric(){  return isNumeric;}
-    public final String getTableAlias(){return tableAlias;}
-    public final String getColumnAlias(){return columnAlias;}
+
+    public final boolean isNumeric() {
+        return isNumeric;
+    }
+
+    public final String getTableAlias() {
+        return tableAlias;
+    }
+
+    public final String getColumnAlias() {
+        return columnAlias;
+    }
 
     /**
      * Baut die vollständige SQL-Definition für die SELECT-Klausel dynamisch zusammen.
+     *
      * @return Die formatierte SQL-Spaltendefinition (z.B. "COALESCE(...) AS 'Alias'").
      */
     public String getSqlDefinition() {

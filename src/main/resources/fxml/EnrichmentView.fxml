@@ -1,72 +1,72 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.geometry.Insets?>
-<?import javafx.scene.control.Button?>
-<?import javafx.scene.control.Label?>
-<?import javafx.scene.control.Pagination?>
-<?import javafx.scene.control.ProgressBar?>
-<?import javafx.scene.control.TableView?>
-<?import javafx.scene.control.TextField?>
-<?import javafx.scene.layout.BorderPane?>
-<?import javafx.scene.layout.HBox?>
-<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
 <?import javafx.scene.text.Font?>
-
-<BorderPane xmlns="http://javafx.com/javafx/24.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.controller.EnrichmentViewController">
+<BorderPane xmlns:fx="http://javafx.com/fxml/1" xmlns="http://javafx.com/javafx/24.0.1"
+            fx:controller="gui.controller.EnrichmentViewController">
     <padding>
-        <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
+        <Insets bottom="20.0" left="20.0" right="20.0" top="20.0"/>
     </padding>
     <top>
         <VBox spacing="15.0" BorderPane.alignment="CENTER">
-            <Label alignment="CENTER" maxWidth="Infinity" style="-fx-font-size: 20px; -fx-font-weight: bold;" text="Datenanreicherungstool für Schäden"  />
+            <Label alignment="CENTER" maxWidth="Infinity" style="-fx-font-size: 20px; -fx-font-weight: bold;"
+                   text="Datenanreicherungstool für Schäden"/>
             <!-- Manuelle Dateisuche -->
             <HBox alignment="CENTER_LEFT" spacing="10">
-                <Label minWidth="120" text="Datei suchen:" />
-                <TextField fx:id="searchField" promptText="Dateinamen eingeben (z.B. Verkehrshaftungsschäden...)" HBox.hgrow="ALWAYS" />
-                <Button fx:id="searchButton" onAction="#searchForFileByName" text="Suchen" />
+                <Label minWidth="120" text="Datei suchen:"/>
+                <TextField fx:id="searchField" promptText="Dateinamen eingeben (z.B. Verkehrshaftungsschäden...)"
+                           HBox.hgrow="ALWAYS"/>
+                <Button fx:id="searchButton" onAction="#searchForFileByName" text="Suchen"/>
             </HBox>
 
             <!-- Datei Auswahl -->
             <HBox alignment="CENTER_LEFT" spacing="10">
-                <Label minWidth="120" text="Quelldatei:" />
-                <TextField fx:id="sourceFileField" editable="false" promptText="Pfad zur Excel-Datei..." HBox.hgrow="ALWAYS" />
-                <Button fx:id="selectFileButton" mnemonicParsing="false" onAction="#selectSourceFile" text="Durchsuchen..." />
+                <Label minWidth="120" text="Quelldatei:"/>
+                <TextField fx:id="sourceFileField" editable="false" promptText="Pfad zur Excel-Datei..."
+                           HBox.hgrow="ALWAYS"/>
+                <Button fx:id="selectFileButton" mnemonicParsing="false" onAction="#selectSourceFile"
+                        text="Durchsuchen..."/>
             </HBox>
 
             <HBox alignment="CENTER_LEFT" spacing="10.0">
-                <Button fx:id="enrichButton" disable="true" mnemonicParsing="false" onAction="#startEnrichment" styleClass="success-button" text="1. Daten anreichern" />
-                <ProgressBar fx:id="progressBar" prefWidth="200.0" visible="false" />
-                <Label fx:id="statusLabel" text="Warte auf Datei-Auswahl..." />
+                <Button fx:id="enrichButton" disable="true" mnemonicParsing="false" onAction="#startEnrichment"
+                        styleClass="success-button" text="1. Daten anreichern"/>
+                <ProgressBar fx:id="progressBar" prefWidth="200.0" visible="false"/>
+                <Label fx:id="statusLabel" text="Warte auf Datei-Auswahl..."/>
             </HBox>
         </VBox>
     </top>
     <center>
         <VBox spacing="10.0" BorderPane.alignment="CENTER">
             <BorderPane.margin>
-                <Insets top="20.0" />
+                <Insets top="20.0"/>
             </BorderPane.margin>
             <HBox alignment="CENTER_LEFT">
                 <Label text="Vorschau der angereicherten Daten">
                     <font>
-                        <Font name="System Bold" size="14.0" />
+                        <Font name="System Bold" size="14.0"/>
                     </font>
                 </Label>
-                <Label fx:id="resultsCountLabel" style="-fx-padding: 0 0 0 10;" />
+                <Label fx:id="resultsCountLabel" style="-fx-padding: 0 0 0 10;"/>
             </HBox>
             <TableView fx:id="previewTableView" editable="true" styleClass="data-table" VBox.vgrow="ALWAYS">
                 <columnResizePolicy>
-                    <TableView fx:constant="UNCONSTRAINED_RESIZE_POLICY" />
+                    <TableView fx:constant="UNCONSTRAINED_RESIZE_POLICY"/>
                 </columnResizePolicy>
             </TableView>
             <HBox alignment="CENTER_RIGHT" spacing="10.0">
-                <Label text="Ausgewählte Spalten löschen:" />
-                <Button fx:id="deleteColumnsButton" styleClass="button-danger" text="Löschen" />
+                <Label text="Ausgewählte Spalten löschen:"/>
+                <Button fx:id="deleteColumnsButton" styleClass="button-danger" text="Löschen"/>
             </HBox>
-            <Pagination fx:id="pagination" pageCount="0" />
+            <Pagination fx:id="pagination" pageCount="0"/>
             <HBox alignment="CENTER_RIGHT" spacing="10.0">
-                <Label text="2. Vollständigen Bericht exportieren als:" />
-                <Button fx:id="exportCsvButton" disable="true" mnemonicParsing="false" onAction="#exportEnrichedData" text="CSV" />
-                <Button fx:id="exportXlsxButton" disable="true" mnemonicParsing="false" onAction="#exportEnrichedData" text="XLSX" />
+                <Label text="2. Vollständigen Bericht exportieren als:"/>
+                <Button fx:id="exportCsvButton" disable="true" mnemonicParsing="false" onAction="#exportEnrichedData"
+                        text="CSV"/>
+                <Button fx:id="exportXlsxButton" disable="true" mnemonicParsing="false" onAction="#exportEnrichedData"
+                        text="XLSX"/>
             </HBox>
         </VBox>
     </center>

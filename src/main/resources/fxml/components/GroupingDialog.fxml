@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<VBox xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="gui.controller.dialog.GroupingDialogController"
+      spacing="12" padding="12">
+
+    <Label text="Regrouper les lignes et choisir les couleurs"/>
+
+    <GridPane hgap="10" vgap="10">
+        <columnConstraints>
+            <ColumnConstraints halignment="RIGHT" minWidth="120"/>
+            <ColumnConstraints hgrow="ALWAYS"/>
+        </columnConstraints>
+
+        <Label text="Colonne à regrouper :" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+        <ComboBox fx:id="headerCombo" GridPane.rowIndex="0" GridPane.columnIndex="1" prefWidth="260"/>
+
+        <Label text="Couleur Groupe A :" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+        <ColorPicker fx:id="colorPickerA" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+
+        <Label text="Couleur Groupe B :" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+        <ColorPicker fx:id="colorPickerB" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+
+        <CheckBox fx:id="enableCheck" text="Activer le regroupement"
+                  GridPane.rowIndex="3" GridPane.columnIndex="1" />
+    </GridPane>
+
+    <HBox spacing="10" alignment="CENTER_RIGHT">
+        <Button text="Annuler" onAction="#onCancel"/>
+        <Button text="Appliquer" defaultButton="true" onAction="#onApply"/>
+    </HBox>
+</VBox>

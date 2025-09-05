@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.controller.OpListViewerController">
+    <padding>
+        <Insets bottom="12" left="12" right="12" top="12" />
+    </padding>
+
+    <top>
+        <HBox alignment="CENTER_LEFT" prefHeight="25.0" prefWidth="542.0" spacing="10">
+            <Label text="OP-Liste (Hauptliste)" />
+            <Label text="Filter Policen-Nr:" />
+            <TextField fx:id="policyFilterField" prefWidth="180" promptText="z.B.: W0761530" />
+            <Button text="Gruppierung…" onAction="#openGroupingDialog"/>
+            <Button onAction="#applyFilter" text="Filtern" />
+            <Region HBox.hgrow="ALWAYS" />
+            <Label text="Zeilen:" />
+            <Label fx:id="countLabel" text="0" />
+        </HBox>
+    </top>
+
+    <center>
+        <VBox spacing="8" VBox.vgrow="ALWAYS">
+            <ProgressBar fx:id="progressBar" prefWidth="300" visible="false" />
+            <Label fx:id="statusLabel" textFill="#666666" />
+
+            <VBox fx:id="resultsContainer" spacing="10" VBox.vgrow="ALWAYS" />
+        </VBox>
+    </center>
+
+    <bottom>
+        <HBox alignment="CENTER_RIGHT" spacing="10">
+            <Button onAction="#closeWindow" text="Schließen" />
+        </HBox>
+    </bottom>
+</BorderPane>

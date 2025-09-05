@@ -1,11 +1,12 @@
 import model.ai.AiReportTemplate;
-import model.ai.nlp.NLParser;
 import model.ai.ir.*;
+import model.ai.nlp.NLParser;
 import model.ai.planning.CoverPlanner;
 import model.ai.planning.SqlPlan;
 import model.ai.register.AiKnowledgeRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 

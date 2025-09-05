@@ -1,5 +1,7 @@
 package gui.controller.utils;
 
+import formatter.ColumnValueFormatter;
+import gui.controller.dialog.Dialog;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
@@ -8,14 +10,13 @@ import javafx.scene.control.*;
 import model.RowData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import formatter.ColumnValueFormatter;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static gui.controller.utils.Dialog.showWarningDialog;
+import static gui.controller.dialog.Dialog.showWarningDialog;
 
 /**
  * Hilfsklasse zur Verwaltung der TableView (Spaltenaufbau, Kontextmenü,
@@ -47,6 +48,7 @@ public class TableManager {
 
     /**
      * Befüllt die TableView mit Daten.
+     *
      * @param data Die Datenliste, die die anzuzeigenden Zeilen enthält.
      */
     public void populateTableView(List<RowData> data) {
@@ -92,6 +94,7 @@ public class TableManager {
 
     /**
      * Fügt ein Kontextmenü zu einer Spalte hinzu.
+     *
      * @param column Die Spalte, der das Kontextmenü hinzugefügt werden soll.
      */
     @SuppressWarnings("unchecked")
@@ -132,6 +135,7 @@ public class TableManager {
 
     /**
      * Löscht eine Spalte aus der TableView und aus den zugrunde liegenden Daten.
+     *
      * @param columnsToDelete Die zu löschenden Spalten.
      */
     public void deleteColumns(List<TableColumn<ObservableList<String>, ?>> columnsToDelete, List<RowData> data) {

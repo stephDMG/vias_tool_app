@@ -1,9 +1,9 @@
 package service.theme;
 
-import atlantafx.base.theme.PrimerLight;
-import atlantafx.base.theme.PrimerDark;
-import atlantafx.base.theme.NordLight;
 import atlantafx.base.theme.NordDark;
+import atlantafx.base.theme.NordLight;
+import atlantafx.base.theme.PrimerDark;
+import atlantafx.base.theme.PrimerLight;
 import javafx.application.Application;
 
 import java.io.FileReader;
@@ -13,20 +13,12 @@ import java.util.Properties;
 
 /**
  * Service zur Verwaltung und Persistierung des UI-Themes.
- *
+ * <p>
  * - Wendet ein ausgewähltes AtlantisFX-Theme auf die JavaFX-Anwendung an
  * - Speichert die Auswahl in einer einfachen Properties-Datei (config.properties)
  * - Lädt beim Start das zuletzt verwendete Theme
  */
 public class ThemeService {
-
-    /**
-     * Unterstützte UI-Themes für die Anwendung.
-     */
-    public enum Theme { PRIMER_LIGHT,
-        PRIMER_DARK,
-        NORD_LIGHT,
-        NORD_DARK }
 
     private static final String CONFIG_FILE = "config.properties";
 
@@ -87,5 +79,15 @@ public class ThemeService {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    /**
+     * Unterstützte UI-Themes für die Anwendung.
+     */
+    public enum Theme {
+        PRIMER_LIGHT,
+        PRIMER_DARK,
+        NORD_LIGHT,
+        NORD_DARK
     }
 }

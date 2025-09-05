@@ -2,15 +2,22 @@
   "users": {
     "stephane.dongmo": {
       "role": "admin",
-      "permissions": ["all"]
+      "permissions": [
+        "all"
+      ]
     },
     "carl.schroeter": {
       "role": "user",
-      "permissions": ["view", "export"]
+      "permissions": [
+        "view",
+        "export"
+      ]
     },
-    "christian.behrendt":{
+    "christian.behrendt": {
       "role": "user",
-      "permissions": ["op-list"]
+      "permissions": [
+        "op-list"
+      ]
     }
   }
 }

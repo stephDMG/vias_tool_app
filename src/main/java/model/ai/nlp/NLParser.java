@@ -1,6 +1,7 @@
 package model.ai.nlp;
 
 import model.ai.ir.*;
+
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Consumer;
@@ -9,27 +10,21 @@ import java.util.regex.Pattern;
 
 
 public class NLParser {
-    private final Ontology ontology = new Ontology();
-
-
-
     // --- PATTERNS (RegEx) ---
     private static final Pattern FIELDS_SEPARATOR =
             Pattern.compile("\\s+(?:und\\s+zwar|mit\\s+den\\s+feldern|mit\\s+feldern|mit\\s+der\\s+feldern|zeige\\s+mir|zeige)\\b",
                     Pattern.CASE_INSENSITIVE);
     private static final Pattern ORDER_BY_SEPARATOR = Pattern.compile("\\s+(?:order\\s+by|sortiert\\s+nach)\\b", Pattern.CASE_INSENSITIVE);
-
     // FIX: Verbesserte Pattern für globale Projektionen - weniger gierig
     private static final Pattern AUSSER_GLOBAL =
             Pattern.compile("(?:außer|ohne|except)\\s+([a-zA-Zäöüß0-9 _,-]+?)(?=\\s+(?:order|limit|und\\s|$))", Pattern.CASE_INSENSITIVE);
     private static final Pattern ZUERST_GLOBAL =
             Pattern.compile("(?:zuerst|first)\\s+([a-zA-Zäöüß0-9 _,-]+?)(?=\\s+(?:order|limit|und\\s|$))", Pattern.CASE_INSENSITIVE);
-
     private static final Pattern BEGINN_AFTER = Pattern.compile(
             "(?:beginn|anfang)\\s*(?:nach|seit|ab)(?:\\s+dem)?\\s+(\\d{1,2}[./]\\d{1,2}[./]\\d{2,4})",
             Pattern.CASE_INSENSITIVE
     );
-    private static final Pattern BEGINN_BEFORE= Pattern.compile(
+    private static final Pattern BEGINN_BEFORE = Pattern.compile(
             "(?:beginn|anfang)\\s*(?:vor|bis)(?:\\s+zum)?\\s+(\\d{1,2}[./]\\d{1,2}[./]\\d{2,4})",
             Pattern.CASE_INSENSITIVE
     );
@@ -37,9 +32,8 @@ public class NLParser {
             "(?:beginn|anfang)\\s*zwischen\\s+(\\d{1,2}[./]\\d{1,2}[./]\\d{2,4})\\s+und\\s+(\\d{1,2}[./]\\d{1,2}[./]\\d{2,4})",
             Pattern.CASE_INSENSITIVE
     );
-
     // NEU: Patterns für Vertragsende (Ablauf)
-    private static final Pattern ABLAUF_AFTER= Pattern.compile(
+    private static final Pattern ABLAUF_AFTER = Pattern.compile(
             "(?:ablauf|ende)\\s*(?:nach|seit|ab)(?:\\s+dem)?\\s+(\\d{1,2}[./]\\d{1,2}[./]\\d{2,4})",
             Pattern.CASE_INSENSITIVE
     );
@@ -47,24 +41,20 @@ public class NLParser {
             "(?:ablauf|ende)\\s*(?:vor|bis)(?:\\s+zum)?\\s+(\\d{1,2}[./]\\d{1,2}[./]\\d{2,4})",
             Pattern.CASE_INSENSITIVE
     );
-    private static final Pattern ABLAUF_RANGE= Pattern.compile(
+    private static final Pattern ABLAUF_RANGE = Pattern.compile(
             "(?:ablauf|ende)\\s*zwischen\\s+(\\d{1,2}[./]\\d{1,2}[./]\\d{2,4})\\s+und\\s+(\\d{1,2}[./]\\d{1,2}[./]\\d{2,4})",
             Pattern.CASE_INSENSITIVE
     );
-
-
     private static final Pattern LIMIT = Pattern.compile("\\blimit\\s+(\\d+)", Pattern.CASE_INSENSITIVE);
-
     // KORREKTUR: MAKLER_NAME-RegEx, um Überlappungen zu vermeiden (name ist jetzt obligatorisch).
     //private static final Pattern MAKLER_ID = Pattern.compile("\\b(makler|vermittler)(?:\\s+id)?\\s+([a-zA-Z0-9]{5,})\\b", Pattern.CASE_INSENSITIVE);
     private static final Pattern MAKLER_ID = Pattern.compile("(?:makler|vermittler)(?:\\s+(id|nr))?\\s+([a-zA-Z0-9]{6,})", Pattern.CASE_INSENSITIVE);
     private static final Pattern MAKLER_NAME = Pattern.compile("\\b(makler|vermittler)\\s+name\\s+([a-zA-Z0-9&.\\s*äöüßÄÖÜ]+?)(?=\\s+und\\b|\\s+mit\\b|\\s+order\\b|\\s+limit\\b|$)", Pattern.CASE_INSENSITIVE);
-
     // KORREKTUR: LAND-RegEx, um NullPointer zu vermeiden und spezifischer zu sein.
     private static final Pattern LAND = Pattern.compile("\\bland\\s+([a-zA-Zäöüß]+)\\b", Pattern.CASE_INSENSITIVE);
     private static final Pattern STATUS = Pattern.compile("\\bstatus\\s+'?([a-zA-Z]+)'?\\b", Pattern.CASE_INSENSITIVE);
     private static final Pattern VSN = Pattern.compile("\\bvsn\\s+([a-zA-Z0-9-]+)\\b", Pattern.CASE_INSENSITIVE);
-
+    private final Ontology ontology = new Ontology();
 
     public QueryIR parse(String prompt) {
         QueryIR ir = new QueryIR();

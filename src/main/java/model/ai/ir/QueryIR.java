@@ -4,10 +4,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class QueryIR {
-    public ContextType context = ContextType.UNKNOWN;
     public final List<FilterGroup> filters = new ArrayList<>();
     public final List<Projection> projections = new ArrayList<>();
     public final List<Sort> sortOrders = new ArrayList<>();
+    public ContextType context = ContextType.UNKNOWN;
     public Integer limit = null;
 
     public QueryIR() {

@@ -17,5 +17,7 @@ public enum TableType {
         this.tableName = tableName;
     }
 
-    public String getTableName() { return tableName; }
+    public String getTableName() {
+        return tableName;
+    }
 }

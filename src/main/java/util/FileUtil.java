@@ -96,6 +96,7 @@ public class FileUtil {
         }
         return sanitized;
     }
+
     /**
      * Gibt Dateigröße in menschenlesbarem Format zurück.
      */

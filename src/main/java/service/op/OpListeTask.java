@@ -7,7 +7,7 @@ import org.slf4j.LoggerFactory;
 import service.interfaces.ProgressReporter;
 
 
-public class OpListeTask extends Task<Void> implements ProgressReporter { // Implémente l'interface
+public class OpListeTask extends Task<Void> implements ProgressReporter {
 
     private static final Logger log = LoggerFactory.getLogger(OpListeTask.class);
 

@@ -1,5 +1,6 @@
-package gui.controller.utils;
+package gui.controller.manager;
 
+import formatter.ColumnValueFormatter;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
@@ -7,16 +8,20 @@ import javafx.collections.ObservableList;
 import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
 import model.RowData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import formatter.ColumnValueFormatter;
+import gui.controller.dialog.Dialog;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
+
+import javafx.animation.PauseTransition;
+import javafx.util.Duration;
+import javafx.scene.layout.Region;
 
 /**
  * Universelle Tabellenverwaltung für alle Controller.
@@ -36,12 +41,23 @@ public class EnhancedTableManager {
     // Data Management
     private List<RowData> originalData = new ArrayList<>();
     private List<RowData> filteredData = new ArrayList<>();
+    private List<String> currentHeaders = new ArrayList<>();
     private int rowsPerPage = DEFAULT_ROWS_PER_PAGE;
 
     // Feature Flags
     private boolean searchEnabled = false;
     private boolean paginationEnabled = false;
     private boolean selectionEnabled = false;
+
+    private Integer lastRowsPerPage = null;
+
+    private boolean groupStripingEnabled = false;
+    private String groupStripingHeader = null;
+    private int groupColIndex = -1;
+    private List<Boolean> stripeIsA = new ArrayList<>();
+
+    private Color groupColorA = Color.web("#B4C8F0", 0.25);
+    private Color groupColorB = Color.web("#DDE7FF", 0.20);
 
     /**
      * Konstruktor - Alle optionalen Komponenten können null sein
@@ -60,6 +76,30 @@ public class EnhancedTableManager {
         if (deleteButton != null) {
             deleteButton.setDisable(true);
         }
+    }
+
+    public EnhancedTableManager enableGroupStripingByHeader(String headerName) {
+        if (headerName == null || headerName.isBlank()) {
+            throw new IllegalArgumentException("Der Header-Name für Group Striping darf nicht leer sein.");
+        }
+        this.groupStripingEnabled = true;
+        this.groupStripingHeader = headerName;
+        installGroupRowFactory();
+
+        tableView.getItems().addListener(
+                (javafx.collections.ListChangeListener<? super javafx.collections.ObservableList<String>>) c -> recomputeGroupStripes()
+        );
+
+        // Recalcule quand l'utilisateur trie
+        tableView.getSortOrder().addListener(
+                (javafx.collections.ListChangeListener<TableColumn<ObservableList<String>, ?>>) c ->
+                        javafx.application.Platform.runLater(this::recomputeGroupStripes)
+        );
+        tableView.comparatorProperty().addListener((obs, o, n) ->
+                javafx.application.Platform.runLater(this::recomputeGroupStripes)
+        );
+
+        return this;
     }
 
     /**
@@ -144,6 +184,87 @@ public class EnhancedTableManager {
         }
     }
 
+    public void configureGrouping(String headerName, Color colorA, Color colorB) {
+        this.groupStripingEnabled = (headerName != null && !headerName.isBlank());
+        this.groupStripingHeader = headerName;
+        if (colorA != null) this.groupColorA = colorA;
+        if (colorB != null) this.groupColorB = colorB;
+        installGroupRowFactory();
+        recomputeGroupStripes();
+    }
+
+    public void disableGrouping() {
+        this.groupStripingEnabled = false;
+        this.groupStripingHeader = null;
+        stripeIsA.clear();
+        tableView.refresh();
+    }
+
+    private static String toRgbaCss(Color c) {
+        int r = (int) Math.round(c.getRed() * 255);
+        int g = (int) Math.round(c.getGreen() * 255);
+        int b = (int) Math.round(c.getBlue() * 255);
+        String a = String.format(java.util.Locale.US, "%.3f", c.getOpacity());
+        return "rgba(" + r + "," + g + "," + b + "," + a + ")";
+    }
+
+
+    private void installGroupRowFactory() {
+        tableView.setRowFactory(tv -> new TableRow<>() {
+            @Override
+            protected void updateItem(ObservableList<String> item, boolean empty) {
+                super.updateItem(item, empty);
+                setStyle("");
+
+                if (empty || item == null || !groupStripingEnabled) return;
+
+                int rowIndex = getIndex();
+                if (rowIndex >= 0 && rowIndex < stripeIsA.size()) {
+                    boolean isA = stripeIsA.get(rowIndex);
+                    String css = "-fx-background-color: " + (isA ? toRgbaCss(groupColorA) : toRgbaCss(groupColorB)) + ";";
+                    setStyle(css);
+                }
+            }
+        });
+    }
+
+    private int findHeaderIndex(String header) {
+        if (filteredData == null || filteredData.isEmpty()) return -1;
+        List<String> headers = new ArrayList<>(filteredData.get(0).getValues().keySet());
+        for (int i = 0; i < headers.size(); i++) {
+            String h = headers.get(i);
+            if (h.equalsIgnoreCase(header) || h.replace(" ", "").equalsIgnoreCase(header.replace(" ", ""))) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private void recomputeGroupStripes() {
+        if (!groupStripingEnabled || groupStripingHeader == null) return;
+        var items = tableView.getItems();
+        stripeIsA = new ArrayList<>(items.size());
+
+        // trouver la colonne "Rg-NR" (ou celle donnée)
+        groupColIndex = findHeaderIndex(groupStripingHeader);
+
+        String lastKey = null;
+        boolean useA = true; // premier groupe = A
+        for (ObservableList<String> row : items) {
+            String key = "";
+            if (groupColIndex >= 0 && groupColIndex < row.size()) {
+                key = row.get(groupColIndex);
+            }
+            if (!java.util.Objects.equals(key, lastKey)) {
+                // nouvelle valeur de Rg-NR -> on alterne
+                useA = !useA;
+                lastKey = key;
+            }
+            stripeIsA.add(useA);
+        }
+        tableView.refresh();
+    }
+
     /**
      * Filtert Daten basierend auf Suchtext
      */
@@ -173,6 +294,7 @@ public class EnhancedTableManager {
         } else {
             buildTableColumns();
             populateTableData(filteredData);
+            recomputeGroupStripes();
         }
     }
 
@@ -180,11 +302,21 @@ public class EnhancedTableManager {
      * Baut Tabellenspalten auf
      */
     private void buildTableColumns() {
-        tableView.getColumns().clear();
-
-        if (filteredData.isEmpty()) return;
+        if (filteredData.isEmpty()) {
+            tableView.getColumns().clear();
+            currentHeaders = List.of();
+            return;
+        }
 
         List<String> headers = new ArrayList<>(filteredData.get(0).getValues().keySet());
+
+        // Si mêmes headers → ne rien faire (évite flicker)
+        if (headers.equals(currentHeaders) && !tableView.getColumns().isEmpty()) {
+            return;
+        }
+
+        tableView.getColumns().clear();
+        currentHeaders = headers;
 
         for (int i = 0; i < headers.size(); i++) {
             final int columnIndex = i;
@@ -195,9 +327,9 @@ public class EnhancedTableManager {
 
             column.setCellValueFactory(param -> {
                 ObservableList<String> row = param.getValue();
-                return (row != null && columnIndex < row.size())
-                        ? new SimpleStringProperty(row.get(columnIndex))
-                        : new SimpleStringProperty("");
+                return new SimpleStringProperty(
+                        (row != null && columnIndex < row.size()) ? row.get(columnIndex) : ""
+                );
             });
 
             addContextMenuToColumn(column);
@@ -237,7 +369,51 @@ public class EnhancedTableManager {
         pagination.setPageCount(Math.max(pageCount, 1));
         pagination.setCurrentPageIndex(0);
         pagination.setVisible(filteredData.size() > 0);
-        createPage(0);
+
+        pagination.setPageFactory(pageIndex -> {
+            int fromIndex = pageIndex * rowsPerPage;
+            int toIndex = Math.min(fromIndex + rowsPerPage, filteredData.size());
+            List<RowData> pageData = filteredData.subList(fromIndex, toIndex);
+            buildTableColumns();
+            populateTableData(pageData);
+            recomputeGroupStripes(); // <--- et ici aussi
+            return new VBox();
+        });
+    }
+
+    public void setRowsPerPage(int rowsPerPage) {
+        if (rowsPerPage <= 0) return;
+        this.rowsPerPage = rowsPerPage;
+        if (paginationEnabled && pagination != null) {
+            setupPagination();
+        } else {
+            refreshTable();
+        }
+    }
+
+    public void bindAutoRowsPerPage(Region observedRegion) {
+        final double chrome = 90.0;       // marge header+paddings+pagination (ajuste si besoin)
+        final double defaultRowH = 24.0;  // si fixedCellSize non défini
+        final int minRows = 10;           // borne pour éviter 0
+        final int changeThreshold = 2;    // éviter de retrigger si variation trop petite
+
+        PauseTransition debounce = new PauseTransition(Duration.millis(120));
+
+        observedRegion.heightProperty().addListener((obs, oldH, newH) -> {
+            // Re-démarre le timer à chaque variation
+            debounce.stop();
+            debounce.setOnFinished(evt -> {
+                double h = (newH == null) ? 0 : newH.doubleValue();
+                double rowH = (tableView.getFixedCellSize() > 0) ? tableView.getFixedCellSize() : defaultRowH;
+                int rows = (int) Math.max(minRows, Math.floor((h - chrome) / rowH));
+
+                if (lastRowsPerPage == null || Math.abs(rows - lastRowsPerPage) >= changeThreshold) {
+                    lastRowsPerPage = rows;
+                    setRowsPerPage(rows);  // ne reconstruit que si la différence est significative
+                }
+            });
+            debounce.playFromStart();
+        });
     }
 
     /**
@@ -253,6 +429,7 @@ public class EnhancedTableManager {
 
         return new VBox();
     }
+
 
     /**
      * Fügt Kontextmenü zu Spalte hinzu

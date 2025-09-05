@@ -74,7 +74,6 @@ public final class FormatterService {
     }
 
 
-
     public static boolean isMoneyField(String columnName) {
         return moneyFields.contains(columnName);
     }

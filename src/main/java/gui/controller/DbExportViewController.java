@@ -1,8 +1,7 @@
 package gui.controller;
 
 import gui.controller.manager.TableViewBuilder;
-import gui.controller.utils.EnhancedTableManager;
-
+import gui.controller.manager.EnhancedTableManager;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
@@ -23,11 +22,13 @@ import service.interfaces.DatabaseService;
 
 import java.io.File;
 import java.net.URL;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.ResourceBundle;
 import java.util.stream.Collectors;
 
-import static gui.controller.utils.Dialog.showErrorDialog;
-import static gui.controller.utils.Dialog.showSuccessDialog;
+import static gui.controller.dialog.Dialog.showErrorDialog;
+import static gui.controller.dialog.Dialog.showSuccessDialog;
 import static gui.controller.utils.format.FormatterService.exportWithFormat;
 
 /**
@@ -63,28 +64,34 @@ import static gui.controller.utils.format.FormatterService.exportWithFormat;
 public class DbExportViewController implements Initializable {
 
     private static final Logger logger = LoggerFactory.getLogger(DbExportViewController.class);
-
+    private final List<TextField> parameterTextFields = new ArrayList<>();
+    private final ObservableList<String> listParameters = FXCollections.observableArrayList();
     // === FXML-Komponenten (bestehend) ===
-    @FXML private ComboBox<String> reportComboBox;
-    @FXML private Button helpButton;
-    @FXML private GridPane parameterGrid;
-    @FXML private Button executeQueryButton;
-    @FXML private ProgressBar progressBar;
-    @FXML private Label statusLabel;
-    @FXML private VBox resultsContainer;  // Container für die neue Tabelle
-
+    @FXML
+    private ComboBox<String> reportComboBox;
+    @FXML
+    private Button helpButton;
+    @FXML
+    private GridPane parameterGrid;
+    @FXML
+    private Button executeQueryButton;
+    @FXML
+    private ProgressBar progressBar;
+    @FXML
+    private Label statusLabel;
+    @FXML
+    private VBox resultsContainer;  // Container für die neue Tabelle
     // Parameter-Eingabe (spezielle Listen-Ansicht)
-    @FXML private VBox parameterListBox;
-    @FXML private TextField parameterInputTextField;
-    @FXML private ListView<String> parameterListView;
-
+    @FXML
+    private VBox parameterListBox;
+    @FXML
+    private TextField parameterInputTextField;
+    @FXML
+    private ListView<String> parameterListView;
     // === Services und Datenmodell ===
     private DatabaseService databaseService;
     private QueryRepository selectedQuery;
-    private final List<TextField> parameterTextFields = new ArrayList<>();
     private List<RowData> fullResults = new ArrayList<>();
-    private final ObservableList<String> listParameters = FXCollections.observableArrayList();
-
     // === Neue Tabellenverwaltung ===
     private EnhancedTableManager tableManager;
     private Button exportCsvButton;

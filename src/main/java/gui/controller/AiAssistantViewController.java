@@ -1,11 +1,10 @@
 package gui.controller;
 
 import gui.controller.manager.TableViewBuilder;
-import gui.controller.utils.EnhancedTableManager;
+import gui.controller.manager.EnhancedTableManager;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
-import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.FlowPane;
@@ -21,10 +20,12 @@ import service.interfaces.DatabaseService;
 
 import java.io.File;
 import java.net.URL;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.ResourceBundle;
 
-import static gui.controller.utils.Dialog.showErrorDialog;
-import static gui.controller.utils.Dialog.showSuccessDialog;
+import static gui.controller.dialog.Dialog.showErrorDialog;
+import static gui.controller.dialog.Dialog.showSuccessDialog;
 import static gui.controller.utils.format.FormatterService.exportWithFormat;
 
 /**
@@ -73,17 +74,26 @@ public class AiAssistantViewController implements Initializable {
     private static final Logger logger = LoggerFactory.getLogger(AiAssistantViewController.class);
 
     // === FXML-Komponenten (bestehend) ===
-    @FXML private TextArea questionTextArea;
-    @FXML private Button generateSqlButton;
-    @FXML private ProgressBar progressBar;
-    @FXML private TextArea sqlTextArea;
-    @FXML private Button executeQueryButton;
-    @FXML private Label statusLabel;
-    @FXML private VBox resultsContainer;  // Container für die neue Tabelle
+    @FXML
+    private TextArea questionTextArea;
+    @FXML
+    private Button generateSqlButton;
+    @FXML
+    private ProgressBar progressBar;
+    @FXML
+    private TextArea sqlTextArea;
+    @FXML
+    private Button executeQueryButton;
+    @FXML
+    private Label statusLabel;
+    @FXML
+    private VBox resultsContainer;
 
     // Hilfe & Dokumentation
-    @FXML private ComboBox<String> helpContextCombo;
-    @FXML private FlowPane helpChipsPane;
+    @FXML
+    private ComboBox<String> helpContextCombo;
+    @FXML
+    private FlowPane helpChipsPane;
 
     // === Services ===
     private AiService aiService;
@@ -94,9 +104,6 @@ public class AiAssistantViewController implements Initializable {
     private EnhancedTableManager tableManager;
     private Button exportCsvButton;
     private Button exportXlsxButton;
-
-    // === Beispiel-Datenstrukturen ===
-    private record Example(String label, String promptTemplate) {}
 
     /**
      * Initialisiert den Controller und die UI-Komponenten.
@@ -419,8 +426,6 @@ public class AiAssistantViewController implements Initializable {
         new Thread(exportTask, "ai-export").start();
     }
 
-    // === Hilfe & Beispiele ===
-
     /**
      * Initialisiert das Hilfe-System mit Kontext-ComboBox und Beispiel-Chips.
      * Stellt vorgefertigte Prompts für häufige VIAS-Anwendungsfälle bereit.
@@ -433,6 +438,8 @@ public class AiAssistantViewController implements Initializable {
 
         logger.debug("Hilfe-System initialisiert mit {} Kontexten", helpContextCombo.getItems().size());
     }
+
+    // === Hilfe & Beispiele ===
 
     /**
      * Rendert Hilfe-Chips basierend auf dem ausgewählten Kontext.
@@ -481,8 +488,6 @@ public class AiAssistantViewController implements Initializable {
         );
     }
 
-    // === UI-Helfer ===
-
     /**
      * Setzt den UI-Zustand für Processing-Operationen.
      *
@@ -505,5 +510,11 @@ public class AiAssistantViewController implements Initializable {
         exportXlsxButton.setDisable(isProcessing || !hasData);
 
         statusLabel.setText(status);
+    }
+
+    // === UI-Helfer ===
+
+    // === Beispiel-Datenstrukturen ===
+    private record Example(String label, String promptTemplate) {
     }
 }

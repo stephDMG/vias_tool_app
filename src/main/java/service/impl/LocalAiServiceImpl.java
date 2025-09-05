@@ -1,17 +1,15 @@
 package service.impl;
 
 import model.ai.AiReportTemplate;
-import model.ai.ir.QueryIR;
 import model.ai.nlp.CapabilityService;
 import model.ai.nlp.FeatureSwitch;
-import model.ai.nlp.PromptUnderstandingService;
 import model.ai.nlp.NLUnderstandingService;
+import model.ai.nlp.PromptUnderstandingService;
 import model.ai.planning.CoverExecutionService;
 import model.ai.planning.LegacyCoverExecutionAdapter;
 import model.ai.planning.PromptExecutionService;
 import model.ai.planning.SqlPlan;
 import model.ai.provider.impl.CoverKnowledgeProvider;
-import model.ai.provider.impl.SchadenKnowledgeProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import service.interfaces.AiQueryBuilder;
@@ -94,7 +92,7 @@ public class LocalAiServiceImpl implements AiService {
         }
 
         logger.info("🚀 Generierter SQL-Plan:\n{}", plan.sql);
-        if(!plan.params.isEmpty()){
+        if (!plan.params.isEmpty()) {
             logger.info("Parameter für PreparedStatement: {}", plan.params);
         }
 

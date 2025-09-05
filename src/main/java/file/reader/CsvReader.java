@@ -2,7 +2,10 @@ package file.reader;
 
 import config.ApplicationConfig;
 import model.RowData;
-import org.apache.commons.csv.*; // Besser: org.apache.commons.csv.CSVFormat, org.apache.commons.csv.CSVParser, org.apache.commons.csv.CSVRecord
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVRecord;
+
 import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.IOException;

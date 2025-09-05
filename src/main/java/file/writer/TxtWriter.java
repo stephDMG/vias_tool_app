@@ -1,6 +1,7 @@
 package file.writer;
 
 import model.RowData;
+
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -17,16 +18,18 @@ public class TxtWriter implements DataWriter {
     private final BufferedWriter writer;
 
     /**
-         * Erstellt einen Writer für einfache Textdateien.
-         * @param path Zielpfad
-         * @throws IOException bei I/O-Fehlern
-         */
-        public TxtWriter(String path) throws IOException {
+     * Erstellt einen Writer für einfache Textdateien.
+     *
+     * @param path Zielpfad
+     * @throws IOException bei I/O-Fehlern
+     */
+    public TxtWriter(String path) throws IOException {
         this.writer = new BufferedWriter(new FileWriter(path));
     }
 
     /**
      * Schreibt die Kopfzeile (mit " | " getrennt).
+     *
      * @param headers Spaltenüberschriften
      * @throws IOException bei I/O-Fehlern
      */
@@ -38,6 +41,7 @@ public class TxtWriter implements DataWriter {
 
     /**
      * Schreibt eine Datenzeile, unter Nutzung der Standardformatierung.
+     *
      * @param row Datenzeile
      * @throws IOException bei I/O-Fehlern
      */

@@ -8,9 +8,6 @@ import javafx.fxml.Initializable;
 import javafx.geometry.Insets;
 import javafx.scene.Parent;
 import javafx.scene.control.*;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
-import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.Text;
@@ -22,7 +19,6 @@ import service.LoginService;
 import service.UpdateService;
 import service.theme.ThemeService;
 
-import javax.swing.text.Element;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -33,11 +29,11 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 
-import static gui.controller.utils.Dialog.showErrorDialog;
+import static gui.controller.dialog.Dialog.showErrorDialog;
 
 /**
  * Haupt-Controller des Hauptfensters (MainWindow.fxml).
- *
+ * <p>
  * Verantwortlich für:
  * - Initialisierung der UI (Begrüßung, Rechteprüfung, Vorladen der Teil-Views)
  * - Navigation/Ansichtswechsel (Extraction, Data, DbExport, AI, Pivot, Dashboard, Enrichment, OP-Liste)
@@ -47,8 +43,12 @@ public class MainController implements Initializable {
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(MainController.class);
 
     private static final Logger logger = LoggerFactory.getLogger(MainController.class);
-    private static final String VERSION_FILE_PATH = "X:\\EDV\\Client_WIN_11\\Software\\VIAS_TOOL_PUBLIC\\jpackage_outputt\\version.txt";
-    private static final String CHANGELOG_FILE_PATH = "X:\\EDV\\Client_WIN_11\\Software\\VIAS_TOOL_PUBLIC\\jpackage_output\\changelog.txt";
+    private static final String BASE =
+            "\\\\Debresrv10\\csdatenwelt$\\EDV\\Client_WIN_11\\Software\\VIAS_TOOL_PUBLIC\\jpackage_output\\";
+
+    private static final String VERSION_FILE_PATH = BASE + "version.txt";
+    private static final String CHANGELOG_FILE_PATH = BASE + "changelog.txt";
+
     private String CURRENT_VERSION = "N/A";
     private Parent opListView;
 
@@ -61,6 +61,18 @@ public class MainController implements Initializable {
     @FXML
     private TextFlow userGreeting;
 
+    public static String capitalizeFirstLetter(String input) {
+        if (input == null || input.isEmpty()) {
+            return input;
+        }
+        String[] words = input.split("\\s+");
+        StringJoiner result = new StringJoiner(" ");
+        for (String word : words) {
+            result.add(word.substring(0, 1).toUpperCase() + word.substring(1));
+        }
+        return result.toString();
+    }
+
     @Override
     public void initialize(URL location, ResourceBundle resources) {
 
@@ -69,9 +81,9 @@ public class MainController implements Initializable {
         LoginService loginService = new LoginService();
         String username = loginService.getCurrentWindowsUsername();
         AccessControlService accessControl = new AccessControlService();
-        statusItem.setVisible(accessControl.hasPermission(username, "op-status") || accessControl.hasPermission(username, "all"));
+        statusItem.setVisible(accessControl.hasPermission(username, "op-list") || accessControl.hasPermission(username, "all"));
 
-        String user =  username.replace('.', ' ');
+        String user = username.replace('.', ' ');
         Text part1 = new Text("Moin ");
 
         Text handIcon = new Text("👋");
@@ -104,18 +116,6 @@ public class MainController implements Initializable {
         checkForUpdates();
     }
 
-    public static String capitalizeFirstLetter(String input) {
-        if (input == null || input.isEmpty()) {
-            return input;
-        }
-        String[] words = input.split("\\s+");
-        StringJoiner result = new StringJoiner(" ");
-        for (String word : words) {
-            result.add(word.substring(0, 1).toUpperCase() + word.substring(1));
-        }
-        return result.toString();
-    }
-
     private void loadAppVersion() {
         try (InputStream input = getClass().getResourceAsStream("/version.properties")) {
             if (input == null) {
@@ -128,16 +128,6 @@ public class MainController implements Initializable {
             logger.info("Anwendungsversion erfolgreich geladen: {}", CURRENT_VERSION);
         } catch (IOException ex) {
             logger.error("Fehler beim Lesen der version.properties", ex);
-        }
-    }
-
-    private static class UpdateInfo {
-        final String version;
-        final String changelog;
-
-        UpdateInfo(String version, String changelog) {
-            this.version = version;
-            this.changelog = changelog;
         }
     }
 
@@ -180,7 +170,7 @@ public class MainController implements Initializable {
             @Override
             protected void succeeded() {
                 UpdateInfo info = getValue();
-                if (info != null && info.version != null && isNewer(info.version, CURRENT_VERSION)) {
+                if (info != null && isNewer(info.version, CURRENT_VERSION)) {
                     logger.info("Neue Version gefunden! Online: {}, Aktuell: {}", info.version, CURRENT_VERSION);
                     Platform.runLater(() -> showUpdateDialog(info));
                 } else {
@@ -201,9 +191,24 @@ public class MainController implements Initializable {
     }
 
     private boolean isNewer(String onlineVersion, String currentVersion) {
-        return onlineVersion.compareTo(currentVersion) > 0;
-    }
+        if (onlineVersion == null || currentVersion == null) return false;
 
+        String o = onlineVersion.trim();
+        String c = currentVersion.trim();
+
+        // supprime suffixes (-SNAPSHOT, -rc, etc.)
+        o = o.replaceAll("[^0-9.].*$", "");
+        c = c.replaceAll("[^0-9.].*$", "");
+
+        String[] os = o.split("\\.");
+        String[] cs = c.split("\\.");
+        for (int i = 0; i < Math.max(os.length, cs.length); i++) {
+            int oi = (i < os.length && os[i].matches("\\d+")) ? Integer.parseInt(os[i]) : 0;
+            int ci = (i < cs.length && cs[i].matches("\\d+")) ? Integer.parseInt(cs[i]) : 0;
+            if (oi != ci) return oi > ci;
+        }
+        return false;
+    }
 
     // Fügen Sie diese Methode zu Ihrem MainController hinzu
     private void showUpdateDialog(UpdateInfo info) {
@@ -230,30 +235,64 @@ public class MainController implements Initializable {
         }
     }
 
-
-    // Ersetzen Sie Ihre alte startUpdateProcess-Methode durch diese
     private void startUpdateProcess(UpdateInfo info) {
-        // 1. Pfade für Installer und Prüfsumme konstruieren
+        // 0) Doit correspondre EXACTEMENT à --name dans jpackage (release.ps1)
+        final String productName = "VIAS Export Tool";
+
+        // 1) Base dir = dossier de version.txt (UNC \\DEBRESRV10\CSDATENWELT$ ...)
         Path versionFilePath = Paths.get(VERSION_FILE_PATH);
         Path baseDir = versionFilePath.getParent();
-        String msiName = "VIAS Export Tool-" + info.version + ".msi";
-        Path msiPath = baseDir.resolve(msiName);
-        Path checksumPath = baseDir.resolve(msiName + ".sha256");
 
-        // Prüfe ob die Dateien existieren
+        // 2) Nom attendu
+        String expectedFileName = productName + "-" + info.version + ".msi";
+        Path msiPath = baseDir.resolve(expectedFileName);
+        Path checksumPath = baseDir.resolve(expectedFileName + ".sha256");
+
+        logger.info("Update: expected MSI: {}", msiPath);
+
+        // 3) Fallback: si le nom exact n'est pas trouvé, scanner le dossier
+        if (!Files.exists(msiPath)) {
+            logger.warn("Expected MSI not found, scanning for fallback in {}", baseDir);
+            try {
+                Optional<Path> candidate = Files.list(baseDir)
+                        .filter(p -> p.getFileName().toString().toLowerCase().endsWith(".msi"))
+                        .filter(p -> {
+                            String n = p.getFileName().toString();
+                            return n.contains("-" + info.version) &&
+                                    n.toLowerCase().startsWith(productName.toLowerCase());
+                        })
+                        .findFirst();
+                if (candidate.isPresent()) {
+                    msiPath = candidate.get();
+                    checksumPath = baseDir.resolve(msiPath.getFileName().toString() + ".sha256");
+                    logger.warn("Using fallback MSI: {}", msiPath);
+                }
+            } catch (IOException e) {
+                logger.warn("Error while scanning for MSI fallback: {}", e.getMessage());
+            }
+        }
+
+        // 4) Vérifs
         if (!Files.exists(msiPath)) {
             showErrorDialog("Update-Fehler",
-                    "Installer-Datei nicht gefunden:\n" + msiPath.toString());
+                    "Installer-Datei nicht gefunden:\n" + msiPath +
+                            "\n\nErwarteter Name: " + expectedFileName + "\nPfad: " + baseDir);
+            return;
+        }
+        if (!Files.isReadable(msiPath)) {
+            showErrorDialog("Update-Fehler",
+                    "Kein Lesezugriff auf den Installer:\n" + msiPath);
             return;
         }
 
         if (!Files.exists(checksumPath)) {
-            logger.warn("Prüfsummen-Datei nicht gefunden: {}", checksumPath);
-            // Trotzdem fortfahren, aber ohne Integritätsprüfung
+            logger.warn("Checksum file not found: {}", checksumPath);
         }
 
+        final Path msiPathFinal = msiPath;
+        final Path checksumPathFinal = checksumPath;
 
-        // 2. UI für den Fortschritt erstellen
+        // 5) UI de progression
         Dialog<Void> progressDialog = new Dialog<>();
         progressDialog.setTitle("Update wird ausgeführt");
         ProgressBar progressBar = new ProgressBar(0);
@@ -263,11 +302,10 @@ public class MainController implements Initializable {
         progressDialog.getDialogPane().setContent(vbox);
         progressDialog.getDialogPane().getButtonTypes().add(ButtonType.CANCEL);
 
-        // 3. Update-Task erstellen
+        // Tâche de téléchargement/copie
         UpdateService updateService = new UpdateService();
-        Task<File> downloadTask = updateService.createDownloadTask(msiPath.toString());
+        Task<File> downloadTask = updateService.createDownloadTask(msiPathFinal.toString());
 
-        // 4. UI an den Task binden
         progressBar.progressProperty().bind(downloadTask.progressProperty());
         statusLabel.textProperty().bind(downloadTask.messageProperty());
         progressDialog.setOnCloseRequest(e -> downloadTask.cancel(true));
@@ -276,19 +314,23 @@ public class MainController implements Initializable {
             progressDialog.close();
             File downloadedMsi = downloadTask.getValue();
 
-            // 5. Integritätsprüfung durchführen
             try {
                 statusLabel.textProperty().unbind();
                 statusLabel.setText("Überprüfe Datei-Integrität...");
-                logger.info("Lade erwartete Prüfsumme von: {}", checksumPath);
-                String expectedChecksum = updateService.downloadExpectedChecksum(checksumPath.toString());
-                if (updateService.verifyChecksum(downloadedMsi, expectedChecksum)) {
-                    logger.info("✅ Prüfsumme korrekt. Starte Installer.");
-                    runInstallerAndExit(downloadedMsi);
+
+                if (Files.exists(checksumPathFinal)) {
+                    String expectedChecksum = updateService.downloadExpectedChecksum(checksumPathFinal.toString());
+                    if (!updateService.verifyChecksum(downloadedMsi, expectedChecksum)) {
+                        logger.error("Checksum mismatch. Aborting.");
+                        showErrorDialog("Update-Fehler", "Die heruntergeladene Datei ist beschädigt.");
+                        return;
+                    }
+                    logger.info("Checksum OK.");
                 } else {
-                    logger.error("❌ Prüfsumme stimmt nicht überein! Update wird abgebrochen.");
-                    showErrorDialog("Update-Fehler", "Die heruntergeladene Datei ist beschädigt. Bitte versuchen Sie es später erneut.");
+                    logger.warn("Checksum fehlt – fahre ohne Integritätsprüfung fort.");
                 }
+
+                runInstallerAndExit(downloadedMsi);
             } catch (Exception e) {
                 logger.error("Fehler bei der Integritätsprüfung.", e);
                 showErrorDialog("Update-Fehler", "Die Datei-Integrität konnte nicht überprüft werden:\n" + e.getMessage());
@@ -331,19 +373,64 @@ public class MainController implements Initializable {
         }
     }
 
-
     // --- Methoden zum Wechseln der Ansichten ---
-    @FXML private void showExtractionView() { mainBorderPane.setCenter(extractionView); }
-    @FXML private void showDataView() { mainBorderPane.setCenter(dataView); }
-    @FXML private void showDbExportView() { mainBorderPane.setCenter(dbExportView); }
-    @FXML private void showAiAssistantView() { mainBorderPane.setCenter(aiAssistantView); }
-    @FXML private void showPivotView() { mainBorderPane.setCenter(pivotView); }
-    @FXML private void showDashboardView() { mainBorderPane.setCenter(dashboardView); }
-    @FXML private void showEnrichmentView() { mainBorderPane.setCenter(showEnrichmentView); }
-    @FXML private void showOpListView() { mainBorderPane.setCenter(opListView);}
-    @FXML private void showSettingsView() { mainBorderPane.setCenter(settingsView); }
+    @FXML
+    private void showExtractionView() {
+        mainBorderPane.setCenter(extractionView);
+    }
 
-    @FXML private void closeApplication() {
+    @FXML
+    private void showDataView() {
+        mainBorderPane.setCenter(dataView);
+    }
+
+    @FXML
+    private void showDbExportView() {
+        mainBorderPane.setCenter(dbExportView);
+    }
+
+    @FXML
+    private void showAiAssistantView() {
+        mainBorderPane.setCenter(aiAssistantView);
+    }
+
+    @FXML
+    private void showPivotView() {
+        mainBorderPane.setCenter(pivotView);
+    }
+
+    @FXML
+    private void showDashboardView() {
+        mainBorderPane.setCenter(dashboardView);
+    }
+
+    @FXML
+    private void showEnrichmentView() {
+        mainBorderPane.setCenter(showEnrichmentView);
+    }
+
+    @FXML
+    private void showOpListView() {
+        mainBorderPane.setCenter(opListView);
+    }
+
+    @FXML
+    private void showSettingsView() {
+        mainBorderPane.setCenter(settingsView);
+    }
+
+    @FXML
+    private void closeApplication() {
         Platform.exit();
+    }
+
+    private static class UpdateInfo {
+        final String version;
+        final String changelog;
+
+        UpdateInfo(String version, String changelog) {
+            this.version = version;
+            this.changelog = changelog;
+        }
     }
 }

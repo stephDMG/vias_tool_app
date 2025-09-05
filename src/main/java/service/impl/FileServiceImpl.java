@@ -1,20 +1,20 @@
 package service.impl;
 
-import file.handler.PdfFileHandler;
-import file.handler.XlsxFileHandler;
-import service.interfaces.FileService;
-import model.RowData;
-import model.PivotConfig;
-import model.enums.ExportFormat;
 import file.handler.FileHandler;
 import file.handler.FileHandlerFactory;
+import file.handler.PdfFileHandler;
+import file.handler.XlsxFileHandler;
 import file.pivot.PivotProcessor;
-import util.FileUtil;
+import model.PivotConfig;
+import model.RowData;
+import model.enums.ExportFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import service.interfaces.FileService;
+import util.FileUtil;
 
-import java.util.List;
 import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Implementation des FileService - Erweitert um Pivot und Logging.
@@ -87,7 +87,7 @@ public class FileServiceImpl implements FileService {
         }
 
         logger.info("🔄 Pivot-Transformation gestartet: {}", outputPath);
-        List<RowData> pivotData   = pivotProcessor.transform(data, config);
+        List<RowData> pivotData = pivotProcessor.transform(data, config);
         List<String> pivotHeaders = pivotProcessor.generateHeaders(data, config);
 
         writeFileWithHeaders(pivotData, pivotHeaders, outputPath, format);
@@ -108,7 +108,9 @@ public class FileServiceImpl implements FileService {
         return fmt;
     }
 
-    /** Extrahiert Header aus der ersten Zeile der Daten. */
+    /**
+     * Extrahiert Header aus der ersten Zeile der Daten.
+     */
     private List<String> extractHeaders(List<RowData> data) {
         if (data == null || data.isEmpty()) {
             return new ArrayList<>();

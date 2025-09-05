@@ -2,7 +2,7 @@ package model.ai.planning;
 
 import model.ai.AiColumnSpec;
 import model.ai.AiReportTemplate;
-import model.ai.ir.*; // Importiert alle unsere neuen IR-Klassen
+import model.ai.ir.*;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -16,6 +16,7 @@ import java.util.stream.Collectors;
  * - {CONDITIONS} enthält dynamische WHERE-Bedingungen aus den Predicates.
  * - Parameter werden als PreparedStatement-Parameter gesammelt.
  */
+
 /**
  * Erzeugt aus einer domänenspezifischen Zwischenrepräsentation (IR) einen
  * konkreten SQL-Plan inklusive Spaltenliste, WHERE-Bedingungen und Parameter-
@@ -28,13 +29,36 @@ public class CoverPlanner {
     private final Map<String, AiColumnSpec> columnLibrary;
 
     /**
-         * Versucht, verschiedene Datumsformate aus der UI/Prompts zu parsen und
-         * ins DB-Format yyyyMMdd zu konvertieren.
-         *
-         * @param dateStr Eingabestring (z. B. 01.01.2024)
-         * @return formatierte Zeichenkette oder null bei Fehlschlag
-         */
-        private String parseAndFormatDate(String dateStr){
+     * Erstellt einen Planner mit der angegebenen Report-Vorlage und baut eine
+     * durchsuchbare Spaltenbibliothek aus deren Definitionen auf.
+     *
+     * @param template Reportvorlage mit SQL-Template und verfügbaren Spalten
+     */
+    public CoverPlanner(AiReportTemplate template) {
+        this.template = template;
+        this.columnLibrary = new HashMap<>();
+        // Erstelle eine durchsuchbare Bibliothek, die Keywords auf Specs abbildet
+        template.getAvailableColumns().forEach((key, spec) -> {
+            String canonical = key.toLowerCase(); // z.B. "vsn", "makler_nr", "land"
+
+            // 1) kanonischer Key
+            this.columnLibrary.put(canonical, spec);
+
+            // 2) alle Keywords
+            for (String kw : spec.getKeywords()) {
+                this.columnLibrary.put(kw.toLowerCase(), spec);
+            }
+        });
+    }
+
+    /**
+     * Versucht, verschiedene Datumsformate aus der UI/Prompts zu parsen und
+     * ins DB-Format yyyyMMdd zu konvertieren.
+     *
+     * @param dateStr Eingabestring (z. B. 01.01.2024)
+     * @return formatierte Zeichenkette oder null bei Fehlschlag
+     */
+    private String parseAndFormatDate(String dateStr) {
         DateTimeFormatter[] inputFormatters = {
                 DateTimeFormatter.ofPattern("dd.MM.yyyy"),
                 DateTimeFormatter.ofPattern("d.M.yyyy"),
@@ -56,36 +80,13 @@ public class CoverPlanner {
     }
 
     /**
-         * Erstellt einen Planner mit der angegebenen Report-Vorlage und baut eine
-         * durchsuchbare Spaltenbibliothek aus deren Definitionen auf.
-         *
-         * @param template Reportvorlage mit SQL-Template und verfügbaren Spalten
-         */
-        public CoverPlanner(AiReportTemplate template) {
-        this.template = template;
-        this.columnLibrary = new HashMap<>();
-        // Erstelle eine durchsuchbare Bibliothek, die Keywords auf Specs abbildet
-        template.getAvailableColumns().forEach((key, spec) -> {
-            String canonical = key.toLowerCase(); // z.B. "vsn", "makler_nr", "land"
-
-            // 1) kanonischer Key
-            this.columnLibrary.put(canonical, spec);
-
-            // 2) alle Keywords
-            for (String kw : spec.getKeywords()) {
-                this.columnLibrary.put(kw.toLowerCase(), spec);
-            }
-        });
-    }
-
-    /**
-         * Übersetzt die Query-IR in einen konkreten SQL-Plan (SQL-Text, Header,
-         * Parameter). Fügt optional ORDER BY und LIMIT hinzu.
-         *
-         * @param ir Zwischenrepräsentation der Anfrage
-         * @return fertiger SQL-Plan
-         */
-        public SqlPlan fromIR(QueryIR ir) {
+     * Übersetzt die Query-IR in einen konkreten SQL-Plan (SQL-Text, Header,
+     * Parameter). Fügt optional ORDER BY und LIMIT hinzu.
+     *
+     * @param ir Zwischenrepräsentation der Anfrage
+     * @return fertiger SQL-Plan
+     */
+    public SqlPlan fromIR(QueryIR ir) {
         SqlPlan plan = new SqlPlan();
 
 
@@ -178,19 +179,17 @@ public class CoverPlanner {
     }
 
 
-
-
-
     // Korrektur: Logik für Whitelist- und Blacklist-Projektionen
+
     /**
-         * Ermittelt die finale Spaltenliste anhand der Projektionen:
-         * - Wenn Excludes vorhanden: Basisspalten minus ausgeschlossene (Blacklist)
-         * - Sonst: nur explizit gewünschte Spalten, wobei order==0 zuerst kommt (Whitelist)
-         *
-         * @param projections vom Parser/IR gelieferte Spaltenwünsche
-         * @return finale, geordnete Spaltenliste
-         */
-        private List<AiColumnSpec> calculateFinalColumns(List<Projection> projections) {
+     * Ermittelt die finale Spaltenliste anhand der Projektionen:
+     * - Wenn Excludes vorhanden: Basisspalten minus ausgeschlossene (Blacklist)
+     * - Sonst: nur explizit gewünschte Spalten, wobei order==0 zuerst kommt (Whitelist)
+     *
+     * @param projections vom Parser/IR gelieferte Spaltenwünsche
+     * @return finale, geordnete Spaltenliste
+     */
+    private List<AiColumnSpec> calculateFinalColumns(List<Projection> projections) {
         // Die Basis-Spalten aus der Vorlage
         List<AiColumnSpec> base = new ArrayList<>(template.getAvailableColumns().values());
 

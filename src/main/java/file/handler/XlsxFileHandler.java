@@ -3,7 +3,6 @@ package file.handler;
 import file.pivot.PivotProcessor;
 import file.reader.XlsxReader;
 import file.writer.XlsxWriter;
-
 import model.PivotConfig;
 import model.RowData;
 import model.enums.ExportFormat;
@@ -114,6 +113,7 @@ public class XlsxFileHandler implements FileHandler {
     /**
      * Schreibt eine OP-Liste in eine XLSX-Datei.
      * Diese Methode verwendet einen neuen {@link XlsxWriter}, um die Daten zu exportieren
+     *
      * @param data
      * @param headers
      * @param outputPath

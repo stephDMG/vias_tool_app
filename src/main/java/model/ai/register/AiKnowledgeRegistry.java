@@ -23,6 +23,7 @@ public class AiKnowledgeRegistry {
 
     /**
      * Sammelt und liefert alle Berichtsvorlagen von allen registrierten Anbietern.
+     *
      * @return Eine kombinierte Liste aller verfügbaren AiReportTemplates.
      */
     public static List<AiReportTemplate> getAllTemplates() {

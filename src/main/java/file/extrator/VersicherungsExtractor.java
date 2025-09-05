@@ -1,9 +1,9 @@
 package file.extrator;
 
 
-import model.VersicherungsData;
 import file.reader.PdfReader;
 import model.RowData;
+import model.VersicherungsData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

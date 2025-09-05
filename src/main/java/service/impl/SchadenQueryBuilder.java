@@ -1,21 +1,16 @@
 package service.impl;
 
+import model.ai.AiColumnSpec;
 import model.ai.AiReportTemplate;
 import model.ai.register.AiKnowledgeRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import service.interfaces.AiQueryBuilder;
-import java.util.List;
-import java.util.regex.Pattern;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.LinkedHashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import model.ai.AiColumnSpec;
 
 
 public class SchadenQueryBuilder implements AiQueryBuilder {
@@ -97,7 +92,7 @@ public class SchadenQueryBuilder implements AiQueryBuilder {
 
         // Extrahiere Schaden-Nr
         Matcher schadenNrMatcher = SCHADEN_NR_PATTERN.matcher(remainingCriteria);
-        if(schadenNrMatcher.find()){
+        if (schadenNrMatcher.find()) {
             conditions.add("RTRIM(LTRIM(LS.LU_SNR)) = '" + schadenNrMatcher.group(1).toUpperCase() + "'");
             remainingCriteria = schadenNrMatcher.replaceAll("");
         }
@@ -110,7 +105,9 @@ public class SchadenQueryBuilder implements AiQueryBuilder {
     // da sie für beide Experten identisch sind.
 
     private List<String> extractRequestedFields(String fieldsBlock) {
-        if (fieldsBlock == null || fieldsBlock.isEmpty()) { return new ArrayList<>(); }
+        if (fieldsBlock == null || fieldsBlock.isEmpty()) {
+            return new ArrayList<>();
+        }
         String normalizedString = fieldsBlock.toLowerCase().replaceAll("\\s+und\\s+", ",");
         return Arrays.stream(normalizedString.split(","))
                 .map(String::trim)

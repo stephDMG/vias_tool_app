@@ -14,20 +14,21 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
-import java.util.*;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 
 public class OpListeProcessService {
 
     private static final Logger log = LoggerFactory.getLogger(OpListeProcessService.class);
-
+    private static final String EXPORT_BASE_PATH =
+            "X:/FREIE ZONE/Blume, Sabine/Hartrodt/Master - FOS/w076 1412 ws - Transport/";
     private final FileService fileService;
     private final HartrodtRepository hartrodtRepository;
     private final OpRepository opRepository;
     private final OpListeFormatter formatter;
-
-    private static final String EXPORT_BASE_PATH =
-            "X:/FREIE ZONE/Blume, Sabine/Hartrodt/Master - FOS/w076 1412 ws - Transport/";
 
     public OpListeProcessService(DatabaseService databaseService, FileService fileService) {
         this.fileService = Objects.requireNonNull(fileService, "fileService");
@@ -46,10 +47,10 @@ public class OpListeProcessService {
     /**
      * Führt den Exportprozess für die OP-Liste aus.
      *
-     * @param language  Die Sprache für den Export (z.B. "de" für Deutsch).
-     * @param filter    Der Filter für die zu exportierenden Daten.
-     * @param format    Das gewünschte Exportformat (z.B. CSV, XLSX).
-     * @param reporter  Der Reporter für Fortschritts-Updates.
+     * @param language Die Sprache für den Export (z.B. "de" für Deutsch).
+     * @param filter   Der Filter für die zu exportierenden Daten.
+     * @param format   Das gewünschte Exportformat (z.B. CSV, XLSX).
+     * @param reporter Der Reporter für Fortschritts-Updates.
      * @throws Exception Wenn ein Fehler während des Exports auftritt.
      */
     public void executeOpListExport(String language, String filter, ExportFormat format, ProgressReporter reporter) throws Exception {
@@ -65,7 +66,7 @@ public class OpListeProcessService {
             log.warn("Keine Hartrodt-Policen gefunden.");
             return;
         }
-        int totalPolicies = byLandByPolicy.values().stream().mapToInt(m -> m.keySet().size()).sum();
+        int totalPolicies = byLandByPolicy.values().stream().mapToInt(m -> m.size()).sum();
         reporter.updateMessage("✅ Step 1: " + totalPolicies + " Policen gefunden.");
         reporter.updateProgress(10, 100);
 
@@ -97,7 +98,6 @@ public class OpListeProcessService {
         log.info("Export-Ordner: {}", monthlyExportPath);
 
 
-
         int exportedCount = 0;
         int totalExportedFiles = 0;
 
@@ -115,6 +115,10 @@ public class OpListeProcessService {
                 String exampleOrt = policyEntry.getValue().get(0).getOrt();
                 String exampleName = policyEntry.getValue().get(0).getName();
 
+                if ("W0761530".equals(policyNr)) {
+                    log.info("🇨🇱 DEBUG: Processing Chile Police W0761530 in Land: {}", land);
+                }
+
                 reporter.updateMessage(String.format("Filtere Daten für Policy %s (%s)…", policyNr, land));
 
                 List<RowData> filtered = opRepository.findByPolicyFromCache(policyNr);
@@ -122,6 +126,16 @@ public class OpListeProcessService {
                 if (filtered.isEmpty()) {
                     reporter.updateMessage(String.format("⚠ Keine Daten für Policy %s (%s).", policyNr, land));
                     continue;
+                }
+
+                if ("W0761530".equals(policyNr) && !filtered.isEmpty()) {
+                    log.info("🔍 DEBUG Chile - Filtered Data Count: {}", filtered.size());
+                    filtered.forEach(row -> {
+                        String rgNr = row.getValues().get("Rg-NR"); // (ou "A.LU_RNR" si tu veux la colonne brute)
+                        String net = row.getValues().get("LU_NET");
+                        String provision = row.getValues().get("LU_WProvision");
+                        log.info("   RG-NR: {} | NET: {} | Provision: {}", rgNr, net, provision);
+                    });
                 }
 
                 // Anreichern mit Zusatzfeldern
@@ -134,7 +148,22 @@ public class OpListeProcessService {
                     r.put("Ort", (exampleOrt != null) ? exampleOrt : "");
                 }
 
+                // 🔍 DEBUG: Before formatting
+                if ("W0761530".equals(policyNr)) {
+                    log.info("🔧 DEBUG: Vor formatForExport - {} Einträge", filtered.size());
+                }
+
                 List<RowData> formattedForExport = formatter.formatForExport(filtered, language);
+
+                // 🔍 DEBUG: After formatting
+                if ("W0761530".equals(policyNr)) {
+                    log.info("✅ DEBUG: Nach formatForExport - {} Einträge", formattedForExport.size());
+                    formattedForExport.forEach(row -> {
+                        String rgNr = row.getValues().get("Rg-NR");
+                        String balance = row.getValues().get("SALDO");
+                        log.info("   Final RG-NR: {} | Balance: {}", rgNr, balance);
+                    });
+                }
 
                 // --- Step 5: Exportieren ---
                 String safePolicy = FileUtil.sanitizeFileName(policyNr);
@@ -159,5 +188,10 @@ public class OpListeProcessService {
         reporter.updateMessage("🎉 Export abgeschlossen.");
         reporter.updateProgress(100, 100);
         log.info("Export-Prozess beendet: {} von {} Dateien.", exportedCount, totalExportedFiles);
+    }
+
+
+    public OpRepository getOpRepository() {
+        return opRepository;
     }
 }

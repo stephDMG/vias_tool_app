@@ -1,8 +1,9 @@
 package file.reader;
 
 import model.RowData;
-import org.apache.poi.ss.usermodel.*; // Importiert alle notwendigen Klassen aus Apache POI
-import org.apache.poi.xssf.usermodel.XSSFWorkbook; // Spezifischer Import für XLSX-Dateien
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.ArrayList;

@@ -12,6 +12,7 @@ public class ColumnValueFormatter {
 
     /**
      * Formatiert den Wert für die angegebene Spalte.
+     *
      * @param column Der Name der Spalte, für die der Wert formatiert werden soll.
      * @return Der formatierte Wert.
      */

@@ -1,8 +1,6 @@
 package file.pivot;
 
 import config.ApplicationConfig;
-
-
 import model.PivotConfig;
 import model.RowData;
 import org.slf4j.Logger;
@@ -24,6 +22,27 @@ public class PivotProcessor {
     private static final Logger logger = LoggerFactory.getLogger(PivotProcessor.class);
 
     /**
+     * Erstellt eine Standard-{@link PivotConfig} speziell für Dokumentdaten.
+     *
+     * @return Eine vorkonfigurierte {@link PivotConfig} für Dokumente.
+     */
+    public static PivotConfig createDocumentPivotConfig() {
+        return PivotConfig.forDocuments();
+    }
+
+    /**
+     * Erstellt eine angepasste {@link PivotConfig} mit den angegebenen Spalten.
+     *
+     * @param groupBy     Der Name der Spalte, nach der gruppiert werden soll.
+     * @param pivot       Der Name der Spalte, die pivotisiert werden soll (als neue Spaltenüberschriften).
+     * @param keepColumns Eine Liste von Spaltennamen, die in den pivotisierten Daten beibehalten werden sollen.
+     * @return Eine neue {@link PivotConfig}-Instanz mit den benutzerdefinierten Einstellungen.
+     */
+    public static PivotConfig createCustomPivotConfig(String groupBy, String pivot, List<String> keepColumns) {
+        return new PivotConfig(groupBy, pivot, keepColumns);
+    }
+
+    /**
      * Transformiert Daten basierend auf einer gegebenen {@link PivotConfig}.
      * Diese Methode überprüft die Gültigkeit der Eingabedaten und der Konfiguration,
      * führt eine Validierung der Konfiguration gegen die Daten durch und delegiert
@@ -33,7 +52,7 @@ public class PivotProcessor {
      * @param config Die {@link PivotConfig}, die definiert, wie die Daten pivotisiert werden sollen.
      * @return Eine Liste von {@link RowData}-Objekten, die die transformierten (pivotisierten) Daten enthält.
      * @throws IllegalArgumentException Wenn die Eingabedaten oder die Konfiguration ungültig sind oder
-     * die Pivot-Konfiguration nicht mit den Daten kompatibel ist.
+     *                                  die Pivot-Konfiguration nicht mit den Daten kompatibel ist.
      */
     public List<RowData> transform(List<RowData> data, PivotConfig config) {
         if (data == null || data.isEmpty()) {
@@ -132,27 +151,6 @@ public class PivotProcessor {
     }
 
     /**
-     * Erstellt eine Standard-{@link PivotConfig} speziell für Dokumentdaten.
-     *
-     * @return Eine vorkonfigurierte {@link PivotConfig} für Dokumente.
-     */
-    public static PivotConfig createDocumentPivotConfig() {
-        return PivotConfig.forDocuments();
-    }
-
-    /**
-     * Erstellt eine angepasste {@link PivotConfig} mit den angegebenen Spalten.
-     *
-     * @param groupBy     Der Name der Spalte, nach der gruppiert werden soll.
-     * @param pivot       Der Name der Spalte, die pivotisiert werden soll (als neue Spaltenüberschriften).
-     * @param keepColumns Eine Liste von Spaltennamen, die in den pivotisierten Daten beibehalten werden sollen.
-     * @return Eine neue {@link PivotConfig}-Instanz mit den benutzerdefinierten Einstellungen.
-     */
-    public static PivotConfig createCustomPivotConfig(String groupBy, String pivot, List<String> keepColumns) {
-        return new PivotConfig(groupBy, pivot, keepColumns);
-    }
-
-    /**
      * Validiert die gegebene {@link PivotConfig} gegen die bereitgestellten Daten.
      * Diese Methode überprüft, ob die für die Pivot-Operation erforderlichen Spalten
      * in den Daten vorhanden sind und ob die Anzahl der eindeutigen Gruppen nicht zu groß ist,
@@ -161,7 +159,7 @@ public class PivotProcessor {
      * @param data   Die Daten, gegen die die Konfiguration validiert werden soll.
      * @param config Die zu validierende {@link PivotConfig}.
      * @throws IllegalArgumentException Wenn die Datenliste leer ist, die GroupBy- oder Pivot-Spalten
-     * nicht vorhanden oder leer sind, oder wenn benötigte "Keep"-Spalten fehlen.
+     *                                  nicht vorhanden oder leer sind, oder wenn benötigte "Keep"-Spalten fehlen.
      */
     private void validatePivotConfig(List<RowData> data, PivotConfig config) {
         if (data.isEmpty()) {

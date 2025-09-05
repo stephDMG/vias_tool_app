@@ -1,10 +1,13 @@
 package file.reader;
+
 import model.RowData;
+
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+
 /**
  * Liest Textdateien Zeile für Zeile für das VIAS Export Tool.
  * Diese Klasse ist darauf spezialisiert, den Inhalt einer Textdatei

@@ -75,18 +75,18 @@ public class CoverKnowledgeProvider implements AiKnowledgeProvider {
                 standardColumns,
                 // The new, more powerful base query
                 """
-                SELECT
-                    {COLUMNS}
-                FROM LU_ALLE AS LAL
-                    INNER JOIN LU_MASKEP AS LUM ON LAL.PPointer = LUM.PPointer
-                    INNER JOIN VIASS005 AS V05 ON LUM.LU_NAT = V05.LU_INTKZ
-                    INNER JOIN MAP_ALLE_STA AS MAS ON LAL.LU_STA = MAS.TAB_ID
-                    INNER JOIN MAP_ALLE_COVERRIS AS MAC ON LAL.LU_BAUST_RIS = MAC.TAB_ID
-                    INNER JOIN MAKLERV AS MAK ON LAL.LU_VMT = MAK.LU_VMTNR
-                    INNER JOIN MAP_ALLE_BETSTAT AS MAB ON LAL.LU_BET_STAT = MAB.TAB_ID
-                    INNER JOIN MAP_ALLE_OPZ AS MAO ON LAL.LU_OPZ = MAO.TAB_ID
-                WHERE LAL.Sparte LIKE '%COVER' AND {CONDITIONS}
-                """
+                        SELECT
+                            {COLUMNS}
+                        FROM LU_ALLE AS LAL
+                            INNER JOIN LU_MASKEP AS LUM ON LAL.PPointer = LUM.PPointer
+                            INNER JOIN VIASS005 AS V05 ON LUM.LU_NAT = V05.LU_INTKZ
+                            INNER JOIN MAP_ALLE_STA AS MAS ON LAL.LU_STA = MAS.TAB_ID
+                            INNER JOIN MAP_ALLE_COVERRIS AS MAC ON LAL.LU_BAUST_RIS = MAC.TAB_ID
+                            INNER JOIN MAKLERV AS MAK ON LAL.LU_VMT = MAK.LU_VMTNR
+                            INNER JOIN MAP_ALLE_BETSTAT AS MAB ON LAL.LU_BET_STAT = MAB.TAB_ID
+                            INNER JOIN MAP_ALLE_OPZ AS MAO ON LAL.LU_OPZ = MAO.TAB_ID
+                        WHERE LAL.Sparte LIKE '%COVER' AND {CONDITIONS}
+                        """
         );
     }
 

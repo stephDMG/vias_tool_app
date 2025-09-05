@@ -2,6 +2,7 @@ package file.handler;
 
 import model.RowData;
 import model.enums.ExportFormat;
+
 import java.util.List;
 
 /**
@@ -13,7 +14,10 @@ import java.util.List;
 public interface FileHandler {
 
     List<RowData> read(String filePath);
+
     void write(List<RowData> data, List<String> headers, String outputPath);
+
     boolean canHandle(String filePath);
+
     ExportFormat getFormat();
 }

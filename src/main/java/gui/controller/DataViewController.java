@@ -1,11 +1,11 @@
 package gui.controller;
 
 import gui.controller.manager.TableViewBuilder;
-import gui.controller.utils.EnhancedTableManager;
+import gui.controller.manager.EnhancedTableManager;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
-import javafx.scene.control.*;
+import javafx.scene.control.Button;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import model.RowData;
@@ -20,8 +20,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.ResourceBundle;
 
-import static gui.controller.utils.Dialog.showErrorDialog;
-import static gui.controller.utils.Dialog.showSuccessDialog;
+import static gui.controller.dialog.Dialog.showErrorDialog;
+import static gui.controller.dialog.Dialog.showSuccessDialog;
 
 /**
  * Controller für die Datenansicht.
@@ -51,8 +51,10 @@ public class DataViewController implements Initializable {
     private static final Logger logger = LoggerFactory.getLogger(DataViewController.class);
 
     // === FXML-Komponenten ===
-    @FXML private Button loadFileButton;
-    @FXML private VBox resultsContainer; // Container für die Tabelle aus dem Builder
+    @FXML
+    private Button loadFileButton;
+    @FXML
+    private VBox resultsContainer; // Container für die Tabelle aus dem Builder
 
     // === Services und Datenmodell ===
     private FileService fileService;

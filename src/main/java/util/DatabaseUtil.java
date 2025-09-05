@@ -6,7 +6,6 @@ import org.slf4j.LoggerFactory;
 import service.impl.FileServiceImpl;
 
 import java.sql.Connection;
-import java.sql.SQLException;
 
 /**
  * Hilfsklasse für Datenbankoperationen.

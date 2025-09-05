@@ -94,27 +94,27 @@ public class ValidationService {
      */
     private VersicherungsData getCompleteDataFromDatabase(String vsn) {
         String sql = """
-            SELECT
-                LVC.LU_RIS AS Versicherungsart,
-                KLA.LU_KLINFO AS PoliceInfo,
-                LUM.LU_NAM AS "Firma/Name",
-                LUM.LU_STRASSE AS Strasse,
-                LUM.LU_STRASSE_NR AS StrasseNr,
-                LUM.LU_PLZ AS PLZ,
-                LUM.LU_ORT AS Ort,
-                V005.LU_LANDNAME AS Land,
-                LVC.LU_VHV_SUM_216 AS MaxJahresLeistung,
-                LVC.LU_VHV_SUM_205 AS MaxSchadeLeistung,
-                LVC.LU_Waehrung AS Waehrung,
-                GES.LU_VUN AS GesName,
-                GES.LU_VUO AS GesOrt
-            FROM LU_VERKH_COVER AS LVC
-            INNER JOIN KLAUSELN AS KLA ON LVC.LU_AR02 = KLA.LU_KLRAUSELNR
-            INNER JOIN LU_MASKEP AS LUM ON LVC.PPointer = LUM.PPointer
-            INNER JOIN VIASS005 AS V005 ON LUM.LU_NAT = V005.LU_INTKZ
-            INNER JOIN GESELLSCHAFT AS GES ON LVC.LU_GES = GES.LU_GNR
-            WHERE LVC.LU_VSN = ?
-            """;
+                SELECT
+                    LVC.LU_RIS AS Versicherungsart,
+                    KLA.LU_KLINFO AS PoliceInfo,
+                    LUM.LU_NAM AS "Firma/Name",
+                    LUM.LU_STRASSE AS Strasse,
+                    LUM.LU_STRASSE_NR AS StrasseNr,
+                    LUM.LU_PLZ AS PLZ,
+                    LUM.LU_ORT AS Ort,
+                    V005.LU_LANDNAME AS Land,
+                    LVC.LU_VHV_SUM_216 AS MaxJahresLeistung,
+                    LVC.LU_VHV_SUM_205 AS MaxSchadeLeistung,
+                    LVC.LU_Waehrung AS Waehrung,
+                    GES.LU_VUN AS GesName,
+                    GES.LU_VUO AS GesOrt
+                FROM LU_VERKH_COVER AS LVC
+                INNER JOIN KLAUSELN AS KLA ON LVC.LU_AR02 = KLA.LU_KLRAUSELNR
+                INNER JOIN LU_MASKEP AS LUM ON LVC.PPointer = LUM.PPointer
+                INNER JOIN VIASS005 AS V005 ON LUM.LU_NAT = V005.LU_INTKZ
+                INNER JOIN GESELLSCHAFT AS GES ON LVC.LU_GES = GES.LU_GNR
+                WHERE LVC.LU_VSN = ?
+                """;
 
         try (Connection conn = DatabaseConfig.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -153,7 +153,7 @@ public class ValidationService {
      * Intelligente Validierung: Prüft ob die DB-Daten im PDF-Text vorhanden sind.
      * Verwendet text.contains() Strategie.
      *
-     * @param dbData Daten aus der Datenbank
+     * @param dbData  Daten aus der Datenbank
      * @param pdfText Kompletter PDF-Text
      * @return true wenn DB-Daten im PDF gefunden werden
      */
@@ -224,13 +224,36 @@ public class ValidationService {
         }
 
         // Getters und Setters
-        public String getVsn() { return vsn; }
-        public String getPdfText() { return pdfText; }
-        public VersicherungsData getValidatedData() { return validatedData; }
-        public void setValidatedData(VersicherungsData validatedData) { this.validatedData = validatedData; }
-        public boolean isValidationSuccess() { return validationSuccess; }
-        public void setValidationSuccess(boolean validationSuccess) { this.validationSuccess = validationSuccess; }
-        public String getErrorMessage() { return errorMessage; }
-        public void setErrorMessage(String errorMessage) { this.errorMessage = errorMessage; }
+        public String getVsn() {
+            return vsn;
+        }
+
+        public String getPdfText() {
+            return pdfText;
+        }
+
+        public VersicherungsData getValidatedData() {
+            return validatedData;
+        }
+
+        public void setValidatedData(VersicherungsData validatedData) {
+            this.validatedData = validatedData;
+        }
+
+        public boolean isValidationSuccess() {
+            return validationSuccess;
+        }
+
+        public void setValidationSuccess(boolean validationSuccess) {
+            this.validationSuccess = validationSuccess;
+        }
+
+        public String getErrorMessage() {
+            return errorMessage;
+        }
+
+        public void setErrorMessage(String errorMessage) {
+            this.errorMessage = errorMessage;
+        }
     }
 }

@@ -1,4 +1,4 @@
-package gui.controller.utils;
+package gui.controller.dialog;
 
 
 import javafx.scene.control.Alert;
@@ -46,7 +46,8 @@ public class Dialog {
 
     /**
      * Zeigt einen Bestätigungsdialog mit anpassbarem Titel und Inhalt an.
-     * @param title Der Titel des Dialogs.
+     *
+     * @param title   Der Titel des Dialogs.
      * @param content Der Inhaltstext des Dialogs.
      * @return Ein Optional<ButtonType> mit der Benutzerantwort.
      */

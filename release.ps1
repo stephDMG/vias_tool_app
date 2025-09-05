@@ -1,213 +1,321 @@
 # =============================================================================
-# === VIAS EXPORT TOOL - PROFI RELEASE-SKRIPT ===
+# === VIAS EXPORT TOOL - PRO RELEASE SCRIPT (UNC + ACL + Per-User) ============
 # =============================================================================
-# Version 4.0 - Mit automatischer Versionierung, Archivierung und Deployment
+# Clean ASCII-only to avoid encoding issues on Windows PowerShell
+# Requires: JDK with jpackage, Maven, PowerShell 5+
 # =============================================================================
 
-# --- 1. KONFIGURATION ---
+$ErrorActionPreference = 'Stop'
+Set-StrictMode -Version Latest
+
+# --- 1. CONFIG ---------------------------------------------------------------
 $projectDir = $PSScriptRoot
-$pomFile = Join-Path $projectDir "pom.xml"
-$changelogFile = Join-Path $projectDir "changelog.txt"
-$jpackageInputDir = "C:\jpackage_input"
-$jpackageLibsDir = Join-Path $jpackageInputDir "libs"
-$logoFileSource = Join-Path $projectDir "src\main\resources\images\logo.ico"
-$logoFileDest = Join-Path $jpackageLibsDir "logo.ico"
-$destLocal = "C:\jpackage_output"
-$destPublic = "X:\EDV\Client_WIN_11\Software\VIAS_TOOL_PUBLIC\jpackage_output"
-$versionFilePublic = Join-Path $destPublic "version.txt"
-$changelogFilePublic = Join-Path $destPublic "changelog.txt"
-$archiveDirPublic = Join-Path $destPublic "archive"
+$pomFile = Join-Path $projectDir 'pom.xml'
+$changelogFile = Join-Path $projectDir 'changelog.txt'
 
-# Pruefe ob Zielverzeichnis existiert/erreichbar ist
-if (-not (Test-Path (Split-Path $destPublic -Parent))) {
-    Write-Host "[FEHLER] Laufwerk V:\ ist nicht verfuegbar!" -ForegroundColor Red
-    Write-Host "Bitte stellen Sie sicher, dass das Netzlaufwerk V: verbunden ist." -ForegroundColor Yellow
-    exit 1
-}
+$jpackageInputDir = 'C:\jpackage_input'
+$jpackageLibsDir = Join-Path $jpackageInputDir 'libs'
+$logoFileSource = Join-Path $projectDir 'src\main\resources\images\logo.ico'
+$logoFileDest = Join-Path $jpackageLibsDir 'logo.ico'
 
-# Erstelle Zielverzeichnis falls nicht vorhanden
-if (-not (Test-Path $destPublic)) {
-    try {
-        New-Item -ItemType Directory -Force -Path $destPublic | Out-Null
-        Write-Host "Zielverzeichnis erstellt: $destPublic" -ForegroundColor Green
-    } catch {
-        Write-Host "[FEHLER] Konnte Zielverzeichnis nicht erstellen: $destPublic" -ForegroundColor Red
-        exit 1
+$destLocal = 'C:\jpackage_output'
+
+# UNC path (note: $ in share name -> keep single quotes)
+$destPublic = '\\Debresrv10\csdatenwelt$\EDV\Client_WIN_11\Software\VIAS_TOOL_PUBLIC\jpackage_output'
+$versionFilePublic = Join-Path $destPublic 'version.txt'
+$changelogFilePublic = Join-Path $destPublic 'changelog.txt'
+$archiveDirPublic = Join-Path $destPublic 'archive'
+
+# --- 1a. HELPER FUNCTIONS (ACL via SID) --------------------------------------
+# Use language-neutral SID for Authenticated Users: *S-1-5-11
+$principals = @('*S-1-5-11')
+
+function Grant-Rights
+{
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][string]$RightsSpec  # '(RX)' or '(OI)(CI)(RX)'
+    )
+    if (-not (Test-Path $Path))
+    {
+        return
+    }
+    foreach ($id in $principals)
+    {
+        # icacls expects a single token: *S-1-5-11:(RX)  or  *S-1-5-11:(OI)(CI)(RX)
+        $grantSpec = ('{0}:{1}' -f $id, $RightsSpec)
+        & icacls $Path /grant $grantSpec | Out-Null
     }
 }
 
-# --- 2. INFORMATIONEN SAMMELN ---
-Write-Host "==========================================================" -ForegroundColor Magenta
-Write-Host "=== Starte den Release-Prozess fuer das VIAS Export Tool ===" -ForegroundColor Magenta
-Write-Host "==========================================================" -ForegroundColor Magenta
+function Grant-Read
+{
+    param([string]$Path)   Grant-Rights -Path $Path   -RightsSpec '(RX)'
+}
+function Grant-ReadRecur
+{
+    param([string]$Folder)
+    if (Test-Path $Folder)
+    {
+        & icacls $Folder /inheritance:e | Out-Null
+        Grant-Rights -Path $Folder -RightsSpec '(OI)(CI)(RX)'
+    }
+}
 
-try {
-    [xml]$pom = Get-Content $pomFile
+# --- 1b. Ensure UNC availability and folders --------------------------------
+Write-Host 'Checking UNC reachability...' -ForegroundColor Cyan
+if (-not (Test-Path (Split-Path $destPublic -Parent)))
+{
+    Write-Host '[ERROR] UNC base path not reachable:' -ForegroundColor Red
+    Write-Host "  $destPublic" -ForegroundColor Yellow
+    exit 1
+}
+
+if (-not (Test-Path $destPublic))
+{
+    New-Item -ItemType Directory -Force -Path $destPublic | Out-Null
+}
+if (-not (Test-Path $destLocal))
+{
+    New-Item -ItemType Directory -Force -Path $destLocal  | Out-Null
+}
+
+# Ensure folder ACL (inheritance + RX for Authenticated Users)
+Grant-ReadRecur $destPublic
+
+# --- 2. VERSIONING -----------------------------------------------------------
+Write-Host '==========================================================' -ForegroundColor Magenta
+Write-Host '=== Starting release process for VIAS Export Tool      ===' -ForegroundColor Magenta
+Write-Host '==========================================================' -ForegroundColor Magenta
+
+try
+{
+    [xml]$pom = Get-Content $pomFile -Encoding UTF8
     $currentVersion = $pom.project.version
     $versionParts = $currentVersion.Split('.')
 
-    # Aktuelle Version-Teile
     $major = [int]$versionParts[0]
     $minor = [int]$versionParts[1]
     $patch = [int]$versionParts[2]
 
-    # Versionierungs-Logik
-    if ($patch -eq 29) {
-        # Naechste Version wird X.(Y+1).0
+    if ($patch -eq 29)
+    {
         $newMajor = $major
         $newMinor = $minor + 1
         $newPatch = 0
         $suggestedVersion = "$newMajor.$newMinor.$newPatch"
-        Write-Host "Patch-Version erreicht 30 - Minor-Version wird erhoeht!" -ForegroundColor Yellow
-    } elseif ($patch -lt 29) {
-        # Normale Patch-Erhoehung
+        Write-Host 'Patch cycle reached 30 -> increasing minor version.' -ForegroundColor Yellow
+    }
+    elseif ($patch -lt 29)
+    {
         $newMajor = $major
         $newMinor = $minor
         $newPatch = $patch + 1
         $suggestedVersion = "$newMajor.$newMinor.$newPatch"
-    } else {
-        # Falls Patch bereits ueber 29 ist (Fallback)
-        Write-Host "Unerwartete Patch-Version ($patch). Bitte manuelle Eingabe." -ForegroundColor Red
+    }
+    else
+    {
+        Write-Host "Unexpected patch version ($patch). Using fallback." -ForegroundColor Yellow
         $suggestedVersion = "$major.$minor.0"
     }
-
-} catch {
-    Write-Host "[FEHLER] pom.xml konnte nicht gelesen werden. Breche ab." -ForegroundColor Red
+}
+catch
+{
+    Write-Host '[ERROR] Failed to read pom.xml. Aborting.' -ForegroundColor Red
     exit 1
 }
 
-# NEU: Version wird vorgeschlagen mit verbesserter Ausgabe
-Write-Host "Aktuelle Version: $currentVersion" -ForegroundColor Cyan
-Write-Host "Vorgeschlagene neue Version: $suggestedVersion" -ForegroundColor Green
+Write-Host "Current version: $currentVersion" -ForegroundColor Cyan
+Write-Host "Suggested version: $suggestedVersion" -ForegroundColor Green
 
-$newVersion = Read-Host -Prompt "Neue Versionsnummer bestaetigen oder eigene eingeben (Enter fuer Vorschlag)"
-if (-not $newVersion -or $newVersion.Trim() -eq "") {
+$newVersion = Read-Host -Prompt 'Confirm new version or enter your own (Enter = suggested)'
+if ( [string]::IsNullOrWhiteSpace($newVersion))
+{
     $newVersion = $suggestedVersion
-    Write-Host "Version $newVersion wird verwendet." -ForegroundColor Green
+    Write-Host "Using version $newVersion" -ForegroundColor Green
 }
-
-# Validierung der eingegebenen Version
-if ($newVersion -notmatch '^\d+\.\d+\.\d+$') {
-    Write-Host "[FEHLER] Ungueltiges Versionsformat. Erwartet: X.Y.Z" -ForegroundColor Red
+if ($newVersion -notmatch '^\d+\.\d+\.\d+$')
+{
+    Write-Host '[ERROR] Invalid version format. Expected: X.Y.Z' -ForegroundColor Red
     exit 1
 }
 
-Write-Host "Bitte beschreibe die Aenderungen (beende mit 'ENDE' in einer neuen Zeile):" -ForegroundColor Yellow
+Write-Host "Describe changes (finish with 'ENDE' on a new line):" -ForegroundColor Yellow
 $commitLines = @()
-while (($line = Read-Host) -ne 'ENDE') { $commitLines += "- [Aenderung] $($line)" }
+while (($line = Read-Host) -ne 'ENDE')
+{
+    # ASCII only to avoid encoding issues
+    $commitLines += "- [Aenderung] $line"
+}
 
-Write-Host "Wohin soll veroeffentlicht werden? [1] Lokal, [2] Public, [3] Beides" -ForegroundColor Yellow
+Write-Host 'Publish to where? [1] Local, [2] Public, [3] Both' -ForegroundColor Yellow
 $targetChoice = Read-Host
 
-# --- 3. DATEIEN AKTUALISIEREN (LOKAL) ---
-Write-Host "----------------------------------------------------------"
-Write-Host "--> Aktualisiere Projektdateien..." -ForegroundColor Cyan
-(Get-Content $pomFile) -replace "<version>$($currentVersion)</version>", "<version>$($newVersion)</version>" | Set-Content $pomFile
-$date = Get-Date -Format "yyyy-MM-dd"
-$newChangelogHeader = "====================`nVersion $newVersion ($date)`n===================="
-$newChangelogContent = $newChangelogHeader, $commitLines, "", (Get-Content $changelogFile -ErrorAction SilentlyContinue)
-Set-Content -Path $changelogFile -Value $newChangelogContent
-Write-Host "[OK] Lokale Dateien auf Version $($newVersion) aktualisiert." -ForegroundColor Green
+# --- 3. UPDATE FILES (local) -------------------------------------------------
+Write-Host '----------------------------------------------------------'
+Write-Host '--> Updating project files...' -ForegroundColor Cyan
 
-# --- 4. ANWENDUNG BAUEN ---
-Write-Host "----------------------------------------------------------"
-Write-Host "--> Baue die Anwendung mit Maven..." -ForegroundColor Cyan
-cd $projectDir
+# Replace version in pom.xml (raw text replace)
+$pomText = Get-Content $pomFile -Raw -Encoding UTF8
+$pomText = $pomText.Replace("<version>$currentVersion</version>", "<version>$newVersion</version>")
+Set-Content -Path $pomFile -Value $pomText -Encoding UTF8
+
+# Prepend changelog
+$date = Get-Date -Format 'yyyy-MM-dd'
+$newHeader = "====================`r`nVersion $newVersion ($date)`r`n===================="
+$existingChangelog = Get-Content $changelogFile -Raw -Encoding UTF8 -ErrorAction SilentlyContinue
+$newChangelog = $newHeader + "`r`n" + ($commitLines -join "`r`n") + "`r`n`r`n" + $existingChangelog
+Set-Content -Path $changelogFile -Value $newChangelog -Encoding UTF8
+
+Write-Host "[OK] Local files updated to version $newVersion." -ForegroundColor Green
+
+# --- 4. BUILD APP ------------------------------------------------------------
+Write-Host '----------------------------------------------------------'
+Write-Host '--> Building with Maven...' -ForegroundColor Cyan
+Push-Location $projectDir
 mvn clean package
-if ($LASTEXITCODE -ne 0) { Write-Host "[FEHLER] Maven Build fehlgeschlagen." -ForegroundColor Red; exit }
-Write-Host "[OK] Maven Build erfolgreich abgeschlossen." -ForegroundColor Green
-
-# --- 5. INSTALLER ERSTELLEN ---
-Write-Host "----------------------------------------------------------"
-Write-Host "--> Bereite Installer-Erstellung vor..." -ForegroundColor Cyan
-if (-not (Test-Path $jpackageInputDir)) { New-Item -ItemType Directory -Force -Path $jpackageInputDir | Out-Null }
-if (-not (Test-Path $jpackageLibsDir)) { New-Item -ItemType Directory -Force -Path $jpackageLibsDir | Out-Null }
-Copy-Item -Path (Join-Path $projectDir "target\vias-export-tool.jar") -Destination $jpackageInputDir
-Copy-Item -Path $logoFileSource -Destination $logoFileDest
-$jpackageArgs = @( "--name", "`"VIAS Export Tool`"", "--app-version", "`"$newVersion`"", "--win-upgrade-uuid", "`"9e1e88cd-af79-40fd-928d-7e12c76793d7`"", "--input", "`"$jpackageInputDir`"", "--main-jar", "`"vias-export-tool.jar`"", "--main-class", "gui.MainLauncher", "--type", "msi", "--icon", "`"$logoFileDest`"", "--win-shortcut", "--win-menu" )
-
-if ($targetChoice -eq '1' -or $targetChoice -eq '3') {
-    Write-Host "Erstelle lokalen Installer..."
-    jpackage $jpackageArgs --dest "`"$destLocal`""
-    Write-Host "[OK] Lokaler Installer erstellt." -ForegroundColor Green
+if ($LASTEXITCODE -ne 0)
+{
+    Write-Host '[ERROR] Maven build failed.' -ForegroundColor Red
+    Pop-Location
+    exit 1
 }
-if ($targetChoice -eq '2' -or $targetChoice -eq '3') {
-    Write-Host "Erstelle oeffentlichen Installer..."
-    # NEU: Strukturierte Archivierung nach Major.Minor-Schema
-    if (Test-Path $destPublic) {
-        $oldInstaller = Get-ChildItem -Path $destPublic -Filter "*.msi" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-        if ($oldInstaller) {
-            # Extrahiere Version aus dem Dateinamen
-            if ($oldInstaller.Name -match "VIAS Export Tool-(\d+)\.(\d+)\.(\d+)\.msi") {
-                $oldMajor = $matches[1]
-                $oldMinor = $matches[2]
-                $oldPatch = $matches[3]
-                $majorMinorFolder = "$oldMajor.$oldMinor"
+Pop-Location
+Write-Host '[OK] Maven build completed.' -ForegroundColor Green
 
-                # Erstelle Ordner-Struktur: archive/1.0/, archive/1.1/, etc.
-                $specificArchiveDir = Join-Path $archiveDirPublic $majorMinorFolder
-                if (-not (Test-Path $specificArchiveDir)) {
+# --- 5. PREPARE JPACKAGE -----------------------------------------------------
+Write-Host '----------------------------------------------------------'
+Write-Host '--> Preparing installer creation...' -ForegroundColor Cyan
+
+if (-not (Test-Path $jpackageInputDir))
+{
+    New-Item -ItemType Directory -Force -Path $jpackageInputDir | Out-Null
+}
+if (-not (Test-Path $jpackageLibsDir))
+{
+    New-Item -ItemType Directory -Force -Path $jpackageLibsDir  | Out-Null
+}
+
+Copy-Item -Path (Join-Path $projectDir 'target\vias-export-tool.jar') -Destination $jpackageInputDir -Force
+Copy-Item -Path $logoFileSource -Destination $logoFileDest -Force
+
+# jpackage args
+$jpackageArgs = @(
+    '--name', 'VIAS Export Tool',
+    '--app-version', $newVersion,
+    '--win-upgrade-uuid', '9e1e88cd-af79-40fd-928d-7e12c76793d7',
+    '--input', $jpackageInputDir,
+    '--main-jar', 'vias-export-tool.jar',
+    '--main-class', 'gui.MainLauncher',
+    '--type', 'msi',
+    '--icon', $logoFileDest,
+    '--win-shortcut',
+    '--win-menu',
+    '--win-per-user-install'
+)
+
+if ($targetChoice -eq '1' -or $targetChoice -eq '3')
+{
+    Write-Host 'Creating local installer...' -ForegroundColor Cyan
+    jpackage @jpackageArgs --dest $destLocal
+    Write-Host '[OK] Local installer created.' -ForegroundColor Green
+}
+
+if ($targetChoice -eq '2' -or $targetChoice -eq '3')
+{
+    Write-Host 'Creating public installer...' -ForegroundColor Cyan
+
+    # Archive previous installer (major.minor)
+    if (Test-Path $destPublic)
+    {
+        $oldInstaller = Get-ChildItem -Path $destPublic -Filter '*.msi' | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+        if ($oldInstaller)
+        {
+            if ($oldInstaller.Name -match 'VIAS Export Tool-(\d+)\.(\d+)\.(\d+)\.msi')
+            {
+                $oldMajor = $matches[1]; $oldMinor = $matches[2]
+                $mm = "$oldMajor.$oldMinor"
+                $specificArchiveDir = Join-Path $archiveDirPublic $mm
+                if (-not (Test-Path $specificArchiveDir))
+                {
                     New-Item -ItemType Directory -Force -Path $specificArchiveDir | Out-Null
-                    Write-Host "--> Archiv-Ordner erstellt: '$specificArchiveDir'" -ForegroundColor Cyan
+                    Grant-ReadRecur $specificArchiveDir
                 }
-
-                # Verschiebe Installer in den entsprechenden Ordner
-                $newInstallerPath = Join-Path $specificArchiveDir $oldInstaller.Name
-                Move-Item -Path $oldInstaller.FullName -Destination $newInstallerPath
-                Write-Host "--> Alter Installer '$($oldInstaller.Name)' wurde nach '$majorMinorFolder/' verschoben." -ForegroundColor Cyan
-
-                # Verschiebe zugehoerige .sha256 falls vorhanden
-                $oldChecksum = "$($oldInstaller.FullName).sha256"
-                if (Test-Path $oldChecksum) {
-                    $newChecksumPath = Join-Path $specificArchiveDir ([IO.Path]::GetFileName($oldChecksum))
-                    Move-Item -Path $oldChecksum -Destination $newChecksumPath
-                    Write-Host "--> Alte Pruefsumme wurde nach '$majorMinorFolder/' verschoben." -ForegroundColor Cyan
-                } else {
-                    Write-Host "--> Hinweis: Keine Pruefsumme fuer '$($oldInstaller.Name)' gefunden." -ForegroundColor Yellow
+                Move-Item -Path $oldInstaller.FullName -Destination (Join-Path $specificArchiveDir $oldInstaller.Name)
+                $oldChecksum = "$( $oldInstaller.FullName ).sha256"
+                if (Test-Path $oldChecksum)
+                {
+                    Move-Item -Path $oldChecksum -Destination (Join-Path $specificArchiveDir ([IO.Path]::GetFileName($oldChecksum)))
                 }
-            } else {
-                Write-Host "--> Warnung: Konnte Version aus Dateiname '$($oldInstaller.Name)' nicht extrahieren." -ForegroundColor Yellow
-                Write-Host "--> Verwende Fallback-Archivierung..." -ForegroundColor Yellow
-                # Fallback: In allgemeinen archive-Ordner verschieben
-                if (-not (Test-Path $archiveDirPublic)) { New-Item -ItemType Directory -Force -Path $archiveDirPublic | Out-Null }
+            }
+            else
+            {
+                if (-not (Test-Path $archiveDirPublic))
+                {
+                    New-Item -ItemType Directory -Force -Path $archiveDirPublic | Out-Null
+                }
                 Move-Item -Path $oldInstaller.FullName -Destination $archiveDirPublic
             }
         }
     }
-    jpackage $jpackageArgs --dest "`"$destPublic`""
-    Write-Host "[OK] Oeffentlicher Installer erstellt." -ForegroundColor Green
 
-    # NEU: version.txt und changelog.txt auf dem Server aktualisieren
-    Write-Host "--> Aktualisiere Release-Informationen auf dem Server..." -ForegroundColor Cyan
-    Set-Content -Path $versionFilePublic -Value $newVersion
-    Copy-Item -Path $changelogFile -Destination $changelogFilePublic
-    Write-Host "[OK] Release-Informationen aktualisiert." -ForegroundColor Green
+    # Create new public installer
+    jpackage @jpackageArgs --dest $destPublic
+    Write-Host '[OK] Public installer created.' -ForegroundColor Green
+
+    # Make sure MSI is readable immediately (before checksum step)
+    $publicInstallerPath = Join-Path $destPublic ("VIAS Export Tool-$newVersion.msi")
+    if (Test-Path $publicInstallerPath)
+    {
+        Grant-Read $publicInstallerPath
+    }
+
+    # Update version and changelog on server (UTF-8)
+    Write-Host '--> Updating release info...' -ForegroundColor Cyan
+    Set-Content -Path $versionFilePublic   -Value $newVersion   -Encoding UTF8
+    Set-Content -Path $changelogFilePublic -Value $newChangelog -Encoding UTF8
+
+    # Ensure ACL on info files
+    Grant-Read $versionFilePublic
+    Grant-Read $changelogFilePublic
 }
-# --- 6. PRUEFSUMME ERSTELLEN UND BEREITSTELLEN ---
-Write-Host "----------------------------------------------------------"
-Write-Host "--> Erstelle SHA-256 Pruefsumme..." -ForegroundColor Cyan
 
-$installerName = "VIAS Export Tool-$($newVersion).msi"
-$localInstallerPath = Join-Path $destLocal $installerName
+# --- 6. CHECKSUMS + ACL ------------------------------------------------------
+Write-Host '----------------------------------------------------------'
+Write-Host '--> Creating SHA-256 checksums...' -ForegroundColor Cyan
+
+$installerName = "VIAS Export Tool-$newVersion.msi"
+$localInstallerPath = Join-Path $destLocal  $installerName
 $publicInstallerPath = Join-Path $destPublic $installerName
 
-# Funktion zum Erstellen der Pruefsumme
-function Create-Checksum($installerPath) {
-    if (Test-Path $installerPath) {
-        $checksumPath = "$($installerPath).sha256"
-        $hash = (Get-FileHash -Path $installerPath -Algorithm SHA256).Hash
-        Set-Content -Path $checksumPath -Value $hash
-        Write-Host "[OK] Pruefsumme erstellt fuer: $($installerPath)" -ForegroundColor Green
+function Create-Checksum
+{
+    param([string]$InstallerPath)
+    if (Test-Path $InstallerPath)
+    {
+        $checksumPath = "$InstallerPath.sha256"
+        $hash = (Get-FileHash -Path $InstallerPath -Algorithm SHA256).Hash
+        Set-Content -Path $checksumPath -Value $hash -Encoding ASCII
+        Write-Host "[OK] Checksum created for: $InstallerPath" -ForegroundColor Green
+
+        # If public UNC, ensure ACL on checksum and MSI
+        if ( $InstallerPath.StartsWith('\\'))
+        {
+            Grant-Read $checksumPath
+            Grant-Read $InstallerPath
+        }
     }
 }
 
-if ($targetChoice -eq '1' -or $targetChoice -eq '3') {
-    Create-Checksum -installerPath $localInstallerPath
+if ($targetChoice -eq '1' -or $targetChoice -eq '3')
+{
+    Create-Checksum -InstallerPath $localInstallerPath
 }
-if ($targetChoice -eq '2' -or $targetChoice -eq '3') {
-    Create-Checksum -installerPath $publicInstallerPath
+if ($targetChoice -eq '2' -or $targetChoice -eq '3')
+{
+    Create-Checksum -InstallerPath $publicInstallerPath
 }
 
-Write-Host "==========================================================" -ForegroundColor Magenta
-Write-Host "=== Release-Prozess erfolgreich abgeschlossen! ===" -ForegroundColor Magenta
-Write-Host "==========================================================" -ForegroundColor Magenta
+Write-Host '==========================================================' -ForegroundColor Magenta
+Write-Host '=== Release process completed successfully! ==============' -ForegroundColor Magenta
+Write-Host '==========================================================' -ForegroundColor Magenta

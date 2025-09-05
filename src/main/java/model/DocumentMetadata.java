@@ -28,27 +28,67 @@ public class DocumentMetadata {
     }
 
     // Getters et Setters
-    public String getFileName() { return fileName; }
-    public void setFileName(String fileName) { this.fileName = fileName; }
+    public String getFileName() {
+        return fileName;
+    }
 
-    public String getDocumentType() { return documentType; }
-    public void setDocumentType(String documentType) { this.documentType = documentType; }
+    public void setFileName(String fileName) {
+        this.fileName = fileName;
+    }
 
-    public LocalDateTime getExtractionTime() { return extractionTime; }
-    public void setExtractionTime(LocalDateTime extractionTime) { this.extractionTime = extractionTime; }
+    public String getDocumentType() {
+        return documentType;
+    }
 
-    public boolean isExtractionSuccess() { return extractionSuccess; }
-    public void setExtractionSuccess(boolean extractionSuccess) { this.extractionSuccess = extractionSuccess; }
+    public void setDocumentType(String documentType) {
+        this.documentType = documentType;
+    }
 
-    public String getErrorMessage() { return errorMessage; }
-    public void setErrorMessage(String errorMessage) { this.errorMessage = errorMessage; }
+    public LocalDateTime getExtractionTime() {
+        return extractionTime;
+    }
 
-    public int getDataCount() { return dataCount; }
-    public void setDataCount(int dataCount) { this.dataCount = dataCount; }
+    public void setExtractionTime(LocalDateTime extractionTime) {
+        this.extractionTime = extractionTime;
+    }
 
-    public String getFilePath() { return filePath;}
-    public void setFilePath(String filePath) {this.filePath = filePath; }
+    public boolean isExtractionSuccess() {
+        return extractionSuccess;
+    }
 
-    public long getFileSize() {return fileSize;}
-    public void setFileSize(long fileSize) {this.fileSize = fileSize; }
+    public void setExtractionSuccess(boolean extractionSuccess) {
+        this.extractionSuccess = extractionSuccess;
+    }
+
+    public String getErrorMessage() {
+        return errorMessage;
+    }
+
+    public void setErrorMessage(String errorMessage) {
+        this.errorMessage = errorMessage;
+    }
+
+    public int getDataCount() {
+        return dataCount;
+    }
+
+    public void setDataCount(int dataCount) {
+        this.dataCount = dataCount;
+    }
+
+    public String getFilePath() {
+        return filePath;
+    }
+
+    public void setFilePath(String filePath) {
+        this.filePath = filePath;
+    }
+
+    public long getFileSize() {
+        return fileSize;
+    }
+
+    public void setFileSize(long fileSize) {
+        this.fileSize = fileSize;
+    }
 }

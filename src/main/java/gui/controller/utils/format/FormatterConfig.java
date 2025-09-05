@@ -6,6 +6,11 @@ public class FormatterConfig {
     private List<FormatterField> fields;
 
     // Konstruktor, Getter und Setter
-    public List<FormatterField> getFields() { return fields; }
-    public void setFields(List<FormatterField> fields) { this.fields = fields; }
+    public List<FormatterField> getFields() {
+        return fields;
+    }
+
+    public void setFields(List<FormatterField> fields) {
+        this.fields = fields;
+    }
 }

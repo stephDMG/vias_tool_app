@@ -12,17 +12,17 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- *  Die Klasse OpListeFormatter dient zum Formatieren der OP-Liste aus dem Excel-Dokument.
+ * Die Klasse OpListeFormatter dient zum Formatieren der OP-Liste aus dem Excel-Dokument.
  *
- *  <p><strong>Funktionalität:</strong></p>
- *  <ul>
- *      <li>Formatieren der Rohdaten in ein benutzerfreundliches Format.</li>
- *  </ul>
+ * <p><strong>Funktionalität:</strong></p>
+ * <ul>
+ *     <li>Formatieren der Rohdaten in ein benutzerfreundliches Format.</li>
+ * </ul>
  */
 public class OpListeFormatter {
     private static final Logger logger = LoggerFactory.getLogger(OpListeFormatter.class);
 
-    private static final DecimalFormat DF_MONEY   = new DecimalFormat("#,##0.00");
+    private static final DecimalFormat DF_MONEY = new DecimalFormat("#,##0.00");
     private static final DecimalFormat DF_PERCENT = new DecimalFormat("#,##0.##");
 
     private static final Map<String, String> GENERAL_HEADERS = Map.ofEntries(
@@ -77,6 +77,95 @@ public class OpListeFormatter {
                 .replaceAll("\\s+", " ");
     }
 
+    // Ajoutez ces deux méthodes utilitaires à la classe OpListeFormatter pour la conversion des formats.
+    private static String formatDate(String dateStr) {
+        if (dateStr == null || dateStr.isEmpty()) return "";
+        try {
+            LocalDate date = LocalDate.parse(dateStr, DateTimeFormatter.ofPattern("yyyyMMdd"));
+            return date.format(DateTimeFormatter.ofPattern("dd.MM.yyyy"));
+        } catch (DateTimeParseException e) {
+            return dateStr;
+        }
+    }
+
+    private static String get(Map<String, String> map, String... keys) {
+        for (String key : keys) {
+            String value = map.get(key);
+            if (value != null) {
+                return value.trim();
+            }
+        }
+        return "";
+    }
+
+    private static String resolveRgNr(Map<String, String> values) {
+        String rnr = get(values, "A.LU_RNR", "LU_RNR");
+        String rMak = get(values, "A.LU_RNR_Makler", "LU_RNR_Makler");
+        String rR = get(values, "A.LU_RNR_R", "LU_RNR_R");
+        if (!rnr.isEmpty() && !rnr.contains("xxxxxxxx")) return rnr;
+        if (!rMak.isEmpty()) return rMak;
+        return rR;
+    }
+
+    private static String concatStatCodes(String... codes) {
+        return Arrays.stream(codes)
+                .filter(s -> s != null && !s.trim().isEmpty())
+                .map(String::trim)
+                .collect(Collectors.joining(" "));
+    }
+
+    public static Map<String, String> createHeaderToKeyMap(List<String> headers) {
+        Map<String, String> keyMap = new HashMap<>();
+        if (headers.equals(KUNDE_HEADERS_ENGLISH)) {
+            for (int i = 0; i < KUNDE_HEADERS_ENGLISH.size(); i++) {
+                keyMap.put(KUNDE_HEADERS_ENGLISH.get(i), KUNDE_HEADERS_GERMAN.get(i));
+            }
+        } else {
+            for (String header : headers) {
+                keyMap.put(header, header);
+            }
+        }
+        return keyMap;
+    }
+
+    public static List<String> getHeadersForExport(String filter, String language) {
+        if (filter.equalsIgnoreCase("Kunde")) {
+            return language.equalsIgnoreCase("EN") ?
+                    KUNDE_HEADERS_ENGLISH : KUNDE_HEADERS_GERMAN;
+        }
+        return new ArrayList<>(GENERAL_HEADERS.values());
+    }
+
+    // Dans OpListeFormatter.java
+    public static double parseDouble(String val) {
+        if (val == null) return 0.0;
+        String s = val.trim();
+        if (s.isEmpty()) return 0.0;
+        s = s.replace(" ", "");
+
+        int lastComma = s.lastIndexOf(',');
+        int lastDot = s.lastIndexOf('.');
+
+        if (lastComma >= 0 && lastDot >= 0) {
+            if (lastComma > lastDot) {
+                s = s.replace(".", "").replace(',', '.');
+            } else {
+                s = s.replace(",", "");
+            }
+        } else if (lastComma >= 0) {
+            int frac = s.length() - lastComma - 1;
+            s = (frac <= 2) ? s.replace(',', '.') : s.replace(",", "");
+        } else if (lastDot >= 0) {
+            int frac = s.length() - lastDot - 1;
+            if (frac > 2) s = s.replace(".", "");
+        }
+
+        try {
+            return Double.parseDouble(s);
+        } catch (Exception e) {
+            return 0.0;
+        }
+    }
 
     public List<RowData> format(List<RowData> rawData) {
         List<RowData> formattedList = new ArrayList<>();
@@ -93,7 +182,7 @@ public class OpListeFormatter {
                 newRow.put("Policen-Nr", get(values, "A.LU_VSN", "LU_VSN", "Police Nr.", "Police Nr"));
                 newRow.put("VSN Makler", get(values, "LA.LU_VSN_Makler", "LU_VSN_Makler"));
                 newRow.put("Zeichnungsjahr", get(values, "A.LU_ZJ", "LU_ZJ"));
-                newRow.put("VN", get(values, "LMP.LU_NAM", "LU_NAM").replace("(", "").replace(")", "").replace("+", "&"));
+                newRow.put("Versicherungsnehmer", get(values, "LMP.LU_NAM", "LU_NAM").replace("(", "").replace(")", "").replace("+", "&"));
 
                 String rdt = get(values, "A.LU_RDT", "LU_RDT");
                 String bdt = get(values, "A.LU_BDT", "LU_BDT");
@@ -174,7 +263,6 @@ public class OpListeFormatter {
         return formattedList;
     }
 
-
     public List<RowData> formatForExport(List<RowData> mainFormattedList, String language) {
         if (mainFormattedList == null || mainFormattedList.isEmpty()) {
             return Collections.emptyList();
@@ -209,93 +297,20 @@ public class OpListeFormatter {
 
             newRow.put("Währung", firstRow.getValues().get("Währung"));
 
-            // Calculer les sommes pour les champs monétaires
+
             double abrechnungsbetragTotal = group.stream().mapToDouble(row -> parseDouble(row.getValues().get("Abrechnungsbetrag"))).sum();
             double zahlbetragTotal = group.stream().mapToDouble(row -> parseDouble(row.getValues().get("Zahlbetrag/Teilzahlungen"))).sum();
             double saldoTotal = group.stream().mapToDouble(row -> parseDouble(row.getValues().get("SALDO"))).sum();
 
-            // Formater les montants
+
             newRow.put("Abrechnungsbetrag", DF_MONEY.format(abrechnungsbetragTotal));
             newRow.put("Zahlbetrag/Teilzahlungen", DF_MONEY.format(zahlbetragTotal));
             newRow.put("SALDO", DF_MONEY.format(saldoTotal));
 
-            // Ajouter la nouvelle ligne formatée à la liste finale
             finalFormattedList.add(newRow);
         }
-
         return finalFormattedList;
     }
 
-    // Ajoutez ces deux méthodes utilitaires à la classe OpListeFormatter pour la conversion des formats.
-    private static String formatDate(String dateStr) {
-        if (dateStr == null || dateStr.isEmpty()) return "";
-        try {
-            LocalDate date = LocalDate.parse(dateStr, DateTimeFormatter.ofPattern("yyyyMMdd"));
-            return date.format(DateTimeFormatter.ofPattern("dd.MM.yyyy"));
-        } catch (DateTimeParseException e) {
-            return dateStr;
-        }
-    }
-
-
-    private static String get(Map<String, String> map, String... keys) {
-        for (String key : keys) {
-            String value = map.get(key);
-            if (value != null) {
-                return value.trim();
-            }
-        }
-        return "";
-    }
-
-    private static String resolveRgNr(Map<String, String> values) {
-        String rnr  = get(values, "A.LU_RNR", "LU_RNR");
-        String rMak = get(values, "A.LU_RNR_Makler", "LU_RNR_Makler");
-        String rR   = get(values, "A.LU_RNR_R", "LU_RNR_R");
-        if (!rnr.isEmpty() && !rnr.contains("xxxxxxxx")) return rnr;
-        if (!rMak.isEmpty()) return rMak;
-        return rR;
-    }
-
-    private static String concatStatCodes(String... codes) {
-        return Arrays.stream(codes)
-                .filter(s -> s != null && !s.trim().isEmpty())
-                .map(String::trim)
-                .collect(Collectors.joining(" "));
-    }
-
-
-    public static Map<String, String> createHeaderToKeyMap(List<String> headers) {
-        Map<String, String> keyMap = new HashMap<>();
-        if (headers.equals(KUNDE_HEADERS_ENGLISH)) {
-            for (int i = 0; i < KUNDE_HEADERS_ENGLISH.size(); i++) {
-                keyMap.put(KUNDE_HEADERS_ENGLISH.get(i), KUNDE_HEADERS_GERMAN.get(i));
-            }
-        } else {
-            for (String header : headers) {
-                keyMap.put(header, header);
-            }
-        }
-        return keyMap;
-    }
-
-    public static List<String> getHeadersForExport(String filter, String language) {
-        if (filter.equalsIgnoreCase("Kunde")) {
-            return language.equalsIgnoreCase("EN") ?
-                    KUNDE_HEADERS_ENGLISH : KUNDE_HEADERS_GERMAN;
-        }
-        return new ArrayList<>(GENERAL_HEADERS.values());
-    }
-
-    private static double parseDouble(String val) {
-        if (val == null) return 0.0;
-        try {
-            String clean = val.replace(",", ".").replaceAll("[^0-9.\\-]", "");
-            if (clean.isEmpty() || clean.equals(".") || clean.equals("-")) return 0.0;
-            return Double.parseDouble(clean);
-        } catch (Exception e) {
-            return 0.0;
-        }
-    }
 
 }

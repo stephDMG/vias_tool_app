@@ -1,7 +1,6 @@
 package service;
 
 import model.RowData;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import service.interfaces.DatabaseService;
@@ -66,7 +65,7 @@ public class DatenanreicherungService {
         // 4. OPTIMIERT: Daten in-memory zusammenführen
         for (RowData sourceRow : sourceData) {
             String snrMakler = sourceRow.getValues().get("LU_SNR");
-            String vsnRaw =  sourceRow.getValues().get("LU_VSN");
+            String vsnRaw = sourceRow.getValues().get("LU_VSN");
             //VSN bereinigen
             String vsnClean = formatVsn(vsnRaw);
             //ersetzen
@@ -112,8 +111,6 @@ public class DatenanreicherungService {
         // Wenn kein Suffix gefunden wird, wird die ursprüngliche, bereinigte VSN zurückgegeben
         return cleanedVsn;
     }
-
-
 
 
 }

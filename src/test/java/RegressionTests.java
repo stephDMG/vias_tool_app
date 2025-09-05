@@ -1,11 +1,14 @@
 import model.ai.AiReportTemplate;
-import model.ai.ir.*;
+import model.ai.ir.Predicate;
+import model.ai.ir.Projection;
+import model.ai.ir.QueryIR;
 import model.ai.nlp.NLParser;
 import model.ai.planning.CoverPlanner;
 import model.ai.planning.SqlPlan;
 import model.ai.provider.impl.CoverKnowledgeProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 class RegressionTests {

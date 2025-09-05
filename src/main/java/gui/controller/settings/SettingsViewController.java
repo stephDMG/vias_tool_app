@@ -16,10 +16,11 @@ import java.util.ResourceBundle;
  */
 public class SettingsViewController implements Initializable {
 
-    @FXML private ToggleGroup themeToggleGroup;
-    @FXML private RadioButton primerLightRadio, primerDarkRadio, nordLightRadio, nordDarkRadio;
-
     private final ThemeService themeService = new ThemeService();
+    @FXML
+    private ToggleGroup themeToggleGroup;
+    @FXML
+    private RadioButton primerLightRadio, primerDarkRadio, nordLightRadio, nordDarkRadio;
 
     /**
      * Initialisiert die Ansicht, indem das gespeicherte Theme geladen und
@@ -29,10 +30,18 @@ public class SettingsViewController implements Initializable {
     public void initialize(URL url, ResourceBundle resourceBundle) {
         ThemeService.Theme currentTheme = themeService.loadTheme();
         switch (currentTheme) {
-            case PRIMER_DARK: primerDarkRadio.setSelected(true); break;
-            case NORD_LIGHT: nordLightRadio.setSelected(true); break;
-            case NORD_DARK: nordDarkRadio.setSelected(true); break;
-            default: primerLightRadio.setSelected(true); break;
+            case PRIMER_DARK:
+                primerDarkRadio.setSelected(true);
+                break;
+            case NORD_LIGHT:
+                nordLightRadio.setSelected(true);
+                break;
+            case NORD_DARK:
+                nordDarkRadio.setSelected(true);
+                break;
+            default:
+                primerLightRadio.setSelected(true);
+                break;
         }
     }
 

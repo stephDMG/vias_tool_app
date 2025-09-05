@@ -23,8 +23,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.ResourceBundle;
 
-import static gui.controller.utils.Dialog.showErrorDialog;
-import static gui.controller.utils.Dialog.showSuccessDialog;
+import static gui.controller.dialog.Dialog.showErrorDialog;
+import static gui.controller.dialog.Dialog.showSuccessDialog;
 
 /**
  * Controller zur Erstellung einer Pivot-Tabelle aus geladenen CSV/XLSX-Daten,
@@ -34,15 +34,24 @@ public class PivotViewController implements Initializable {
 
     private static final Logger logger = LoggerFactory.getLogger(PivotViewController.class);
 
-    @FXML private TextField sourceFileField;
-    @FXML private Button selectSourceFileButton;
-    @FXML private ComboBox<String> groupByColumnCombo;
-    @FXML private ComboBox<String> pivotColumnCombo;
-    @FXML private ListView<String> keepColumnsList;
-    @FXML private TableView<ObservableList<String>> previewTableView;
-    @FXML private Button exportButton;
-    @FXML private ProgressBar progressBar;
-    @FXML private Label statusLabel;
+    @FXML
+    private TextField sourceFileField;
+    @FXML
+    private Button selectSourceFileButton;
+    @FXML
+    private ComboBox<String> groupByColumnCombo;
+    @FXML
+    private ComboBox<String> pivotColumnCombo;
+    @FXML
+    private ListView<String> keepColumnsList;
+    @FXML
+    private TableView<ObservableList<String>> previewTableView;
+    @FXML
+    private Button exportButton;
+    @FXML
+    private ProgressBar progressBar;
+    @FXML
+    private Label statusLabel;
 
     private FileService fileService;
     private List<RowData> loadedData;
@@ -127,7 +136,7 @@ public class PivotViewController implements Initializable {
         }
 
         ObservableList<ObservableList<String>> previewData = FXCollections.observableArrayList();
-        for (int i = 0; i <  loadedData.size(); i++) { // Zeigt nur die ersten 100 Zeilen in der Vorschau
+        for (int i = 0; i < loadedData.size(); i++) { // Zeigt nur die ersten 100 Zeilen in der Vorschau
             RowData row = loadedData.get(i);
             ObservableList<String> rowValues = FXCollections.observableArrayList();
             for (String header : columnHeaders) {

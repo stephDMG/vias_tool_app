@@ -17,7 +17,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Map;
 import java.util.ResourceBundle;
 
-import static gui.controller.utils.Dialog.showErrorDialog;
+import static gui.controller.dialog.Dialog.showErrorDialog;
 
 /**
  * Controller für die Dashboard-Ansicht.
@@ -29,16 +29,24 @@ public class DashboardViewController implements Initializable {
     private static final Logger logger = LoggerFactory.getLogger(DashboardViewController.class);
 
     // Legacy label refs (fallback if old FXML is used)
-    @FXML private Label activeContractsValueLabel;
-    @FXML private Label openDamagesValueLabel;
-    @FXML private Label brokerCountValueLabel;
+    @FXML
+    private Label activeContractsValueLabel;
+    @FXML
+    private Label openDamagesValueLabel;
+    @FXML
+    private Label brokerCountValueLabel;
 
     // New reusable stat-card controls (present in current FXML)
-    @FXML private gui.components.StatCardControl activeContractsCard;
-    @FXML private gui.components.StatCardControl openDamagesCard;
-    @FXML private gui.components.StatCardControl brokerCountCard;
-    @FXML private Button refreshButton;
-    @FXML private Label statusLabel;
+    @FXML
+    private gui.components.StatCardControl activeContractsCard;
+    @FXML
+    private gui.components.StatCardControl openDamagesCard;
+    @FXML
+    private gui.components.StatCardControl brokerCountCard;
+    @FXML
+    private Button refreshButton;
+    @FXML
+    private Label statusLabel;
 
     private DatabaseService databaseService;
 

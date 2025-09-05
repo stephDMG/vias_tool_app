@@ -3,7 +3,9 @@ package service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import service.cache.CachedDatabaseService;
-import service.impl.*;
+import service.impl.DatabaseServiceImpl;
+import service.impl.FileServiceImpl;
+import service.impl.LocalAiServiceImpl;
 import service.interfaces.AiService;
 import service.interfaces.DatabaseService;
 import service.interfaces.FileService;
@@ -14,6 +16,7 @@ import service.op.OpListeProcessService;
  * Erweiterte Dependency Injection Factory für alle Services.
  * Singletons werden statisch initialisiert mit AI-Mode Support.
  */
+
 /**
  * Zentrale Factory für Service-Singletons (Datenbank, Datei, OP-Liste, AI).
  * Bietet Umschaltung des AI-Modus (LOCAL/HYBRID/AUTO) und Caching für DB.
@@ -24,17 +27,17 @@ public final class ServiceFactory {
     private static OpListeProcessService opListeServiceInstance;
 
     private static FileService fileService = new FileServiceImpl();
+    //private static AiMode currentAiMode = AiMode.AUTO;
+    private static AiMode currentAiMode = AiMode.LOCAL;
+    private static AiService aiServiceInstance = null;
+
     static {
         DatabaseService impl = new DatabaseServiceImpl(getFileService());
         databaseService = new CachedDatabaseService(impl);
     }
 
-
-    //private static AiMode currentAiMode = AiMode.AUTO;
-    private static AiMode currentAiMode = AiMode.LOCAL;
-    private static AiService aiServiceInstance = null;
-
-    private ServiceFactory() {}
+    private ServiceFactory() {
+    }
 
     public static OpListeProcessService getOpListeService() {
         if (opListeServiceInstance == null) {
@@ -46,6 +49,10 @@ public final class ServiceFactory {
     public static FileService getFileService() {
         logger.debug("📂 FileService bereitgestellt");
         return fileService;
+    }
+
+    public static void setFileService(FileService newFile) {
+        fileService = newFile;
     }
 
     public static DatabaseService getDatabaseService() {
@@ -72,7 +79,7 @@ public final class ServiceFactory {
     private static AiService createAiService() {
         return switch (currentAiMode) {
             case LOCAL -> new LocalAiServiceImpl();
-           // case HUGGING_FACE -> new AiServiceImpl();
+            // case HUGGING_FACE -> new AiServiceImpl();
             case HYBRID -> new HybridAiService();
             case AUTO -> detectBestAiService();
         };
@@ -93,17 +100,25 @@ public final class ServiceFactory {
         }
     }
 
-    public static void setFileService(FileService newFile) { fileService = newFile; }
-
     public enum AiMode {
         LOCAL("Lokaler Pattern-Service"),
         HYBRID("Hybrid HF+Lokal"),
         AUTO("Automatische Erkennung");
 
         private final String description;
-        AiMode(String description) { this.description = description; }
-        public String getDescription() { return description; }
-        @Override public String toString() { return description; }
+
+        AiMode(String description) {
+            this.description = description;
+        }
+
+        public String getDescription() {
+            return description;
+        }
+
+        @Override
+        public String toString() {
+            return description;
+        }
     }
 }
 

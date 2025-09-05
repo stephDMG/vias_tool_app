@@ -1,5 +1,3 @@
-
-
 import model.ai.AiReportTemplate;
 import model.ai.provider.impl.CoverKnowledgeProvider;
 import model.ai.register.AiKnowledgeRegistry;
@@ -9,7 +7,8 @@ import service.impl.CoverQueryBuilder;
 
 import java.util.Locale;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class CoverQueryBuilderTest {
 

@@ -1,8 +1,8 @@
 package model;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
-import java.util.Arrays; // Import hinzugefügt
-import java.util.List; // Import hinzugefügt
 
 /**
  * DTO (Data Transfer Object) für die aus PDFs extrahierten Versicherungsdaten.
@@ -49,6 +49,35 @@ public class VersicherungsData {
     }
 
     /**
+     * Gibt eine statische Liste von Headern in der gewünschten Reihenfolge für den Export zurück.
+     * Diese Header entsprechen den Alias-Namen, die in der {@link #toRowData()} Methode verwendet werden.
+     *
+     * @return Eine {@link List} von Strings, die die Export-Header in der korrekten Reihenfolge darstellen.
+     */
+    public static List<String> getExportHeaders() {
+        return Arrays.asList(
+                "Versicherungsschein-Nr",
+
+                "Versicherungsart",
+                "PoliceInfo",
+
+                "Firma/Name",
+                "Strasse",
+                "Nr",
+                "PLZ",
+                "Ort",
+                "Land",
+
+                "Max Jahresleistung",
+                "Max Schadenleistung",
+                "Währung",
+
+                "GesName",
+                "GesOrt"
+        );
+    }
+
+    /**
      * Konvertiert die Versicherungsdaten in ein {@link RowData}-Objekt für den Export
      * mit den bestehenden Schreibern.
      * Die Felder werden auf die entsprechenden Alias-Namen abgebildet, die
@@ -87,39 +116,11 @@ public class VersicherungsData {
         return row;
     }
 
-    /**
-     * Gibt eine statische Liste von Headern in der gewünschten Reihenfolge für den Export zurück.
-     * Diese Header entsprechen den Alias-Namen, die in der {@link #toRowData()} Methode verwendet werden.
-     *
-     * @return Eine {@link List} von Strings, die die Export-Header in der korrekten Reihenfolge darstellen.
-     */
-    public static List<String> getExportHeaders() {
-        return Arrays.asList(
-                "Versicherungsschein-Nr",
-
-                "Versicherungsart",
-                "PoliceInfo",
-
-                "Firma/Name",
-                "Strasse",
-                "Nr",
-                "PLZ",
-                "Ort",
-                "Land",
-
-                "Max Jahresleistung",
-                "Max Schadenleistung",
-                "Währung",
-
-                "GesName",
-                "GesOrt"
-        );
-    }
-
     // --- Getter und Setter ---
 
     /**
      * Gibt die Versicherungsnummer zurück.
+     *
      * @return Die Versicherungsnummer.
      */
     public String getVersicherungsscheinNr() {
@@ -128,6 +129,7 @@ public class VersicherungsData {
 
     /**
      * Setzt die Versicherungsnummer.
+     *
      * @param versicherungsscheinNr Die zu setzende Versicherungsnummer.
      */
     public void setVersicherungsscheinNr(String versicherungsscheinNr) {
@@ -136,6 +138,7 @@ public class VersicherungsData {
 
     /**
      * Gibt den Namen des Versicherungsnehmers zurück.
+     *
      * @return Der Name des Versicherungsnehmers.
      */
     public String getFirmaName() {
@@ -144,6 +147,7 @@ public class VersicherungsData {
 
     /**
      * Setzt den Namen des Versicherungsnehmers.
+     *
      * @param firmaName Der zu setzende Name des Versicherungsnehmers.
      */
     public void setFirmaName(String firmaName) {
@@ -152,6 +156,7 @@ public class VersicherungsData {
 
     /**
      * Gibt die Straße zurück.
+     *
      * @return Die Straße.
      */
     public String getStrasse() {
@@ -160,6 +165,7 @@ public class VersicherungsData {
 
     /**
      * Setzt die Straße.
+     *
      * @param strasse Die zu setzende Straße.
      */
     public void setStrasse(String strasse) {
@@ -168,6 +174,7 @@ public class VersicherungsData {
 
     /**
      * Gibt die Hausnummer zurück.
+     *
      * @return Die Hausnummer.
      */
     public String getStrasseNr() {
@@ -176,6 +183,7 @@ public class VersicherungsData {
 
     /**
      * Setzt die Hausnummer.
+     *
      * @param strasseNr Die zu setzende Hausnummer.
      */
     public void setStrasseNr(String strasseNr) {
@@ -184,6 +192,7 @@ public class VersicherungsData {
 
     /**
      * Gibt die Postleitzahl (PLZ) zurück.
+     *
      * @return Die Postleitzahl.
      */
     public String getPlz() {
@@ -192,6 +201,7 @@ public class VersicherungsData {
 
     /**
      * Setzt die Postleitzahl (PLZ).
+     *
      * @param plz Die zu setzende Postleitzahl.
      */
     public void setPlz(String plz) {
@@ -200,6 +210,7 @@ public class VersicherungsData {
 
     /**
      * Gibt den Ort zurück.
+     *
      * @return Der Ort.
      */
     public String getOrt() {
@@ -208,6 +219,7 @@ public class VersicherungsData {
 
     /**
      * Setzt den Ort.
+     *
      * @param ort Der zu setzende Ort.
      */
     public void setOrt(String ort) {
@@ -216,6 +228,7 @@ public class VersicherungsData {
 
     /**
      * Gibt das Land zurück.
+     *
      * @return Das Land.
      */
     public String getLand() {
@@ -224,6 +237,7 @@ public class VersicherungsData {
 
     /**
      * Setzt das Land.
+     *
      * @param land Das zu setzende Land.
      */
     public void setLand(String land) {
@@ -232,6 +246,7 @@ public class VersicherungsData {
 
     /**
      * Gibt die Versicherungsart zurück.
+     *
      * @return Die Versicherungsart.
      */
     public String getVersicherungsart() {
@@ -240,13 +255,16 @@ public class VersicherungsData {
 
     /**
      * Setzt die Versicherungsart.
+     *
      * @param versicherungsart Die zu setzende Versicherungsart.
      */
     public void setVersicherungsart(String versicherungsart) {
         this.versicherungsart = versicherungsart;
     }
+
     /**
      * Gibt die Police-Information zurück.
+     *
      * @return Die Police-Information.
      */
     public String getPoliceInfo() {
@@ -255,6 +273,7 @@ public class VersicherungsData {
 
     /**
      * Setzt die Police-Information.
+     *
      * @param PoliceInfo Die zu setzende Police-Information.
      */
     public void setPoliceInfo(String PoliceInfo) {
@@ -263,6 +282,7 @@ public class VersicherungsData {
 
     /**
      * Gibt die maximale Jahresleistung zurück.
+     *
      * @return Die maximale Jahresleistung.
      */
     public String getMaxJahresleistung() {
@@ -271,6 +291,7 @@ public class VersicherungsData {
 
     /**
      * Setzt die maximale Jahresleistung.
+     *
      * @param maxJahresleistung Die zu setzende maximale Jahresleistung.
      */
     public void setMaxJahresleistung(String maxJahresleistung) {
@@ -279,6 +300,7 @@ public class VersicherungsData {
 
     /**
      * Gibt die maximale Schadenleistung zurück.
+     *
      * @return Die maximale Schadenleistung.
      */
     public String getMaxSchadenleistung() {
@@ -287,6 +309,7 @@ public class VersicherungsData {
 
     /**
      * Setzt die maximale Schadenleistung.
+     *
      * @param maxSchadenleistung Die zu setzende maximale Schadenleistung.
      */
     public void setMaxSchadenleistung(String maxSchadenleistung) {
@@ -295,6 +318,7 @@ public class VersicherungsData {
 
     /**
      * Gibt die Währung zurück.
+     *
      * @return Die Währung.
      */
     public String getWaehrung() {
@@ -303,6 +327,7 @@ public class VersicherungsData {
 
     /**
      * Setzt die Währung.
+     *
      * @param waehrung Die zu setzende Währung.
      */
     public void setWaehrung(String waehrung) {
@@ -311,6 +336,7 @@ public class VersicherungsData {
 
     /**
      * Gibt die Gesellschaft zurück.
+     *
      * @return Die Gesellschaft.
      */
     public String getGesellschaft() {
@@ -319,6 +345,7 @@ public class VersicherungsData {
 
     /**
      * Setzt die Gesellschaft.
+     *
      * @param gesellschaft Die zu setzende Gesellschaft.
      */
     public void setGesellschaft(String gesellschaft) {
@@ -327,6 +354,7 @@ public class VersicherungsData {
 
     /**
      * Gibt den Namen der Gesellschaft zurück.
+     *
      * @return Der Name der Gesellschaft.
      */
     public String getGesName() {
@@ -335,6 +363,7 @@ public class VersicherungsData {
 
     /**
      * Setzt den Namen der Gesellschaft.
+     *
      * @param gesName Der zu setzende Name der Gesellschaft.
      */
     public void setGesName(String gesName) {
@@ -343,6 +372,7 @@ public class VersicherungsData {
 
     /**
      * Gibt den Ort der Gesellschaft zurück.
+     *
      * @return Der Ort der Gesellschaft.
      */
     public String getGesOrt() {
@@ -351,6 +381,7 @@ public class VersicherungsData {
 
     /**
      * Setzt den Ort der Gesellschaft.
+     *
      * @param gesOrt Der zu setzende Ort der Gesellschaft.
      */
     public void setGesOrt(String gesOrt) {

@@ -10,23 +10,37 @@ public class Hartrodt {
 
     public Hartrodt(String policeNr, String name, String land, String ort) {
         this.policeNr = safeTrim(policeNr);
-        this.name     = safeTrim(name);
-        this.land     = safeTrim(land);
-        this.ort      = safeTrim(ort);
+        this.name = safeTrim(name);
+        this.land = safeTrim(land);
+        this.ort = safeTrim(ort);
+    }
+
+    private static String safeTrim(String s) {
+        return s == null ? "" : s.trim();
     }
 
     // Getter
-    public String getPoliceNr() { return policeNr; }
-    public String getName()     { return name; }
-    public String getLand()     { return land; }
-    public String getOrt()      { return ort; }
+    public String getPoliceNr() {
+        return policeNr;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public String getLand() {
+        return land;
+    }
+
+    public String getOrt() {
+        return ort;
+    }
 
     // Deduplizierung nach Police/Land/Ort (Name kann je nach Schreibweise variieren)
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof Hartrodt)) return false;
-        Hartrodt that = (Hartrodt) o;
+        if (!(o instanceof Hartrodt that)) return false;
         return Objects.equals(policeNr, that.policeNr)
                 && Objects.equals(land, that.land)
                 && Objects.equals(ort, that.ort);
@@ -45,9 +59,5 @@ public class Hartrodt {
                 ", land='" + land + '\'' +
                 ", ort='" + ort + '\'' +
                 '}';
-    }
-
-    private static String safeTrim(String s) {
-        return s == null ? "" : s.trim();
     }
 }

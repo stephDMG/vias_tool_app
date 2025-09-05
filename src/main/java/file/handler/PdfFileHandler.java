@@ -47,7 +47,7 @@ public class PdfFileHandler implements FileHandler {
      */
     @Override
     public void write(List<RowData> data, List<String> headers, String outputPath) {
-        try(PdfWriter writer = new PdfWriter()) {
+        try (PdfWriter writer = new PdfWriter()) {
             writer.writeCustomData(data, headers, outputPath);
         } catch (IOException e) {
             throw new RuntimeException("Fehler beim Schreiben der PDF-Datei : " + outputPath, e);
@@ -65,7 +65,7 @@ public class PdfFileHandler implements FileHandler {
      * @throws RuntimeException Falls ein Fehler beim Schreiben der PDF-Datei auftritt.
      */
     public void writeOpList(List<RowData> data, List<String> headers, String outputPath) {
-        try(PdfWriter writer = new PdfWriter()) {
+        try (PdfWriter writer = new PdfWriter()) {
             writer.writeCustomData(data, headers, outputPath);
         } catch (IOException e) {
             throw new RuntimeException("Fehler beim Schreiben der OP-Liste PDF: " + outputPath, e);

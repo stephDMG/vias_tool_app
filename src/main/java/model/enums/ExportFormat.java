@@ -16,5 +16,7 @@ public enum ExportFormat {
         this.extension = extension;
     }
 
-    public String getExtension() { return extension; }
+    public String getExtension() {
+        return extension;
+    }
 }

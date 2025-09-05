@@ -2,18 +2,16 @@ package service.cache;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import javafx.collections.ObservableList;
+import dto.AbRow;
+import dto.LaRow;
+import dto.LmpRow;
 import model.RowData;
 import model.enums.ExportFormat;
 import model.enums.QueryRepository;
 import service.interfaces.DatabaseService;
 
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.function.Consumer;
 
 /**
@@ -39,6 +37,19 @@ public class CachedDatabaseService implements DatabaseService {
 
     // --- Methoden mit Caching-Logik ---
 
+    // --- Hilfsmethoden für den Cache ---
+    private static List<RowData> deepCopy(List<RowData> src) {
+        if (src == null) return new ArrayList<>();
+        List<RowData> copy = new ArrayList<>(src.size());
+        for (RowData r : src) {
+            Map<String, String> newMap = new LinkedHashMap<>(r.getValues());
+            RowData newRow = new RowData();
+            newRow.getValues().putAll(newMap);
+            copy.add(newRow);
+        }
+        return copy;
+    }
+
     @Override
     public List<RowData> executeQuery(QueryRepository query, List<String> parameters) throws Exception {
         CacheKey key = new CacheKey(query, parameters);
@@ -52,6 +63,8 @@ public class CachedDatabaseService implements DatabaseService {
         });
     }
 
+    // --- Methoden, die an den Delegaten weitergeleitet werden ---
+
     @Override
     public List<RowData> executeRawQuery(String sql) throws Exception {
         CacheKey key = new CacheKey(null, List.of(sql)); // Einfacher Schlüssel
@@ -64,8 +77,6 @@ public class CachedDatabaseService implements DatabaseService {
             }
         });
     }
-
-    // --- Methoden, die an den Delegaten weitergeleitet werden ---
 
     @Override
     public void executeQuery(String sql, Consumer<RowData> processor) {
@@ -81,7 +92,6 @@ public class CachedDatabaseService implements DatabaseService {
     public void exportToFile(QueryRepository query, List<String> parameters, String outputPath, ExportFormat format) throws Exception {
         delegate.exportToFile(query, parameters, outputPath, format);
     }
-
 
     @Override
     public void exportRawQueryToFile(String sql, String outputPath, ExportFormat format) throws Exception {
@@ -113,7 +123,6 @@ public class CachedDatabaseService implements DatabaseService {
         });
     }
 
-
     @Override
     public List<RowData> executeOpListeQuery(String policyNr) throws Exception {
         // Erstelle einen Cache-Schlüssel mit der Policennummer als Parameter
@@ -130,21 +139,28 @@ public class CachedDatabaseService implements DatabaseService {
     }
 
     @Override
-    public void invalidateCache() {
-        cache.invalidateAll();
+    public List<AbRow> fetchAbrechnungMinimal() throws Exception {
+        // Schlüssel nur auf Methodennamen basieren, da keine Parameter
+        String key = "FETCH_ABRECHNUNG_MIN";
+        // Wir können den bestehenden Cache nicht typ-sicher für AbRow nutzen,
+        // also cachen wir hier bewusst NICHT in Caffeine (oder du fügst einen separaten Cache hinzu).
+        // Einfach delegieren:
+        return delegate.fetchAbrechnungMinimal();
     }
 
-    // --- Hilfsmethoden für den Cache ---
-    private static List<RowData> deepCopy(List<RowData> src) {
-        if (src == null) return new ArrayList<>();
-        List<RowData> copy = new ArrayList<>(src.size());
-        for (RowData r : src) {
-            Map<String, String> newMap = new LinkedHashMap<>(r.getValues());
-            RowData newRow = new RowData();
-            newRow.getValues().putAll(newMap);
-            copy.add(newRow);
-        }
-        return copy;
+    @Override
+    public List<LaRow> fetchLuAlleMinimal() throws Exception {
+        return delegate.fetchLuAlleMinimal();
+    }
+
+    @Override
+    public List<LmpRow> fetchLuMaskepMinimal() throws Exception {
+        return delegate.fetchLuMaskepMinimal();
+    }
+
+    @Override
+    public void invalidateCache() {
+        cache.invalidateAll();
     }
 
     private static final class CacheKey {
@@ -159,8 +175,7 @@ public class CachedDatabaseService implements DatabaseService {
         @Override
         public boolean equals(Object o) {
             if (this == o) return true;
-            if (!(o instanceof CacheKey)) return false;
-            CacheKey that = (CacheKey) o;
+            if (!(o instanceof CacheKey that)) return false;
             return query == that.query && Objects.equals(params, that.params);
         }
 

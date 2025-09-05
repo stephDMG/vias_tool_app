@@ -1,6 +1,6 @@
 package gui.controller.manager;
 
-import gui.controller.utils.EnhancedTableManager;
+
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
 import javafx.scene.control.*;
@@ -15,21 +15,17 @@ import java.util.Arrays;
  */
 public class TableViewBuilder {
 
-    public enum Feature {
-        SEARCH,
-        SELECTION,
-        PAGINATION,
-        EXPORT
-    }
-
     private final VBox tableContainer;
-    private final TableView<?> tableView;
+    private TableView<?> tableView = null;
     private final TextField searchField;
     private final Button deleteColumnsButton;
     private final Pagination pagination;
     private final Label resultsCountLabel;
     private final Button exportCsvButton;
     private final Button exportXlsxButton;
+
+    private boolean optGroupStriping = false;
+    private String groupStripingHeader = null;
 
     // Private Konstruktor - nur über build() erreichbar
     private TableViewBuilder() throws IOException {
@@ -44,7 +40,20 @@ public class TableViewBuilder {
         this.resultsCountLabel = (Label) tableContainer.lookup("#resultsCountLabel");
         this.exportCsvButton = (Button) tableContainer.lookup("#exportCsvButton");
         this.exportXlsxButton = (Button) tableContainer.lookup("#exportXlsxButton");
+
+        if (this.tableView != null) {
+            this.tableView.setFixedCellSize(24);
+        }
+
     }
+
+    public TableViewBuilder withGroupStriping(String header) {
+        this.optGroupStriping = true;
+        this.groupStripingHeader = header;
+        return this;
+    }
+
+
 
     /**
      * Erstellt Builder-Instanz
@@ -115,13 +124,19 @@ public class TableViewBuilder {
      * Erstellt EnhancedTableManager mit konfigurierten Komponenten
      */
     public EnhancedTableManager buildManager() {
-        return new EnhancedTableManager(
+        EnhancedTableManager manager = new EnhancedTableManager(
                 (TableView) tableView,
                 searchField,
                 deleteColumnsButton,
                 pagination,
                 resultsCountLabel
         );
+
+        if (optGroupStriping && groupStripingHeader != null) {
+            manager.enableGroupStripingByHeader(groupStripingHeader);
+        }
+
+        return manager;
     }
 
     /**
@@ -132,11 +147,38 @@ public class TableViewBuilder {
     }
 
     // Getters für einzelne Komponenten (falls benötigt)
-    public TableView<?> getTableView() { return tableView; }
-    public TextField getSearchField() { return searchField; }
-    public Button getDeleteColumnsButton() { return deleteColumnsButton; }
-    public Pagination getPagination() { return pagination; }
-    public Label getResultsCountLabel() { return resultsCountLabel; }
-    public Button getExportCsvButton() { return exportCsvButton; }
-    public Button getExportXlsxButton() { return exportXlsxButton; }
+    public TableView<?> getTableView() {
+        return tableView;
+    }
+
+    public TextField getSearchField() {
+        return searchField;
+    }
+
+    public Button getDeleteColumnsButton() {
+        return deleteColumnsButton;
+    }
+
+    public Pagination getPagination() {
+        return pagination;
+    }
+
+    public Label getResultsCountLabel() {
+        return resultsCountLabel;
+    }
+
+    public Button getExportCsvButton() {
+        return exportCsvButton;
+    }
+
+    public Button getExportXlsxButton() {
+        return exportXlsxButton;
+    }
+
+    public enum Feature {
+        SEARCH,
+        SELECTION,
+        PAGINATION,
+        EXPORT
+    }
 }

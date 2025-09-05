@@ -57,6 +57,7 @@ public class FileSearchTool {
         logger.warn("❌ Datei nicht gefunden: {}", fileName);
         return null;
     }
+
     /**
      * Sucht nach einer Datei mit dem exakten Namen in gängigen Benutzerverzeichnissen.
      * Durchsucht Desktop, Downloads und das Benutzer-Hauptverzeichnis.

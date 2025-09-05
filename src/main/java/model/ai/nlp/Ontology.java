@@ -35,6 +35,7 @@ public class Ontology {
 
     /**
      * Löst ein Token (Wort/Phrase) in ein semantisches Feld auf.
+     *
      * @param token Das vom Benutzer verwendete Wort.
      * @return Das normalisierte, semantische Feld (z.B. "makler.id") oder das Token selbst.
      */

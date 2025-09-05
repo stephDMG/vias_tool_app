@@ -3,14 +3,13 @@ package service;
 
 import file.extrator.DataExtractor;
 import file.extrator.ValidationService;
-
 import file.extrator.VersicherungsExtractor;
-import model.VersicherungsData;
 import model.RowData;
+import model.VersicherungsData;
 import model.enums.ExportFormat;
-import service.interfaces.FileService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import service.interfaces.FileService;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -40,9 +39,9 @@ public class ExtractionService {
      * Intelligenter Extraktions- und Export-Prozess.
      * Extrahiert VSN → Holt DB-Daten → Validiert intelligent → Exportiert DB-Daten.
      *
-     * @param pdfPath Pfad zur PDF-Datei
+     * @param pdfPath    Pfad zur PDF-Datei
      * @param outputPath Zielpfad für Export
-     * @param format Export-Format
+     * @param format     Export-Format
      * @throws RuntimeException wenn die Extraktion oder Validierung fehlschlägt.
      */
     public void extractAndExport(String pdfPath, String outputPath, ExportFormat format) {

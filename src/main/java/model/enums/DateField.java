@@ -14,6 +14,9 @@ public enum DateField {
     BEGINN("LU_BEG", "Beginn"),
     ENDE("LU_ABL", "Ablauf"),
     ;
+    public static final Set<String> ALL_MATCHED_NAMES = Arrays.stream(values())
+            .flatMap(d -> Arrays.stream(new String[]{d.dbColumn, d.alias}))
+            .collect(Collectors.toSet());
     private final String dbColumn;
     private final String alias;
 
@@ -22,19 +25,15 @@ public enum DateField {
         this.alias = alias;
     }
 
+    public static boolean isDateField(String columnName) {
+        return ALL_MATCHED_NAMES.contains(columnName);
+    }
+
     public String getDbColumn() {
         return dbColumn;
     }
 
     public String getAlias() {
         return alias;
-    }
-
-    public static final Set<String> ALL_MATCHED_NAMES = Arrays.stream(values())
-            .flatMap(d -> Arrays.stream(new String[]{d.dbColumn, d.alias}))
-            .collect(Collectors.toSet());
-
-    public static boolean isDateField(String columnName) {
-        return ALL_MATCHED_NAMES.contains(columnName);
     }
 }

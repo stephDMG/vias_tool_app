@@ -20,12 +20,20 @@ public class PivotConfig {
         this.keepColumns = keepColumns;
     }
 
-    public String getGroupByColumn() { return groupByColumn; }
-    public String getPivotColumn() { return pivotColumn; }
-    public List<String> getKeepColumns() { return keepColumns; }
-
     // Factory method für Dokumente
     public static PivotConfig forDocuments() {
         return new PivotConfig("Schaden Nr", "Dokument", List.of("Import ID"));
+    }
+
+    public String getGroupByColumn() {
+        return groupByColumn;
+    }
+
+    public String getPivotColumn() {
+        return pivotColumn;
+    }
+
+    public List<String> getKeepColumns() {
+        return keepColumns;
     }
 }

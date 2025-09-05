@@ -10,14 +10,13 @@ import java.util.regex.Pattern;
 
 public class NLUnderstandingService implements PromptUnderstandingService {
 
-    private final NLParser parser = new NLParser();
-
     private static final Set<String> STOPWORDS = new HashSet<>(Arrays.asList(
-            "alle","zeig","zeige","mir","bitte","die","der","den","vom","von","für","mit",
-            "und","oder","aber","auch","schnell","mal","dann","zuerst","first","außer","ohne",
-            "limit","order","by","sortiere","ordne","nach","cover","vertrag","verträge"
+            "alle", "zeig", "zeige", "mir", "bitte", "die", "der", "den", "vom", "von", "für", "mit",
+            "und", "oder", "aber", "auch", "schnell", "mal", "dann", "zuerst", "first", "außer", "ohne",
+            "limit", "order", "by", "sortiere", "ordne", "nach", "cover", "vertrag", "verträge"
     ));
     private static final Pattern TOKENIZER = Pattern.compile("[^a-zA-Z0-9äöüßÄÖÜ]+");
+    private final NLParser parser = new NLParser();
 
     @Override
     public UnderstandingResult understand(String prompt) {

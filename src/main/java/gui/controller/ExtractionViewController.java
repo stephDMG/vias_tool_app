@@ -1,6 +1,7 @@
 package gui.controller;
 
 // Alle Imports bleiben gleich wie im alten MainController
+
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
@@ -8,18 +9,18 @@ import javafx.scene.control.*;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
 import model.enums.ExportFormat;
-import service.ExtractionService;
-import service.ServiceFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import service.ExtractionService;
+import service.ServiceFactory;
 import util.FileSearchTool;
 
 import java.io.File;
 import java.net.URL;
 import java.util.ResourceBundle;
 
-import static gui.controller.utils.Dialog.showErrorDialog;
-import static gui.controller.utils.Dialog.showSuccessDialog;
+import static gui.controller.dialog.Dialog.showErrorDialog;
+import static gui.controller.dialog.Dialog.showSuccessDialog;
 
 // Diese Klasse enthält die gesamte Logik für die Extraktionsansicht
 public class ExtractionViewController implements Initializable {
@@ -29,18 +30,30 @@ public class ExtractionViewController implements Initializable {
 
     private static final Logger logger = LoggerFactory.getLogger(ExtractionViewController.class);
 
-    @FXML private TextField pdfFileField;
-    @FXML private TextField outputDirectoryField;
-    @FXML private Button selectPdfButton;
-    @FXML private Button selectOutputButton;
-    @FXML private Button extractButton;
-    @FXML private CheckBox xlsxCheckBox;
-    @FXML private CheckBox csvCheckBox;
-    @FXML private TextArea logTextArea;
-    @FXML private ProgressBar progressBar;
-    @FXML private Label statusLabel;
-    @FXML private TextField searchField;
-    @FXML private Button searchButton;
+    @FXML
+    private TextField pdfFileField;
+    @FXML
+    private TextField outputDirectoryField;
+    @FXML
+    private Button selectPdfButton;
+    @FXML
+    private Button selectOutputButton;
+    @FXML
+    private Button extractButton;
+    @FXML
+    private CheckBox xlsxCheckBox;
+    @FXML
+    private CheckBox csvCheckBox;
+    @FXML
+    private TextArea logTextArea;
+    @FXML
+    private ProgressBar progressBar;
+    @FXML
+    private Label statusLabel;
+    @FXML
+    private TextField searchField;
+    @FXML
+    private Button searchButton;
 
     private ExtractionService extractionService;
 
