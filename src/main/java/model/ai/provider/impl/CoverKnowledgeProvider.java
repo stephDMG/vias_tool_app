@@ -56,9 +56,11 @@ public class CoverKnowledgeProvider implements AiKnowledgeProvider {
                 Map.entry("gesellschaft_name", new AiColumnSpec("LAL.LU_GES_Text", "Ges. Name", "", List.of("gesellschaft", "ges name"))),
 
                 // === Versioning ===
+                Map.entry("hauptfaelligkeit", new AiColumnSpec("LAL.LU_HFL", "Hauptfälligkeit", "", List.of("hauptfälligkeit", "hauptfall"))),
                 Map.entry("faelligkeit_von", new AiColumnSpec("LAL.LU_FLG", "Fälligkeit von", "", List.of("fälligkeit von", "version von"))),
                 Map.entry("faelligkeit_bis", new AiColumnSpec("LAL.LU_FLZ", "Fälligkeit bis", "", List.of("fälligkeit bis", "version bis"))),
                 Map.entry("version_status", new AiColumnSpec("LAL.LU_STATUS", "Version Status", "", List.of("version status", "v-status"))),
+
 
                 // === Clerks (Sachbearbeiter) - Complex Fields ===
                 Map.entry("sb_vertrag", new AiColumnSpec("(SELECT SB.LU_SB_VOR + ' ' + SB.LU_SB_NAM FROM SACHBEA SB WHERE LAL.LU_SACHBEA_VT = SB.LU_SB_KURZ)", "SB Vertrag", "", List.of("sb vertrag"))),

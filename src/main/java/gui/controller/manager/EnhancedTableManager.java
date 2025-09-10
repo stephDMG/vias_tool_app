@@ -51,13 +51,16 @@ public class EnhancedTableManager {
 
     private Integer lastRowsPerPage = null;
 
-    private boolean groupStripingEnabled = false;
-    private String groupStripingHeader = null;
+
     private int groupColIndex = -1;
     private List<Boolean> stripeIsA = new ArrayList<>();
 
-    private Color groupColorA = Color.web("#B4C8F0", 0.25);
-    private Color groupColorB = Color.web("#DDE7FF", 0.20);
+    private Color groupColorA = null;
+    private Color groupColorB =null;
+    private boolean groupStripingEnabled = false;
+    private String groupStripingHeader = null;
+
+
 
     /**
      * Konstruktor - Alle optionalen Komponenten können null sein
@@ -78,6 +81,7 @@ public class EnhancedTableManager {
         }
     }
 
+    /*
     public EnhancedTableManager enableGroupStripingByHeader(String headerName) {
         if (headerName == null || headerName.isBlank()) {
             throw new IllegalArgumentException("Der Header-Name für Group Striping darf nicht leer sein.");
@@ -101,6 +105,8 @@ public class EnhancedTableManager {
 
         return this;
     }
+    */
+
 
     /**
      * Simplified constructor for basic table only
@@ -165,6 +171,28 @@ public class EnhancedTableManager {
         return this;
     }
 
+    public void applyGroupingConfig(boolean enabled, String headerName, Color colorA, Color colorB) {
+        this.groupStripingEnabled = enabled && headerName != null && !headerName.isBlank();
+        this.groupStripingHeader  = this.groupStripingEnabled ? headerName : null;
+        this.groupColorA          = this.groupStripingEnabled ? colorA : null;
+        this.groupColorB          = this.groupStripingEnabled ? colorB : null;
+
+        if (!groupStripingEnabled) {
+            stripeIsA.clear();
+        }
+        installGroupRowFactory();
+        recomputeGroupStripes();
+    }
+
+    public EnhancedTableManager enableGroupStripingByHeader(String headerName) {
+        applyGroupingConfig(true, headerName, /*A*/ null, /*B*/ null);
+        return this;
+    }
+    public void disableGrouping() {
+        applyGroupingConfig(false, null, null, null);
+    }
+
+
     /**
      * Lädt Daten in die Tabelle
      */
@@ -193,12 +221,14 @@ public class EnhancedTableManager {
         recomputeGroupStripes();
     }
 
+    /*
     public void disableGrouping() {
         this.groupStripingEnabled = false;
         this.groupStripingHeader = null;
         stripeIsA.clear();
         tableView.refresh();
     }
+    */
 
     private static String toRgbaCss(Color c) {
         int r = (int) Math.round(c.getRed() * 255);
@@ -214,19 +244,32 @@ public class EnhancedTableManager {
             @Override
             protected void updateItem(ObservableList<String> item, boolean empty) {
                 super.updateItem(item, empty);
+                // reset par défaut
                 setStyle("");
 
-                if (empty || item == null || !groupStripingEnabled) return;
+                if (empty || item == null) return;
+
+                // 1) si la ligne est sélectionnée -> on laisse la couleur de sélection du thème
+                if (isSelected()) return;
+
+                // 2) si la gruppierung n’est pas active ou couleurs manquantes -> pas de fond
+                if (!groupStripingEnabled || groupStripingHeader == null || (groupColorA == null && groupColorB == null)) {
+                    return;
+                }
 
                 int rowIndex = getIndex();
                 if (rowIndex >= 0 && rowIndex < stripeIsA.size()) {
                     boolean isA = stripeIsA.get(rowIndex);
-                    String css = "-fx-background-color: " + (isA ? toRgbaCss(groupColorA) : toRgbaCss(groupColorB)) + ";";
-                    setStyle(css);
+                    Color c = isA ? groupColorA : groupColorB;
+                    String cssColor = toRgbaCss(c);
+                    if (cssColor != null) {
+                        setStyle("-fx-background-color: " + cssColor + ";");
+                    }
                 }
             }
         });
     }
+
 
     private int findHeaderIndex(String header) {
         if (filteredData == null || filteredData.isEmpty()) return -1;
@@ -310,7 +353,6 @@ public class EnhancedTableManager {
 
         List<String> headers = new ArrayList<>(filteredData.get(0).getValues().keySet());
 
-        // Si mêmes headers → ne rien faire (évite flicker)
         if (headers.equals(currentHeaders) && !tableView.getColumns().isEmpty()) {
             return;
         }
@@ -568,4 +610,14 @@ public class EnhancedTableManager {
     public List<RowData> getOriginalData() {
         return new ArrayList<>(originalData);
     }
+
+    public boolean isGroupStripingEnabled() {return groupStripingEnabled;}
+
+    public String getGroupStripingHeader() {return groupStripingHeader;}
+
+    public Color getGroupColorA() {return groupColorA;}
+
+    public Color getGroupColorB() {return groupColorB;}
+
+
 }

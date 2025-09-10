@@ -10,12 +10,12 @@
     </padding>
 
     <top>
-        <HBox alignment="CENTER_LEFT" prefHeight="25.0" prefWidth="542.0" spacing="10">
+        <HBox alignment="CENTER_LEFT" prefHeight="25.0" prefWidth="927.0" spacing="10">
             <Label text="OP-Liste (Hauptliste)" />
             <Label text="Filter Policen-Nr:" />
             <TextField fx:id="policyFilterField" prefWidth="180" promptText="z.B.: W0761530" />
-            <Button text="Gruppierung…" onAction="#openGroupingDialog"/>
             <Button onAction="#applyFilter" text="Filtern" />
+            <Button onAction="#openGroupingDialog" prefHeight="25.0" prefWidth="119.0" text="Gruppierung…" />
             <Region HBox.hgrow="ALWAYS" />
             <Label text="Zeilen:" />
             <Label fx:id="countLabel" text="0" />

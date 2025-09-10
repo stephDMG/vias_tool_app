@@ -9,6 +9,7 @@ import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
@@ -44,11 +45,17 @@ public class OpListViewerController {
     private List<RowData> full;
     private List<RowData> cur;
 
+    private boolean cfgEnabled = false;
+    private String  cfgHeader  = null;
+    private javafx.scene.paint.Color cfgA = null;
+    private javafx.scene.paint.Color cfgB = null;
+
     @FXML
     private void initialize() {
 
         formatter = new OpListeFormatter();
-        opRepository = new OpRepository(ServiceFactory.getDatabaseService(), formatter);
+        opRepository = ServiceFactory.getOpRepository();
+        //opRepository = new OpRepository(ServiceFactory.getDatabaseService(), formatter);
 
         TableViewBuilder builder = TableViewBuilder.create()
                 .withFeatures(
@@ -57,7 +64,7 @@ public class OpListViewerController {
                         TableViewBuilder.Feature.EXPORT,
                         TableViewBuilder.Feature.SEARCH
                 )
-                .withGroupStriping("Rg-NR")
+                //.withGroupStriping("Rg-NR")
                 .withExportLabel("Als Datei exportieren:")
                 .withActionsLabel("Ausgewählte Spalten löschen:");
 
@@ -80,6 +87,10 @@ public class OpListViewerController {
     private void loadDataAsync() {
         progressBar.setVisible(true);
         statusLabel.setText("Lade OP-Hauptliste…");
+
+        boolean empty = opRepository.isCacheEmpty();
+        org.slf4j.LoggerFactory.getLogger(getClass())
+                .info("OP-Liste: cacheEmpty={}, thread={}", empty, Thread.currentThread().getName());
 
         Task<List<RowData>> task = new Task<>() {
             @Override
@@ -117,7 +128,6 @@ public class OpListViewerController {
         countLabel.setText(String.valueOf(n));
     }
 
-    // OpListViewerController.java (ajoute une méthode)
     @FXML
     private void openGroupingDialog() {
         try {
@@ -130,26 +140,36 @@ public class OpListViewerController {
                     "Rg-Datum","Fälligkeit","courtage","A.LU_VSTLD"
             );
 
-            ctrl.init(selectable, /*currentHeader*/ "Rg-NR", /*colA*/ null, /*colB*/ null, /*enabled*/ true);
+            // Alimenter le dialog avec l’état courant
+            ctrl.init(selectable,
+                    cfgHeader,
+                    cfgA, cfgB,
+                    cfgEnabled);
 
-            var stage = new javafx.stage.Stage();
-            stage.setTitle("Regroupement & couleurs");
-            stage.setScene(new javafx.scene.Scene((Parent) root));
+            Stage stage = new Stage();
+            stage.setTitle("Gruppierung konfigurieren");
+            stage.setScene(new Scene(root));
             stage.initOwner(resultsContainer.getScene().getWindow());
+            stage.initModality(javafx.stage.Modality.WINDOW_MODAL);
             stage.showAndWait();
 
             var res = ctrl.getResult();
             if (res != null) {
-                if (res.enabled) {
-                    tableManager.configureGrouping(res.header, res.colorA, res.colorB);
-                } else {
-                    tableManager.disableGrouping();
-                }
+                // 1) mémoriser localement pour la prochaine ouverture
+                cfgEnabled = res.enabled;
+                cfgHeader  = res.header;
+                cfgA       = res.colorA;
+                cfgB       = res.colorB;
+
+                // 2) appliquer à la table
+                tableManager.applyGroupingConfig(cfgEnabled, cfgHeader, cfgA, cfgB);
             }
         } catch (Exception ex) {
             Dialog.showErrorDialog("Dialogfehler", ex.getMessage());
         }
     }
+
+
 
 
     @FXML

@@ -20,7 +20,7 @@ import java.io.InputStream;
  * <p>
  * Diese Klasse initialisiert die JavaFX-Stage, lädt das Hauptlayout aus
  * {@code /fxml/MainWindow.fxml}, wendet BootstrapFX sowie das benutzerdefinierte
- * Stylesheet {@code /css/styles.css} an und setzt u. a. Fenstertitel, Mindestgrößen
+ * Stylesheet {@code /css/app-design.css} an und setzt u. a. Fenstertitel, Mindestgrößen
  * und das App-Icon (sofern unter {@code /images/logo.png} verfügbar).
  * </p>
  * <p>

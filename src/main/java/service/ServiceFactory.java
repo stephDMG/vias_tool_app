@@ -10,6 +10,7 @@ import service.interfaces.AiService;
 import service.interfaces.DatabaseService;
 import service.interfaces.FileService;
 import service.op.OpListeProcessService;
+import service.op.OpRepository;
 
 
 /**
@@ -31,6 +32,8 @@ public final class ServiceFactory {
     private static AiMode currentAiMode = AiMode.LOCAL;
     private static AiService aiServiceInstance = null;
 
+    private static volatile OpRepository OP_REPOSITORY;
+
     static {
         DatabaseService impl = new DatabaseServiceImpl(getFileService());
         databaseService = new CachedDatabaseService(impl);
@@ -44,6 +47,18 @@ public final class ServiceFactory {
             opListeServiceInstance = new OpListeProcessService(getDatabaseService(), getFileService());
         }
         return opListeServiceInstance;
+    }
+
+    public static OpRepository getOpRepository() {
+        if (OP_REPOSITORY == null) {
+            synchronized (ServiceFactory.class) {
+                if (OP_REPOSITORY == null) {
+                    var formatter = new formatter.OpListeFormatter();
+                    OP_REPOSITORY = new service.op.OpRepository(getDatabaseService(), formatter);
+                }
+            }
+        }
+        return OP_REPOSITORY;
     }
 
     public static FileService getFileService() {

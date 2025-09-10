@@ -30,13 +30,15 @@ public class GroupingDialogController {
         }
     }
 
-    public void init(List<String> selectableHeaders, String currentHeader, Color currentA, Color currentB, boolean enabled) {
+    public void init(List<String> selectableHeaders, String currentHeader,
+                     Color currentA, Color currentB, boolean enabled) {
         headerCombo.getItems().setAll(selectableHeaders);
         if (currentHeader != null) headerCombo.getSelectionModel().select(currentHeader);
         else if (!selectableHeaders.isEmpty()) headerCombo.getSelectionModel().select(0);
 
-        colorPickerA.setValue(currentA != null ? currentA : Color.web("#B4C8F0", 0.25));
-        colorPickerB.setValue(currentB != null ? currentB : Color.web("#DDE7FF", 0.20));
+        colorPickerA.setValue(currentA != null ? currentA : Color.TRANSPARENT);
+        colorPickerB.setValue(currentB != null ? currentB : Color.TRANSPARENT);
+
         enableCheck.setSelected(enabled);
     }
 
@@ -49,12 +51,30 @@ public class GroupingDialogController {
     private void onApply() {
         String header = headerCombo.getSelectionModel().getSelectedItem();
         if (enableCheck.isSelected() && (header == null || header.isBlank())) {
-            new Alert(Alert.AlertType.WARNING, "Veuillez choisir une colonne à regrouper.").showAndWait();
+            new Alert(Alert.AlertType.WARNING, "Bitte eine Spalte zum Gruppieren auswählen.").showAndWait();
             return;
         }
         result = new Result(enableCheck.isSelected(), header, colorPickerA.getValue(), colorPickerB.getValue());
         ((Stage) enableCheck.getScene().getWindow()).close();
     }
+
+    @FXML
+    private void onReset() {
+        // Désactiver la Gruppierung
+        enableCheck.setSelected(false);
+        headerCombo.getSelectionModel().clearSelection();
+
+        // Valeurs par défaut des couleurs (mêmes que dans init)
+        colorPickerA.setValue(Color.web("#B4C8F0", 0.25));
+        colorPickerB.setValue(Color.web("#DDE7FF", 0.20));
+
+        // Sauvegarde immédiate du résultat comme "désactivé"
+        result = new Result(false, null, colorPickerA.getValue(), colorPickerB.getValue());
+
+        ((Stage) enableCheck.getScene().getWindow()).close();
+    }
+
+
 
     public Result getResult() {
         return result;

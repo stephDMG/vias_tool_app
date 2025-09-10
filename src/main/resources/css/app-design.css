@@ -1,0 +1,70 @@
+/* app-design.css — tokens de base */
+.root {
+    /* Couleurs de marque (restent identiques clair/sombre) */
+    -app-primary: #2d7ef7;
+    -app-success: #21a366;
+    -app-danger:  #e5534b;
+    -app-warning: #f5a524;
+
+    /* Surfaces (mappées sur le thème actif) */
+    -app-bg:            -color-bg-default;
+    -app-surface:       -color-canvas-default;
+    -app-surface-muted: -color-canvas-subtle;
+
+    /* Texte */
+    -app-fg:        -color-fg-default;
+    -app-fg-muted:  -color-fg-muted;
+    -app-onAccent:  -color-fg-onEmphasis;
+
+    /* Rayons & ombres */
+    -app-radius: 10px;
+    -app-shadow: dropshadow(gaussian, rgba(0,0,0,0.12), 12, 0.1, 0, 2);
+
+    /* Rythme d’espacement */
+    -app-gap-1: 4px; -app-gap-2: 8px; -app-gap-3: 12px; -app-gap-4: 16px; -app-gap-5: 24px;
+}
+
+/* Cartes / panneaux */
+.card {
+    -fx-background-color: -app-surface;
+    -fx-background-radius: var(-app-radius);
+    -fx-padding: var(-app-gap-4);
+    -fx-effect: var(-app-shadow);
+    -fx-border-color: -color-border-default;
+    -fx-border-radius: var(-app-radius);
+}
+
+/* Boutons principaux */
+.button.primary {
+    -fx-background-color: -app-primary;
+    -fx-text-fill: -app-onAccent;
+    -fx-background-radius: 999px;
+    -fx-padding: 8 18;
+}
+.button.primary:hover { -fx-background-color: derive(-app-primary, -8%); }
+
+/* Boutons “pills” succès / danger */
+.button.success { -fx-background-color: -app-success; -fx-text-fill: -app-onAccent; -fx-background-radius: 999px; }
+.button.danger  { -fx-background-color: -app-danger;  -fx-text-fill: -app-onAccent; -fx-background-radius: 999px; }
+
+/* TableView — en-tête & lignes */
+.table-view {
+    -fx-cell-size: 26px;
+    -fx-background-color: -app-bg;
+}
+.table-view .column-header-background {
+    -fx-background-color: linear-gradient(to bottom, rgba(0,0,0,0.03), rgba(0,0,0,0.06));
+}
+.table-row-cell:filled:hover { -fx-background-color: derive(-app-surface-muted, 8%); }
+
+/* Pastilles d’état (inspirées de la maquette) */
+.badge {
+    -fx-background-radius: 999px;
+    -fx-padding: 2 8;
+    -fx-font-size: 11px;
+    -fx-background-color: -app-surface-muted;
+    -fx-text-fill: -app-fg;
+    -fx-border-color: -color-border-default; -fx-border-radius: 999px;
+}
+.badge.success { -fx-background-color: rgba(33,163,102,.15); -fx-text-fill: -app-success; }
+.badge.warn    { -fx-background-color: rgba(245,165,36,.15); -fx-text-fill: -app-warning; }
