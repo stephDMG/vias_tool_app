@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="DataSourceManagerImpl" format="xml" multifile-model="true">
-    <data-source source="LOCAL" name="Zen_CS" uuid="3d5fe7f2-b51b-4ffa-bc9f-e12ab1e6a20d">
+    <data-source source="LOCAL" name="Zen_CS_Test" uuid="3d5fe7f2-b51b-4ffa-bc9f-e12ab1e6a20d">
       <driver-ref>java.sql.Driver</driver-ref>
       <synchronize>true</synchronize>
       <configured-by-url>true</configured-by-url>
       <jdbc-driver>com.pervasive.jdbc.v2.Driver</jdbc-driver>
-      <jdbc-url>jdbc:pervasive://debresrv03:1583/CS;encoding=ISO8859_1</jdbc-url>
+      <jdbc-url>jdbc:pervasive://debresrv03:1583/CSTEST;encoding=ISO8859_1</jdbc-url>
       <jdbc-additional-properties>
         <property name="com.intellij.clouds.kubernetes.db.enabled" value="false" />
       </jdbc-additional-properties>

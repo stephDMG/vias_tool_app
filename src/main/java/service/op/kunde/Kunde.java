@@ -1,6 +1,5 @@
 package service.op.kunde;
 
-import service.op.Hartrodt;
 
 import java.util.Objects;
 
@@ -10,6 +9,8 @@ public class Kunde {
     private final String name;
     private final String land;
     private final String ort;
+
+    private String pathName = "X:/FREIE ZONE/Behrendt, Christian/OP Listen/";
 
     public Kunde(String kundeName, String policeNr, String name, String land, String ort) {
         this.kundeName = kundeName;
@@ -42,7 +43,11 @@ public class Kunde {
 
     public String getKundeName() {return kundeName;}
 
-    // Deduplizierung nach Police/Land/Ort (Name kann je nach Schreibweise variieren)
+    public String getPathName() {return pathName;}
+    public void setPathName(String pathName) {this.pathName = pathName;}
+
+
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

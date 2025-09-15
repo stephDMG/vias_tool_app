@@ -305,6 +305,12 @@ public class DatabaseServiceImpl implements DatabaseService {
     }
 
     @Override
+    public List<RowData> executeRawQuery(String sql, String... params) throws Exception {
+        return executeRawQueryWithParameters(sql,
+                (params == null) ? List.of() : Arrays.asList(params));
+    }
+
+    @Override
     public void invalidateCache() {
         //TO DO
     }
@@ -332,7 +338,7 @@ public class DatabaseServiceImpl implements DatabaseService {
                 ResultSet.CONCUR_READ_ONLY
         );
         stmt.setFetchSize(1000);     // 500–2000 je nach Treiber/Netz testen
-        stmt.setQueryTimeout(120);   // 120s sicherheitshalber
+        stmt.setQueryTimeout(600);   // 120s sicherheitshalber
         conn.setAutoCommit(false);
         conn.setTransactionIsolation(Connection.TRANSACTION_READ_COMMITTED);
         return stmt;

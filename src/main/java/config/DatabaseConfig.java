@@ -20,13 +20,12 @@ import java.util.Properties;
  */
 public final class DatabaseConfig {
 
-    // Die Felder bleiben gleich, werden aber jetzt aus dem Properties-Objekt initialisiert
+
     public static final String URL;
     public static final String USER;
     public static final String PASSWORD;
     public static final String DRIVER;
     private static final Logger log = LoggerFactory.getLogger(DatabaseConfig.class);
-    // --- GEÄNDERT: Die Properties werden jetzt durch eine Methode geladen ---
     private static final Properties BUNDLE = loadProperties();
 
     static {

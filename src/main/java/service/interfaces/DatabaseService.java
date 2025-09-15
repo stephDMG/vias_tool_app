@@ -132,6 +132,19 @@ public interface DatabaseService {
      */
     List<dto.LmpRow> fetchLuMaskepMinimal() throws Exception;
 
+    /**
+     * Führt eine rohe SQL-Abfrage mit einem Parameter aus.
+     * <p>
+     * Hinweis: Dies ist eine einfache Überladung für den Anwendungsfall LIKE '%pattern%'.
+     * Eine sichere Implementierung sollte später auf PreparedStatements basieren.
+     *
+     * @param sql     SQL-String mit Platzhalter (z. B. "... LIKE ?")
+     * @param pattern Wert für den Platzhalter
+     * @return Ergebnisliste von RowData
+     * @throws Exception wenn die Abfrage fehlschlägt
+     */
+    List<RowData> executeRawQuery(String sql, String... pattern) throws Exception;
+
 
     void invalidateCache();
 }

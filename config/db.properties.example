@@ -1,0 +1,27 @@
+# Beispiel-DB-Konfiguration (lokal überschreibbar)
+# Kopieren Sie diese Datei nach config/db.properties und passen Sie die Werte an.
+# Diese externe Datei wird gegenüber der internen src/main/resources/db.properties bevorzugt.
+
+# JDBC URL, z. B.:
+# - PostgreSQL: jdbc:postgresql://localhost:5432/meinedb
+# - MySQL:      jdbc:mysql://localhost:3306/meinedb?useSSL=false&serverTimezone=UTC
+# - Pervasive:  jdbc:pervasive://host:1583/DBNAME;encoding=ISO8859_1
+# - SQL Server: jdbc:sqlserver://localhost:1433;databaseName=meinedb
+# - Oracle:     jdbc:oracle:thin:@//localhost:1521/ORCLCDB
+
+db.url=jdbc:pervasive://debresrv03:1583/CSTest;encoding=ISO8859_1
+
+# Benutzername und Passwort
+# WARNUNG: Diese Datei nicht ins Repo committen (siehe .gitignore)!  
+db.user=LESEN
+db.password=vias
+
+# JDBC-Treiberklasse
+# Beispiele:
+# - org.postgresql.Driver
+# - com.mysql.cj.jdbc.Driver
+# - com.pervasive.jdbc.v2.Driver
+# - com.microsoft.sqlserver.jdbc.SQLServerDriver
+# - oracle.jdbc.OracleDriver
+
+db.driver=com.pervasive.jdbc.v2.Driver

@@ -17,8 +17,13 @@
             <VBox alignment="CENTER" spacing="10">
                 <Label alignment="CENTER" maxWidth="Infinity" style="-fx-font-size: 20px; -fx-font-weight: bold;" text="OP-Listen Export" />
                 <HBox alignment="CENTER" prefHeight="36.0" prefWidth="657.0" spacing="20">
-                    <Label text="Filter:" />
-                    <ComboBox fx:id="filterComboBox" prefWidth="150" />
+                    <HBox spacing="20" alignment="CENTER">
+                        <Label text="Filter:" />
+                        <ComboBox fx:id="filterComboBox" prefWidth="150"/>
+                        <ComboBox fx:id="kundeComboBox" prefWidth="150" visible="false" managed="false"/>
+                    </HBox>
+
+
                     <Label text="Sprache:" />
                     <RadioButton fx:id="deRadioButton" text="DE" />
                     <RadioButton fx:id="enRadioButton" text="EN" />
