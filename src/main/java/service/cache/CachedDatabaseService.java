@@ -108,6 +108,14 @@ public class CachedDatabaseService implements DatabaseService {
         return delegate.getSchadenDetailsByMaklerSnrBulk(snrMaklerList);
     }
 
+
+    @Override
+    public List<RowData> executeRawQuery(String sql, String... params) throws Exception {
+        return delegate.executeRawQuery(sql, params);
+    }
+
+
+
     @Override
     public List<RowData> executeHartrodtQuery() throws Exception {
         // Ein einfacher Cache-Schlüssel ohne Parameter

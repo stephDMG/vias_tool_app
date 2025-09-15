@@ -9,26 +9,22 @@ import service.impl.LocalAiServiceImpl;
 import service.interfaces.AiService;
 import service.interfaces.DatabaseService;
 import service.interfaces.FileService;
-import service.op.OpListeProcessService;
+
+import service.op.OPListenService;
 import service.op.OpRepository;
-
-
-/**
- * Erweiterte Dependency Injection Factory für alle Services.
- * Singletons werden statisch initialisiert mit AI-Mode Support.
- */
 
 /**
  * Zentrale Factory für Service-Singletons (Datenbank, Datei, OP-Liste, AI).
  * Bietet Umschaltung des AI-Modus (LOCAL/HYBRID/AUTO) und Caching für DB.
  */
 public final class ServiceFactory {
+
     private static final Logger logger = LoggerFactory.getLogger(ServiceFactory.class);
+
     private static final DatabaseService databaseService;
-    private static OpListeProcessService opListeServiceInstance;
+    private static OPListenService opListenServiceInstance;
 
     private static FileService fileService = new FileServiceImpl();
-    //private static AiMode currentAiMode = AiMode.AUTO;
     private static AiMode currentAiMode = AiMode.LOCAL;
     private static AiService aiServiceInstance = null;
 
@@ -42,13 +38,23 @@ public final class ServiceFactory {
     private ServiceFactory() {
     }
 
-    public static OpListeProcessService getOpListeService() {
-        if (opListeServiceInstance == null) {
-            opListeServiceInstance = new OpListeProcessService(getDatabaseService(), getFileService());
+    /**
+     * Liefert den Singleton des neuen {@link OPListenService}.
+     */
+    public static OPListenService getOpListeService() {
+        if (opListenServiceInstance == null) {
+            synchronized (ServiceFactory.class) {
+                if (opListenServiceInstance == null) {
+                    opListenServiceInstance = new OPListenService(getDatabaseService(), getFileService());
+                }
+            }
         }
-        return opListeServiceInstance;
+        return opListenServiceInstance;
     }
 
+    /**
+     * Repository für OP-Listen (Singleton).
+     */
     public static OpRepository getOpRepository() {
         if (OP_REPOSITORY == null) {
             synchronized (ServiceFactory.class) {
@@ -94,7 +100,6 @@ public final class ServiceFactory {
     private static AiService createAiService() {
         return switch (currentAiMode) {
             case LOCAL -> new LocalAiServiceImpl();
-            // case HUGGING_FACE -> new AiServiceImpl();
             case HYBRID -> new HybridAiService();
             case AUTO -> detectBestAiService();
         };

@@ -1,4 +1,9 @@
 ﻿====================
+Version 1.2.10 (2025-09-11)
+====================
+- [Aenderung] Versionierung fixen
+
+====================
 Version 1.2.9 (2025-09-09)
 ====================
 - [Aenderung] Erweiterung OP-LIst
@@ -296,6 +301,7 @@ Version 1.0.1 (2025-08-07)
 ====================
 - [Aenderung] Es wurde eine Build-Automatisierung eingebunden, die sollte nur mit PowerShell-Skript umsetzen. Zum starten einfach ./release.ps1
 - [Aenderung] 
+
 
 
 

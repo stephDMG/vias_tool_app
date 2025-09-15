@@ -16,8 +16,9 @@ import model.enums.ExportFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import service.ServiceFactory;
-import service.op.OpListeProcessService;
-import service.op.OpListeTask;
+import service.op.ExecutionResult;
+import service.op.GenerateOpListeTask;
+import service.op.OPListenService;
 import service.op.OpRepository;
 
 import java.net.URL;
@@ -38,35 +39,25 @@ public class OpListTableViewController implements Initializable {
     private final ToggleGroup languageToggleGroup = new ToggleGroup();
     private final ToggleGroup formatToggleGroup = new ToggleGroup();
     private final ObservableList<String> steps = FXCollections.observableArrayList();
-    // --- UI ---
-    @FXML
-    private ComboBox<String> filterComboBox;
-    @FXML
-    private RadioButton deRadioButton;
-    @FXML
-    private RadioButton enRadioButton;
-    @FXML
-    private RadioButton excelRadioButton;
-    @FXML
-    private RadioButton pdfRadioButton;
-    @FXML
-    private ProgressBar progressBar;
-    @FXML
-    private Label statusLabel;
-    @FXML
-    private ListView<String> stepsListView;
-    @FXML
-    private Button startButton;
-    @FXML
-    private Button stopButton;
-    @FXML
-    private Button showTableButton;
 
+    // --- UI ---
+    @FXML private ComboBox<String> filterComboBox;
+    @FXML private ComboBox<String> kundeComboBox;   // <- Nouveau ComboBox pour clients
+    @FXML private RadioButton deRadioButton;
+    @FXML private RadioButton enRadioButton;
+    @FXML private RadioButton excelRadioButton;
+    @FXML private RadioButton pdfRadioButton;
+    @FXML private ProgressBar progressBar;
+    @FXML private Label statusLabel;
+    @FXML private ListView<String> stepsListView;
+    @FXML private Button startButton;
+    @FXML private Button stopButton;
+    @FXML private Button showTableButton;
     @FXML private Button loadOnlyButton;
 
     // --- Services & State ---
-    private OpListeProcessService opListeProcessService;
-    private OpListeTask processTask;
+    private OPListenService opListenService;
+    private GenerateOpListeTask processTask;
     private List<RowData> fullOpListeData;
     private String currentLanguage;
     private String currentFilter;
@@ -76,23 +67,32 @@ public class OpListTableViewController implements Initializable {
     @Override
     public void initialize(URL location, ResourceBundle resources) {
 
+        this.opListenService = ServiceFactory.getOpListeService();
 
-        this.opListeProcessService = new OpListeProcessService(
-                ServiceFactory.getDatabaseService(),
-                ServiceFactory.getFileService()
-        );
+        this.opRepository = ServiceFactory.getOpRepository();
 
-
-        this.opRepository = new OpRepository(
-                ServiceFactory.getDatabaseService(),
-                new OpListeFormatter()
-        );
-
-
-
+        // Filtres principaux
         filterComboBox.getItems().addAll("Kunde", "Makler", "Intern");
         filterComboBox.getSelectionModel().select("Kunde");
 
+        // Sous-filtres clients
+        kundeComboBox.getItems().addAll("Hartrodt", "Gateway", "Saco", "Fivestar");
+        kundeComboBox.setVisible(true);
+        kundeComboBox.setManaged(true);
+        kundeComboBox.getSelectionModel().selectFirst();
+
+        // Affichage dynamique du combo "Kunde"
+        filterComboBox.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
+            boolean isKunde = "Kunde".equalsIgnoreCase(newVal);
+            kundeComboBox.setVisible(isKunde);
+            kundeComboBox.setManaged(isKunde);
+
+            if (isKunde && kundeComboBox.getValue() == null) {
+                kundeComboBox.getSelectionModel().selectFirst();
+            }
+        });
+
+        // RadioButtons
         deRadioButton.setToggleGroup(languageToggleGroup);
         enRadioButton.setToggleGroup(languageToggleGroup);
         deRadioButton.setSelected(true);
@@ -104,9 +104,7 @@ public class OpListTableViewController implements Initializable {
         stepsListView.setItems(steps);
 
         setIdleState();
-
     }
-
 
     @FXML
     private void loadOnly() {
@@ -136,7 +134,6 @@ public class OpListTableViewController implements Initializable {
             statusLabel.setText("Hauptliste geladen: " + count + " Zeilen.");
             progressBar.setVisible(false);
 
-
             startButton.setDisable(false);
             stopButton.setDisable(true);
             showTableButton.setDisable(count == 0);
@@ -152,7 +149,6 @@ public class OpListTableViewController implements Initializable {
 
         new Thread(loadTask, "oplist-loadonly-thread").start();
     }
-
 
     private void setIdleState() {
         progressBar.setVisible(false);
@@ -172,7 +168,6 @@ public class OpListTableViewController implements Initializable {
 
         showTableButton.setDisable(!cacheReady);
     }
-
 
     private void setRunningState() {
         startButton.setDisable(true);
@@ -212,18 +207,25 @@ public class OpListTableViewController implements Initializable {
         currentFilter = filterComboBox.getValue();
         currentFormat = (fmt != null && ((RadioButton) fmt).getText().equalsIgnoreCase("PDF")) ? ExportFormat.PDF : ExportFormat.XLSX;
 
+        // Kunde → sous-filtres obligatoires
+        if ("Kunde".equalsIgnoreCase(currentFilter)) {
+            String selectedKunde = kundeComboBox.getValue();
+            if (selectedKunde == null || selectedKunde.isBlank()) {
+                setFailedState();
+                showErrorDialog("Ungültige Eingaben", "Bitte einen Kunden auswählen.");
+                return;
+            }
+            currentFilter = selectedKunde; // ex: "Hartrodt"
+        }
+
         if (currentFilter == null || currentFilter.isBlank()) {
             setFailedState();
             showErrorDialog("Ungültige Eingaben", "Bitte einen Filter auswählen.");
             return;
         }
 
-        if (opListeProcessService.monthlyExportFolderExists()) {
-            steps.add("ℹ️ Hinweis: Monatsordner existiert bereits. Dateien werden überschrieben/ergänzt.");
-        }
 
-        // Crée la tâche qui gère tout le processus de A à Z.
-        processTask = new OpListeTask(opListeProcessService, currentLanguage, currentFilter, currentFormat);
+        processTask = new GenerateOpListeTask(opListenService, currentFilter, currentLanguage, currentFormat);
 
         progressBar.progressProperty().unbind();
         progressBar.progressProperty().bind(processTask.progressProperty());
@@ -235,7 +237,13 @@ public class OpListTableViewController implements Initializable {
         });
 
         processTask.setOnSucceeded(e -> {
-            setCompletedState();
+            ExecutionResult result = processTask.getValue();
+            if (result.isSuccess()) {
+                setCompletedState();
+            } else {
+                setFailedState();
+                showErrorDialog("Fehler", result.getMessage());
+            }
         });
 
         processTask.setOnCancelled(e -> {
@@ -269,11 +277,6 @@ public class OpListTableViewController implements Initializable {
 
 
     @FXML
-    private void exportSelectedData() {
-        showErrorDialog("Funktion nicht mehr verfügbar", "Der Export startet jetzt automatisch im Hauptprozess.");
-    }
-
-    @FXML
     private void showOpListTable() {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/OpListViewer.fxml"));
@@ -283,7 +286,6 @@ public class OpListTableViewController implements Initializable {
             stage.setTitle("OP-Liste (Hauptliste)");
 
             Scene scene = new Scene(root, 1200, 700);
-
 
             var css = getClass().getResource("/css/styles-atlantafx.css");
             if (css != null) {
