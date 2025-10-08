@@ -1,6 +1,7 @@
-package file.extrator;
+package file.extrator.versicherung;
 
 
+import file.extrator.DataExtractor;
 import file.reader.PdfReader;
 import model.RowData;
 import model.VersicherungsData;
@@ -21,7 +22,7 @@ import java.util.regex.Pattern;
  * @author Stephane Dongmo
  * @since 17/07/2025
  */
-public class VersicherungsExtractor implements DataExtractor {
+public class VersicherungsExtractor implements DataExtractor<VersicherungsData> {
 
     private static final Logger logger = LoggerFactory.getLogger(VersicherungsExtractor.class);
 

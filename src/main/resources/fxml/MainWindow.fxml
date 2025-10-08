@@ -60,6 +60,13 @@
                     <MenuItem fx:id="statusItem" mnemonicParsing="false" onAction="#showOpListView"
                               styleClass="menu-item" text="OP-Listen Export" visible="false"/>
                 </Menu>
+
+                <Menu text="Verträge">
+                    <MenuItem fx:id="coverDashboardItem"
+                              mnemonicParsing="false"
+                              onAction="#showCoverDashboardView"
+                              text="COVER Dashboard"/>
+                </Menu>
                 <effect>
                     <InnerShadow>
                         <color>

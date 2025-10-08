@@ -1,7 +1,10 @@
 package gui.controller.dialog;
 
 import javafx.fxml.FXML;
-import javafx.scene.control.*;
+import javafx.scene.control.Alert;
+import javafx.scene.control.CheckBox;
+import javafx.scene.control.ColorPicker;
+import javafx.scene.control.ComboBox;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 
@@ -9,26 +12,16 @@ import java.util.List;
 
 public class GroupingDialogController {
 
-    @FXML private ComboBox<String> headerCombo;
-    @FXML private ColorPicker colorPickerA;
-    @FXML private ColorPicker colorPickerB;
-    @FXML private CheckBox enableCheck;
+    @FXML
+    private ComboBox<String> headerCombo;
+    @FXML
+    private ColorPicker colorPickerA;
+    @FXML
+    private ColorPicker colorPickerB;
+    @FXML
+    private CheckBox enableCheck;
 
     private Result result = null;
-
-    public static class Result {
-        public final boolean enabled;
-        public final String header;
-        public final Color colorA;
-        public final Color colorB;
-
-        public Result(boolean enabled, String header, Color colorA, Color colorB) {
-            this.enabled = enabled;
-            this.header = header;
-            this.colorA = colorA;
-            this.colorB = colorB;
-        }
-    }
 
     public void init(List<String> selectableHeaders, String currentHeader,
                      Color currentA, Color currentB, boolean enabled) {
@@ -74,9 +67,21 @@ public class GroupingDialogController {
         ((Stage) enableCheck.getScene().getWindow()).close();
     }
 
-
-
     public Result getResult() {
         return result;
+    }
+
+    public static class Result {
+        public final boolean enabled;
+        public final String header;
+        public final Color colorA;
+        public final Color colorB;
+
+        public Result(boolean enabled, String header, Color colorA, Color colorB) {
+            this.enabled = enabled;
+            this.header = header;
+            this.colorA = colorA;
+            this.colorB = colorB;
+        }
     }
 }

@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane prefHeight="500.0" prefWidth="950.0"
+            xmlns="http://javafx.com/javafx/17.0.12"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="gui.cover.CoverDomainController">
+
+    <top>
+        <VBox spacing="10">
+            <padding>
+                <Insets bottom="10" left="10" right="10" top="10"/>
+            </padding>
+
+            <Label fx:id="domainTitle"
+                   style="-fx-font-size: 20px; -fx-font-weight: bold;"/>
+
+            <HBox alignment="CENTER_LEFT" spacing="10">
+                <Label text="Kernfrage:"/>
+                <ChoiceBox fx:id="kernfrageChoice" prefWidth="400"/>
+            </HBox>
+
+            <HBox fx:id="parameter" spacing="20" visible="false" managed="false">
+                <VBox spacing="6">
+                    <Label text="Vertragsstand"/>
+                    <ComboBox fx:id="vertragsstandCombo" prefWidth="200"/>
+                </VBox>
+                <VBox spacing="6">
+                    <Label text="Bearbeitungsstand"/>
+                    <ListView fx:id="bearbeitungsstandList" prefHeight="100" prefWidth="200"/>
+                    <Label fx:id="bastandSelectedLabel"
+                           text="Ausgewählt: -"
+                           wrapText="true"
+                           maxWidth="200"
+                           style="-fx-font-style: italic; -fx-text-fill: gray;"/>
+                </VBox>
+
+                <!-- Gruppierung -->
+                <VBox spacing="6">
+                    <HBox spacing="10" alignment="CENTER_LEFT">
+                        <Label text="Gruppierung"/>
+                        <CheckBox fx:id="groupByAllCheck" text="Alles"/>
+                    </HBox>
+
+                    <ListView fx:id="groupByList" prefHeight="100" prefWidth="200"/>
+                    <Label fx:id="groupBySelectedLabel"
+                           text="Ausgewählt: Standard (all)"
+                           wrapText="true"
+                           maxWidth="200"
+                           style="-fx-font-style: italic; -fx-text-fill: gray;"/>
+                </VBox>
+
+
+
+                <!-- Date filters -->
+                <HBox fx:id="dateBox" spacing="20" visible="false" managed="false">
+                    <VBox spacing="6">
+                        <Label text="Ab-Datum"/>
+                        <DatePicker fx:id="abDatePicker"/>
+                    </VBox>
+                    <VBox spacing="6">
+                        <Label text="Bis-Datum"/>
+                        <DatePicker fx:id="bisDatePicker"/>
+                    </VBox>
+                </HBox>
+
+                <VBox alignment="BOTTOM_RIGHT">
+                    <Button fx:id="ausfuehrenButton" onAction="#runKernfrage" text="🔍 Ausführen"
+                            disable="true"/>
+                </VBox>
+            </HBox>
+        </VBox>
+    </top>
+
+    <center>
+        <VBox spacing="10" VBox.vgrow="ALWAYS">
+            <Label fx:id="messageLabel" style="-fx-text-fill: gray;"/>
+            <VBox fx:id="resultsContainer" VBox.vgrow="ALWAYS"/>
+        </VBox>
+    </center>
+
+    <bottom>
+        <HBox alignment="CENTER_RIGHT">
+            <Button onAction="#closeWindow" text="Schließen"/>
+        </HBox>
+    </bottom>
+</BorderPane>

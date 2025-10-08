@@ -1,6 +1,6 @@
 package service.op;
 
-import formatter.OpListeFormatter;
+import formatter.op.OpListeFormatter;
 import model.RowData;
 import service.interfaces.DatabaseService;
 

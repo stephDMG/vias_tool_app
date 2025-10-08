@@ -1,7 +1,7 @@
 package gui.controller;
 
-import gui.controller.manager.TableViewBuilder;
 import gui.controller.manager.EnhancedTableManager;
+import gui.controller.manager.TableViewBuilder;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;

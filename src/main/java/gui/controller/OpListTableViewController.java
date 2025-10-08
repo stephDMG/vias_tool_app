@@ -1,6 +1,5 @@
 package gui.controller;
 
-import formatter.OpListeFormatter;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
@@ -41,19 +40,32 @@ public class OpListTableViewController implements Initializable {
     private final ObservableList<String> steps = FXCollections.observableArrayList();
 
     // --- UI ---
-    @FXML private ComboBox<String> filterComboBox;
-    @FXML private ComboBox<String> kundeComboBox;   // <- Nouveau ComboBox pour clients
-    @FXML private RadioButton deRadioButton;
-    @FXML private RadioButton enRadioButton;
-    @FXML private RadioButton excelRadioButton;
-    @FXML private RadioButton pdfRadioButton;
-    @FXML private ProgressBar progressBar;
-    @FXML private Label statusLabel;
-    @FXML private ListView<String> stepsListView;
-    @FXML private Button startButton;
-    @FXML private Button stopButton;
-    @FXML private Button showTableButton;
-    @FXML private Button loadOnlyButton;
+    @FXML
+    private ComboBox<String> filterComboBox;
+    @FXML
+    private ComboBox<String> kundeComboBox;   // <- Nouveau ComboBox pour clients
+    @FXML
+    private RadioButton deRadioButton;
+    @FXML
+    private RadioButton enRadioButton;
+    @FXML
+    private RadioButton excelRadioButton;
+    @FXML
+    private RadioButton pdfRadioButton;
+    @FXML
+    private ProgressBar progressBar;
+    @FXML
+    private Label statusLabel;
+    @FXML
+    private ListView<String> stepsListView;
+    @FXML
+    private Button startButton;
+    @FXML
+    private Button stopButton;
+    @FXML
+    private Button showTableButton;
+    @FXML
+    private Button loadOnlyButton;
 
     // --- Services & State ---
     private OPListenService opListenService;
@@ -164,7 +176,8 @@ public class OpListTableViewController implements Initializable {
             if (opRepository != null && !opRepository.isCacheEmpty()) {
                 cacheReady = true;
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
 
         showTableButton.setDisable(!cacheReady);
     }

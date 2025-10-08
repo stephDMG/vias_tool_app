@@ -1,4 +1,4 @@
-package formatter;
+package formatter.op;
 
 import model.RowData;
 import org.slf4j.Logger;

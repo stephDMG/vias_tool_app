@@ -35,7 +35,6 @@ public class Gateway implements IKundeStrategy {
     }
 
 
-
     @Override
     public String buildFileName(String policeNr, String land, String ort, String extension) {
         String safePolicy = FileUtil.sanitizeFileName(policeNr);
@@ -43,7 +42,6 @@ public class Gateway implements IKundeStrategy {
         String safeOrt = FileUtil.sanitizeFileName(ort);
         return String.format("%s_%s_%s.%s", safePolicy, safeLand, safeOrt, extension);
     }
-
 
 
 }

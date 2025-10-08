@@ -11,12 +11,12 @@ import java.util.List;
  * @author Stephane Dongmo
  * @since 16/07/2025
  */
-public interface DataExtractor {
+public interface DataExtractor<T> {
 
     /**
      * Extrahiere Daten aus der angegebenen Datei.
      */
-    List<VersicherungsData> extractData(String filePath);
+    List<T> extractData(String filePath);
 
     /**
      * Prüft, ob die Datei extrahiert werden kann.

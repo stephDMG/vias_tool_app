@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/17.0.12"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="gui.controller.CoverDashboardViewController">
+
+    <top>
+        <VBox spacing="8" style="-fx-background-color: transparent;">
+            <padding>
+                <Insets bottom="20" left="20" right="20" top="20"/>
+            </padding>
+            <Label style="-fx-font-size: 22px; -fx-font-weight: bold;"
+                   text="Cover Übersicht"/>
+            <Label style="-fx-opacity: 0.8;" text="Wählen Sie einen Bereich aus."/>
+        </VBox>
+    </top>
+
+    <center>
+        <VBox spacing="20">
+            <padding>
+                <Insets bottom="20" left="20" right="20" top="0"/>
+            </padding>
+
+            <GridPane hgap="16" vgap="16" VBox.vgrow="ALWAYS">
+                <columnConstraints>
+                    <ColumnConstraints percentWidth="50"/>
+                    <ColumnConstraints percentWidth="50"/>
+                </columnConstraints>
+                <rowConstraints>
+                    <RowConstraints percentHeight="50"/>
+                    <RowConstraints percentHeight="50"/>
+                </rowConstraints>
+
+                <!-- Vertrags- und Angebotsmanagement -->
+                <VBox fx:id="animatedVBox1" alignment="TOP_LEFT" spacing="10"
+                      styleClass="cover-card"
+                      GridPane.columnIndex="0"
+                      GridPane.rowIndex="0">
+                    <Label styleClass="title" text="Vertrags- und Angebotsmanagement"/>
+                    <Label text="Übersichten &amp; Kernfragen zu Angeboten (z. B. unbearbeitet, angenommen/policiert, abgelehnt)."
+                           wrapText="true" styleClass="desc"/>
+                    <Button maxWidth="Infinity" onAction="#openAngebotswesen"
+                            style="-fx-font-size: 14px; -fx-font-weight: bold;"
+                            text="Angebotswesen"/>
+                    <Button maxWidth="Infinity" onAction="#openVertragsstatus"
+                            style="-fx-font-size: 14px; -fx-font-weight: bold;"
+                            text="Vertragsstatus"/>
+                    <Button maxWidth="Infinity" onAction="#openKuendigungsfrist"
+                            style="-fx-font-size: 14px; -fx-font-weight: bold;"
+                            text="Kündigungsfristverkürzung"/>
+                    <Button maxWidth="Infinity" onAction="#openRelevanteVias"
+                            style="-fx-font-size: 14px; -fx-font-weight: bold;"
+                            text="Relevante VIAS-Felder"/>
+                </VBox>
+
+                <!-- Sachbearbeiter -->
+                <VBox fx:id="animatedVBox2" alignment="TOP_LEFT" spacing="10"
+                      styleClass="cover-card"
+                      GridPane.columnIndex="1" GridPane.rowIndex="0">
+                    <Label styleClass="title"
+                           text="Sachbearbeiter- und Bearbeitungskennzahlen"/>
+                    <Label text="KPIs, Durchlaufzeiten, Workload-Übersichten (Platzhalter)."
+                           wrapText="true" styleClass="desc"/>
+                </VBox>
+
+                <!-- Vertragsinhalte -->
+                <VBox fx:id="animatedVBox3" alignment="TOP_LEFT" spacing="10"
+                      styleClass="cover-card"
+                      GridPane.columnIndex="0" GridPane.rowIndex="1">
+                    <Label styleClass="title"
+                           text="Vertragsinhalte &amp; Deckungsanalysen"/>
+                    <Label text="Inhalte, Deckungen, Bausteine, Limits (Platzhalter)."
+                           wrapText="true" styleClass="desc"/>
+                </VBox>
+
+                <!-- Finanz -->
+                <VBox fx:id="animatedVBox4" alignment="TOP_LEFT" spacing="10"
+                      styleClass="cover-card"
+                      GridPane.columnIndex="1" GridPane.rowIndex="1">
+                    <Label styleClass="title"
+                           text="Finanz- &amp; Schadensauswertungen"/>
+                    <Label text="Prämien, Schäden, Quoten, Salden (Platzhalter)."
+                           wrapText="true" styleClass="desc"/>
+                </VBox>
+            </GridPane>
+
+        </VBox>
+    </center>
+</BorderPane>

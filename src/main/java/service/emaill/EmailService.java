@@ -1,4 +1,4 @@
-package service;
+package service.emaill;
 
 import javax.mail.*;
 import javax.mail.internet.InternetAddress;
@@ -10,12 +10,24 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Properties;
 
+/**
+ * Einfacher E-Mail-Dienst auf Basis von JavaMail.
+ * Unterstützt Textkörper und Dateianhänge.
+ */
 public class EmailService {
 
     private final Properties properties;
     private final String username;
     private final String password;
 
+    /**
+     * Erstellt einen neuen EmailService.
+     *
+     * @param host SMTP-Host
+     * @param port SMTP-Port
+     * @param username Benutzername/Absenderadresse
+     * @param password Passwort oder App-spezifisches Passwort
+     */
     public EmailService(String host, String port, String username, String password) {
         this.properties = new Properties();
         properties.put("mail.smtp.auth", "true");
@@ -27,6 +39,16 @@ public class EmailService {
         this.password = password;
     }
 
+    /**
+     * Sendet eine E-Mail mit optionalen Dateianhängen.
+     *
+     * @param to Empfängeradresse (kommagetrennt möglich)
+     * @param subject Betreff
+     * @param body Nachrichtentext (UTF-8)
+     * @param attachments Liste von Dateien, die angehängt werden sollen (kann leer sein)
+     * @throws MessagingException wenn das Senden fehlschlägt
+     * @throws IOException bei Fehlern beim Anhängen von Dateien
+     */
     public void sendEmail(String to, String subject, String body, List<File> attachments) throws MessagingException, IOException {
         Session session = Session.getInstance(properties, new Authenticator() {
             @Override

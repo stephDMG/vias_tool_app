@@ -10,7 +10,7 @@
     </padding>
 
     <top>
-        <HBox alignment="CENTER_LEFT" prefHeight="25.0" prefWidth="927.0" spacing="10">
+        <HBox alignment="CENTER_LEFT" prefHeight="47.0" prefWidth="927.0" spacing="10">
             <Label text="OP-Liste (Hauptliste)" />
             <Label text="Filter Policen-Nr:" />
             <TextField fx:id="policyFilterField" prefWidth="180" promptText="z.B.: W0761530" />
@@ -23,7 +23,7 @@
     </top>
 
     <center>
-        <VBox spacing="8" VBox.vgrow="ALWAYS">
+        <VBox prefHeight="518.0" prefWidth="927.0" spacing="8" VBox.vgrow="ALWAYS">
             <ProgressBar fx:id="progressBar" prefWidth="300" visible="false" />
             <Label fx:id="statusLabel" textFill="#666666" />
 
@@ -33,7 +33,10 @@
 
     <bottom>
         <HBox alignment="CENTER_RIGHT" spacing="10">
-            <Button onAction="#closeWindow" text="Schließen" />
+            <Button onAction="#closeWindow" text="Schließen">
+            <HBox.margin>
+               <Insets bottom="8.0" left="8.0" right="8.0" top="8.0" />
+            </HBox.margin></Button>
         </HBox>
     </bottom>
 </BorderPane>

@@ -17,8 +17,8 @@ import model.RowData;
 import model.enums.ExportFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import service.DatenanreicherungService;
 import service.ServiceFactory;
+import service.enrichment.DatenanreicherungService;
 import service.interfaces.FileService;
 import util.FileSearchTool;
 
@@ -86,12 +86,6 @@ public class EnrichmentViewController implements Initializable {
         logger.info("✅ EnrichmentViewController initialized successfully.");
     }
 
-    /*
-    @FXML
-    private void handleDeleteSelectedColumns() {
-        tableManager.handleDeleteSelectedColumns(fullResults);
-    }
-    */
 
 
     @FXML

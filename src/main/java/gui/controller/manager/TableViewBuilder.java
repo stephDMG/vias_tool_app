@@ -1,6 +1,6 @@
 package gui.controller.manager;
 
-
+import javafx.collections.ObservableList;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
 import javafx.scene.control.*;
@@ -8,52 +8,47 @@ import javafx.scene.layout.VBox;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Objects;
 
 /**
  * Builder für adaptive Tabellenkonfiguration.
  * Lädt UniversalTableView.fxml und passt es an die Anforderungen der Klasse an.
  */
 public class TableViewBuilder {
-
     private final VBox tableContainer;
-    private TableView<?> tableView = null;
     private final TextField searchField;
     private final Button deleteColumnsButton;
     private final Pagination pagination;
     private final Label resultsCountLabel;
     private final Button exportCsvButton;
     private final Button exportXlsxButton;
+    private final TableView<ObservableList<String>> tableView;
+    private final Button cleanColumnsButton;
 
     private boolean optGroupStriping = false;
     private String groupStripingHeader = null;
 
-    // Private Konstruktor - nur über build() erreichbar
+
+    // Private Konstruktor - nur über create() erreichbar
     private TableViewBuilder() throws IOException {
-        FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/components/UniversalTableView.fxml"));
+        FXMLLoader loader = new FXMLLoader(Objects.requireNonNull(getClass().getResource("/fxml/components/UniversalTableView.fxml")));
         this.tableContainer = loader.load();
 
         // FXML-Komponenten extrahieren
-        this.tableView = (TableView<?>) tableContainer.lookup("#tableView");
+        this.tableView = (TableView<ObservableList<String>>) tableContainer.lookup("#tableView");
         this.searchField = (TextField) tableContainer.lookup("#searchField");
         this.deleteColumnsButton = (Button) tableContainer.lookup("#deleteColumnsButton");
         this.pagination = (Pagination) tableContainer.lookup("#pagination");
         this.resultsCountLabel = (Label) tableContainer.lookup("#resultsCountLabel");
         this.exportCsvButton = (Button) tableContainer.lookup("#exportCsvButton");
         this.exportXlsxButton = (Button) tableContainer.lookup("#exportXlsxButton");
+        this.cleanColumnsButton = (Button) tableContainer.lookup("#cleanColumnsButton");
+
 
         if (this.tableView != null) {
             this.tableView.setFixedCellSize(24);
         }
-
     }
-
-    public TableViewBuilder withGroupStriping(String header) {
-        this.optGroupStriping = true;
-        this.groupStripingHeader = header;
-        return this;
-    }
-
-
 
     /**
      * Erstellt Builder-Instanz
@@ -64,6 +59,12 @@ public class TableViewBuilder {
         } catch (IOException e) {
             throw new RuntimeException("Could not load UniversalTableView.fxml", e);
         }
+    }
+
+    public TableViewBuilder withGroupStriping(String header) {
+        this.optGroupStriping = true;
+        this.groupStripingHeader = header;
+        return this;
     }
 
     /**
@@ -125,7 +126,7 @@ public class TableViewBuilder {
      */
     public EnhancedTableManager buildManager() {
         EnhancedTableManager manager = new EnhancedTableManager(
-                (TableView) tableView,
+                tableView,
                 searchField,
                 deleteColumnsButton,
                 pagination,
@@ -136,6 +137,9 @@ public class TableViewBuilder {
             manager.enableGroupStripingByHeader(groupStripingHeader);
         }
 
+        if (cleanColumnsButton != null) {
+            manager.setCleanButton(cleanColumnsButton);
+        }
         return manager;
     }
 
@@ -146,8 +150,8 @@ public class TableViewBuilder {
         return tableContainer;
     }
 
-    // Getters für einzelne Komponenten (falls benötigt)
-    public TableView<?> getTableView() {
+    // Getters für einzelne Komponenten
+    public TableView<ObservableList<String>> getTableView() {
         return tableView;
     }
 
@@ -173,6 +177,10 @@ public class TableViewBuilder {
 
     public Button getExportXlsxButton() {
         return exportXlsxButton;
+    }
+
+    public Button getCleanColumnsButton() {
+        return cleanColumnsButton;
     }
 
     public enum Feature {

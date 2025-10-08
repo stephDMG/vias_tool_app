@@ -1,35 +1,43 @@
 package gui.controller.manager;
 
 import formatter.ColumnValueFormatter;
+import gui.controller.dialog.Dialog;
+import javafx.animation.PauseTransition;
+import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
 import javafx.scene.Node;
 import javafx.scene.control.*;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
+import javafx.util.Duration;
 import model.RowData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import gui.controller.dialog.Dialog;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
-
-import javafx.animation.PauseTransition;
-import javafx.util.Duration;
-import javafx.scene.layout.Region;
 
 /**
  * Universelle Tabellenverwaltung für alle Controller.
- * Features: Suche, Spaltenmanagement, Pagination, Kontextmenü, Export-Header
+ * Features: Suche, Spaltenmanagement, Pagination, Kontextmenü, Export-Header.
+ *
+ * Diese Version unterstützt zwei Modi der Pagination:
+ * 1. Client-seitige Pagination (für kleine Datenmengen, alte Logik bleibt erhalten).
+ * 2. Server-seitige Pagination (für große Datenmengen, neue, performante Logik).
  */
 public class EnhancedTableManager {
     private static final Logger logger = LoggerFactory.getLogger(EnhancedTableManager.class);
     private static final int DEFAULT_ROWS_PER_PAGE = 100;
+    private static final ExecutorService EXECUTOR = Executors.newFixedThreadPool(4);
 
     // Core Components
     private final TableView<ObservableList<String>> tableView;
@@ -43,23 +51,28 @@ public class EnhancedTableManager {
     private List<RowData> filteredData = new ArrayList<>();
     private List<String> currentHeaders = new ArrayList<>();
     private int rowsPerPage = DEFAULT_ROWS_PER_PAGE;
+    private int totalCount = 0;
+    private DataLoader dataLoader = null;
 
     // Feature Flags
     private boolean searchEnabled = false;
     private boolean paginationEnabled = false;
+    private boolean serverPaginationEnabled = false;
     private boolean selectionEnabled = false;
 
     private Integer lastRowsPerPage = null;
-
 
     private int groupColIndex = -1;
     private List<Boolean> stripeIsA = new ArrayList<>();
 
     private Color groupColorA = null;
-    private Color groupColorB =null;
+    private Color groupColorB = null;
     private boolean groupStripingEnabled = false;
     private String groupStripingHeader = null;
+    private Button cleanColumnsButton;
 
+
+    private boolean cleanRanForThisPage = false;
 
 
     /**
@@ -81,38 +94,19 @@ public class EnhancedTableManager {
         }
     }
 
-    /*
-    public EnhancedTableManager enableGroupStripingByHeader(String headerName) {
-        if (headerName == null || headerName.isBlank()) {
-            throw new IllegalArgumentException("Der Header-Name für Group Striping darf nicht leer sein.");
-        }
-        this.groupStripingEnabled = true;
-        this.groupStripingHeader = headerName;
-        installGroupRowFactory();
-
-        tableView.getItems().addListener(
-                (javafx.collections.ListChangeListener<? super javafx.collections.ObservableList<String>>) c -> recomputeGroupStripes()
-        );
-
-        // Recalcule quand l'utilisateur trie
-        tableView.getSortOrder().addListener(
-                (javafx.collections.ListChangeListener<TableColumn<ObservableList<String>, ?>>) c ->
-                        javafx.application.Platform.runLater(this::recomputeGroupStripes)
-        );
-        tableView.comparatorProperty().addListener((obs, o, n) ->
-                javafx.application.Platform.runLater(this::recomputeGroupStripes)
-        );
-
-        return this;
-    }
-    */
-
-
     /**
      * Simplified constructor for basic table only
      */
     public EnhancedTableManager(TableView<ObservableList<String>> tableView) {
         this(tableView, null, null, null, null);
+    }
+
+    private static String toRgbaCss(Color c) {
+        int r = (int) Math.round(c.getRed() * 255);
+        int g = (int) Math.round(c.getGreen() * 255);
+        int b = (int) Math.round(c.getBlue() * 255);
+        String a = String.format(java.util.Locale.US, "%.3f", c.getOpacity());
+        return "rgba(" + r + "," + g + "," + b + "," + a + ")";
     }
 
     /**
@@ -126,11 +120,19 @@ public class EnhancedTableManager {
 
         searchEnabled = true;
         searchField.textProperty().addListener((obs, oldVal, newVal) -> {
-            filterData(newVal);
+            // Die Suchlogik muss sich an den Paginierungsmodus anpassen
+            if (serverPaginationEnabled) {
+                // Bei Server-Pagination wird die Suche über den DataLoader neu gestartet
+                // TODO: Hier muss eine neue Anfrage an den Server mit dem Suchfilter gesendet werden
+                logger.warn("Server-side search is not yet implemented. Please handle this in the controller.");
+            } else {
+                filterData(newVal);
+            }
         });
         logger.info("Search functionality enabled");
         return this;
     }
+
 
     /**
      * Aktiviert Spaltenauswahl und Löschen
@@ -154,6 +156,10 @@ public class EnhancedTableManager {
         return this;
     }
 
+    // =====================================================
+    // ============ CLIENT-SIDE PAGINATION =================
+    // =====================================================
+
     /**
      * Aktiviert Pagination
      */
@@ -162,21 +168,138 @@ public class EnhancedTableManager {
             logger.warn("Pagination requested but no Pagination component provided");
             return this;
         }
-
         this.rowsPerPage = rowsPerPage;
         this.paginationEnabled = true;
-        pagination.setPageFactory(this::createPage);
         pagination.setVisible(false);
-        logger.info("Pagination enabled with {} rows per page", rowsPerPage);
+        logger.info("Client-side pagination enabled with {} rows per page", rowsPerPage);
         return this;
     }
 
+    /**
+     * Lädt Daten in die Tabelle (Client-seitige Pagination).
+     * Diese Methode ist für die Abwärtskompatibilität und kleine Datenmengen gedacht.
+     *
+     * @param data Die vollständige Liste der zu ladenden Daten.
+     */
+    public void populateTableView(List<RowData> data) {
+        serverPaginationEnabled = false; // Deaktiviert den Server-Modus
+        // this.dataLoader = null;
+
+        if (data == null || data.isEmpty()) {
+            clearTable();
+            return;
+        }
+        this.originalData = new ArrayList<>(data);
+
+        if (searchEnabled && searchField != null) {
+            filterData(searchField.getText());
+        } else {
+            this.filteredData = new ArrayList<>(data);
+            refreshTable();
+        }
+    }
+
+    /**
+     * Aktualisiert die Tabellenanzeige basierend auf dem Modus.
+     */
+    private void refreshTable() {
+        updateResultsCount();
+
+        if(serverPaginationEnabled) {
+            setupServerPagination();
+        } else if (paginationEnabled && pagination != null) {
+            setupClientPagination();
+        }else {
+            buildTableColumns(filteredData);
+            populateTableData(filteredData);
+            recomputeGroupStripes();
+        }
+    }
+
+    /**
+     * Setup für Client-seitige Pagination
+     */
+    private void setupClientPagination() {
+        int pageCount = (int) Math.ceil((double) filteredData.size() / rowsPerPage);
+        pagination.setPageCount(Math.max(pageCount, 1));
+        pagination.setCurrentPageIndex(0);
+        //pagination.setVisible(filteredData.size() > rowsPerPage);
+        pagination.setVisible(filteredData.size() > 0);
+
+        pagination.setPageFactory(this::createClientPage);
+        updateResultsCount();
+    }
+
+    private Node createClientPage(int pageIndex) {
+        int fromIndex = pageIndex * rowsPerPage;
+        int toIndex = Math.min(fromIndex + rowsPerPage, filteredData.size());
+        List<RowData> pageData = filteredData.subList(fromIndex, toIndex);
+
+        buildTableColumns(pageData);
+        populateTableData(pageData);
+        recomputeGroupStripes();
+
+        return new VBox();
+    }
+
+    // =====================================================
+    // ============ SERVER-SIDE PAGINATION =================
+    // =====================================================
+
+    /**
+     * Setup für Server-seitige Pagination.
+     * Konfiguriert den PageFactory-Callback, um den DataLoader zu nutzen.
+     */
+    private void setupServerPagination() {
+        if (pagination == null) return;
+
+        int pageCount = (int) Math.ceil((double) totalCount / rowsPerPage);
+        pagination.setPageCount(Math.max(pageCount, 1));
+        pagination.setCurrentPageIndex(0);
+        pagination.setVisible(totalCount > 0);
+
+        pagination.setPageFactory(this::createServerPage);
+
+        updateResultsCount();
+    }
+
+    private Node createServerPage(int pageIndex) {
+        loadServerPageData(pageIndex);
+        return new Label();
+    }
+
+    private void loadServerPageData(int pageIndex) {
+        EXECUTOR.submit(() -> {
+            try {
+                List<RowData> pageData = dataLoader.loadPage(pageIndex, rowsPerPage);
+
+                Platform.runLater(() -> {
+                    if (pageData == null || pageData.isEmpty()) {
+                        tableView.setItems(FXCollections.observableArrayList());
+                        tableView.setPlaceholder(new Label("Keine Daten gefunden."));
+                    } else {
+                        buildTableColumns(pageData);
+                        populateTableData(pageData);
+                        recomputeGroupStripes();
+                    }
+                });
+            } catch (Exception e) {
+                Platform.runLater(() ->
+                        Dialog.showErrorDialog("Ladefehler", "Daten konnten nicht geladen werden:\n" + e.getMessage())
+                );
+            }
+        });
+    }
+
+
+    /**
+     * Konfiguriert Gruppierungsstreifen
+     */
     public void applyGroupingConfig(boolean enabled, String headerName, Color colorA, Color colorB) {
         this.groupStripingEnabled = enabled && headerName != null && !headerName.isBlank();
-        this.groupStripingHeader  = this.groupStripingEnabled ? headerName : null;
-        this.groupColorA          = this.groupStripingEnabled ? colorA : null;
-        this.groupColorB          = this.groupStripingEnabled ? colorB : null;
-
+        this.groupStripingHeader = this.groupStripingEnabled ? headerName : null;
+        this.groupColorA = this.groupStripingEnabled ? colorA : null;
+        this.groupColorB = this.groupStripingEnabled ? colorB : null;
         if (!groupStripingEnabled) {
             stripeIsA.clear();
         }
@@ -188,29 +311,32 @@ public class EnhancedTableManager {
         applyGroupingConfig(true, headerName, /*A*/ null, /*B*/ null);
         return this;
     }
+
     public void disableGrouping() {
         applyGroupingConfig(false, null, null, null);
     }
 
 
     /**
-     * Lädt Daten in die Tabelle
+     * Initialisiert die Tabelle für die Server-seitige Pagination.
+     * Diese Methode wird von Controllern wie CoverViewController verwendet.
+     *
+     * @param totalCount Die Gesamtanzahl der Datensätze.
+     * @param dataLoader Eine Funktion, die Daten seitenweise lädt.
      */
-    public void populateTableView(List<RowData> data) {
-        if (data == null || data.isEmpty()) {
+    public void loadDataFromServer(int totalCount, DataLoader dataLoader) {
+        serverPaginationEnabled = true;
+        this.dataLoader = Objects.requireNonNull(dataLoader, "DataLoader must not be null for server-side pagination.");
+        this.totalCount = totalCount;
+        if (this.totalCount <= 0) {
             clearTable();
             return;
         }
-
-        this.originalData = new ArrayList<>(data);
-
-        if (searchEnabled && searchField != null) {
-            filterData(searchField.getText());
-        } else {
-            this.filteredData = new ArrayList<>(data);
-            refreshTable();
-        }
+        setupServerPagination();
+        logger.info("Server-side pagination initialized. Total count: {}", totalCount);
     }
+
+
 
     public void configureGrouping(String headerName, Color colorA, Color colorB) {
         this.groupStripingEnabled = (headerName != null && !headerName.isBlank());
@@ -221,38 +347,16 @@ public class EnhancedTableManager {
         recomputeGroupStripes();
     }
 
-    /*
-    public void disableGrouping() {
-        this.groupStripingEnabled = false;
-        this.groupStripingHeader = null;
-        stripeIsA.clear();
-        tableView.refresh();
-    }
-    */
-
-    private static String toRgbaCss(Color c) {
-        int r = (int) Math.round(c.getRed() * 255);
-        int g = (int) Math.round(c.getGreen() * 255);
-        int b = (int) Math.round(c.getBlue() * 255);
-        String a = String.format(java.util.Locale.US, "%.3f", c.getOpacity());
-        return "rgba(" + r + "," + g + "," + b + "," + a + ")";
-    }
-
-
     private void installGroupRowFactory() {
         tableView.setRowFactory(tv -> new TableRow<>() {
             @Override
             protected void updateItem(ObservableList<String> item, boolean empty) {
                 super.updateItem(item, empty);
-                // reset par défaut
                 setStyle("");
 
                 if (empty || item == null) return;
-
-                // 1) si la ligne est sélectionnée -> on laisse la couleur de sélection du thème
                 if (isSelected()) return;
 
-                // 2) si la gruppierung n’est pas active ou couleurs manquantes -> pas de fond
                 if (!groupStripingEnabled || groupStripingHeader == null || (groupColorA == null && groupColorB == null)) {
                     return;
                 }
@@ -270,7 +374,6 @@ public class EnhancedTableManager {
         });
     }
 
-
     private int findHeaderIndex(String header) {
         if (filteredData == null || filteredData.isEmpty()) return -1;
         List<String> headers = new ArrayList<>(filteredData.get(0).getValues().keySet());
@@ -287,19 +390,15 @@ public class EnhancedTableManager {
         if (!groupStripingEnabled || groupStripingHeader == null) return;
         var items = tableView.getItems();
         stripeIsA = new ArrayList<>(items.size());
-
-        // trouver la colonne "Rg-NR" (ou celle donnée)
         groupColIndex = findHeaderIndex(groupStripingHeader);
-
         String lastKey = null;
-        boolean useA = true; // premier groupe = A
+        boolean useA = true;
         for (ObservableList<String> row : items) {
             String key = "";
             if (groupColIndex >= 0 && groupColIndex < row.size()) {
-                key = row.get(groupColIndex);
+                key = Objects.requireNonNullElse(row.get(groupColIndex), "");
             }
-            if (!java.util.Objects.equals(key, lastKey)) {
-                // nouvelle valeur de Rg-NR -> on alterne
+            if (!Objects.equals(key, lastKey)) {
                 useA = !useA;
                 lastKey = key;
             }
@@ -309,50 +408,68 @@ public class EnhancedTableManager {
     }
 
     /**
-     * Filtert Daten basierend auf Suchtext
+     * Filtert Daten basierend auf Suchtext (Client-seitige Pagination).
      */
     private void filterData(String filterText) {
         String lowerCaseFilter = (filterText != null) ? filterText.toLowerCase() : "";
-
         if (lowerCaseFilter.isEmpty()) {
             filteredData = new ArrayList<>(originalData);
         } else {
             filteredData = originalData.stream()
                     .filter(row -> row.getValues().values().stream()
+                            .filter(Objects::nonNull)
                             .anyMatch(cell -> cell.toLowerCase().contains(lowerCaseFilter)))
                     .collect(Collectors.toList());
         }
-
         refreshTable();
     }
 
-    /**
-     * Aktualisiert die Tabellenanzeige
-     */
-    private void refreshTable() {
-        updateResultsCount();
 
-        if (paginationEnabled && pagination != null) {
-            setupPagination();
+    public void setRowsPerPage(int rowsPerPage) {
+        if (rowsPerPage <= 0) return;
+        this.rowsPerPage = rowsPerPage;
+        if (serverPaginationEnabled) {
+            setupServerPagination();
         } else {
-            buildTableColumns();
-            populateTableData(filteredData);
-            recomputeGroupStripes();
+            refreshTable();
         }
     }
 
+    public void bindAutoRowsPerPage(Region observedRegion) {
+        final double chrome = 90.0;
+        final double defaultRowH = 24.0;
+        final int minRows = 10;
+        final int changeThreshold = 2;
+
+        PauseTransition debounce = new PauseTransition(Duration.millis(120));
+        observedRegion.heightProperty().addListener((obs, oldH, newH) -> {
+            debounce.stop();
+            debounce.setOnFinished(evt -> {
+                double h = (newH == null) ? 0 : newH.doubleValue();
+                double rowH = (tableView.getFixedCellSize() > 0) ? tableView.getFixedCellSize() : defaultRowH;
+                int rows = (int) Math.max(minRows, Math.floor((h - chrome) / rowH));
+                if (lastRowsPerPage == null || Math.abs(rows - lastRowsPerPage) >= changeThreshold) {
+                    lastRowsPerPage = rows;
+                    setRowsPerPage(rows);
+                }
+            });
+            debounce.playFromStart();
+        });
+    }
+
+
     /**
-     * Baut Tabellenspalten auf
+     * Baut Tabellenspalten auf, basierend auf der ersten Zeile der geladenen Daten.
      */
-    private void buildTableColumns() {
-        if (filteredData.isEmpty()) {
+    private void  buildTableColumns(List<RowData> data) {
+        if (data == null || data.isEmpty()) {
             tableView.getColumns().clear();
             currentHeaders = List.of();
+            markDataChanged();
             return;
         }
 
-        List<String> headers = new ArrayList<>(filteredData.get(0).getValues().keySet());
-
+        List<String> headers = new ArrayList<>(data.get(0).getValues().keySet());
         if (headers.equals(currentHeaders) && !tableView.getColumns().isEmpty()) {
             return;
         }
@@ -363,27 +480,25 @@ public class EnhancedTableManager {
         for (int i = 0; i < headers.size(); i++) {
             final int columnIndex = i;
             final String originalKey = headers.get(i);
-
             TableColumn<ObservableList<String>, String> column = new TableColumn<>(originalKey);
             column.setUserData(originalKey);
-
             column.setCellValueFactory(param -> {
                 ObservableList<String> row = param.getValue();
                 return new SimpleStringProperty(
                         (row != null && columnIndex < row.size()) ? row.get(columnIndex) : ""
                 );
             });
-
             addContextMenuToColumn(column);
             tableView.getColumns().add(column);
         }
+        markDataChanged();
     }
 
     /**
      * Füllt Tabellendaten
      */
     private void populateTableData(List<RowData> data) {
-        if (data.isEmpty()) {
+        if (data == null || data.isEmpty()) {
             tableView.setItems(FXCollections.observableArrayList());
             return;
         }
@@ -399,77 +514,93 @@ public class EnhancedTableManager {
             }
             tableData.add(rowValues);
         }
-
         tableView.setItems(tableData);
+        markDataChanged();
     }
+
+    public EnhancedTableManager enableCleanTable() {
+        if (this.cleanColumnsButton == null) return this;
+        this.cleanColumnsButton.setDisable(false);
+        this.cleanColumnsButton.setOnAction(e -> cleanTable());
+        return this;
+    }
+
+
+    public void setCleanButton(Button cleanButton) {
+        this.cleanColumnsButton = cleanButton;
+        this.cleanColumnsButton.setOnAction(e -> cleanTable());
+    }
+
 
     /**
-     * Setup für Pagination
+     * Supprime toutes les Spalten (Colonnes) deren Werte in allen Zeilen leer/null sind.
      */
-    private void setupPagination() {
-        int pageCount = (int) Math.ceil((double) filteredData.size() / rowsPerPage);
-        pagination.setPageCount(Math.max(pageCount, 1));
-        pagination.setCurrentPageIndex(0);
-        pagination.setVisible(filteredData.size() > 0);
-
-        pagination.setPageFactory(pageIndex -> {
-            int fromIndex = pageIndex * rowsPerPage;
-            int toIndex = Math.min(fromIndex + rowsPerPage, filteredData.size());
-            List<RowData> pageData = filteredData.subList(fromIndex, toIndex);
-            buildTableColumns();
-            populateTableData(pageData);
-            recomputeGroupStripes(); // <--- et ici aussi
-            return new VBox();
-        });
-    }
-
-    public void setRowsPerPage(int rowsPerPage) {
-        if (rowsPerPage <= 0) return;
-        this.rowsPerPage = rowsPerPage;
-        if (paginationEnabled && pagination != null) {
-            setupPagination();
-        } else {
-            refreshTable();
+    private void cleanTable() {
+        if (this.cleanColumnsButton != null && cleanRanForThisPage) {
+            return;
         }
-    }
 
-    public void bindAutoRowsPerPage(Region observedRegion) {
-        final double chrome = 90.0;       // marge header+paddings+pagination (ajuste si besoin)
-        final double defaultRowH = 24.0;  // si fixedCellSize non défini
-        final int minRows = 10;           // borne pour éviter 0
-        final int changeThreshold = 2;    // éviter de retrigger si variation trop petite
+        var cols = new ArrayList<TableColumn<ObservableList<String>, ?>>(tableView.getColumns());
+        var items = tableView.getItems();
 
-        PauseTransition debounce = new PauseTransition(Duration.millis(120));
+        if (cols.isEmpty() || items == null || items.isEmpty()) return;
 
-        observedRegion.heightProperty().addListener((obs, oldH, newH) -> {
-            // Re-démarre le timer à chaque variation
-            debounce.stop();
-            debounce.setOnFinished(evt -> {
-                double h = (newH == null) ? 0 : newH.doubleValue();
-                double rowH = (tableView.getFixedCellSize() > 0) ? tableView.getFixedCellSize() : defaultRowH;
-                int rows = (int) Math.max(minRows, Math.floor((h - chrome) / rowH));
+        // En mode serveur, prévenir que l’analyse ne couvre QUE la page courante
+        if (serverPaginationEnabled) {
+            boolean proceed = Dialog.showWarningDialog(
+                    "Bereinigen (nur aktuelle Seite)",
+                    "Es werden nur Spalten entfernt, die auf der AKTUELLEN Seite komplett leer sind.\n" +
+                            "Fortfahren?");
+            if (!proceed) return;
+        }
 
-                if (lastRowsPerPage == null || Math.abs(rows - lastRowsPerPage) >= changeThreshold) {
-                    lastRowsPerPage = rows;
-                    setRowsPerPage(rows);  // ne reconstruit que si la différence est significative
+        // Déterminer les colonnes entièrement vides sur CETTE page
+        List<TableColumn<ObservableList<String>, ?>> toRemove = new ArrayList<>();
+        for (int c = 0; c < cols.size(); c++) {
+            boolean allEmpty = true;
+            for (ObservableList<String> row : items) {
+                String v = (c < row.size()) ? row.get(c) : null;
+                if (v != null && !v.trim().isEmpty()) {
+                    allEmpty = false;
+                    break;
                 }
-            });
-            debounce.playFromStart();
-        });
+            }
+            if (allEmpty) toRemove.add(cols.get(c));
+        }
+
+        if (toRemove.isEmpty()) {
+            Dialog.showInfoDialog("Bereinigen", "Es gibt keine vollständig leeren Spalten auf dieser Seite.");
+            cleanRanForThisPage = true; // inutile de réessayer
+            if (this.cleanColumnsButton != null) this.cleanColumnsButton.setDisable(true);
+            return;
+        }
+
+        // Option de sécurité: ne pas descendre sous 2 colonnes visibles
+        int minKeep = 2;
+        if (cols.size() - toRemove.size() < minKeep) {
+            int canDelete = Math.max(0, cols.size() - minKeep);
+            if (canDelete == 0) {
+                Dialog.showWarningDialog("Bereinigen",
+                        "Mindestens " + minKeep + " Spalten müssen sichtbar bleiben.");
+                cleanRanForThisPage = true;
+                if (this.cleanColumnsButton != null) this.cleanColumnsButton.setDisable(true);
+                return;
+            }
+            toRemove = toRemove.subList(0, canDelete);
+        }
+
+        deleteColumns(toRemove);
+
+        // Empêcher le “nettoyage” successif sur la même page/dataset
+        cleanRanForThisPage = true;
+        if (this.cleanColumnsButton != null) this.cleanColumnsButton.setDisable(true);
     }
 
-    /**
-     * Erstellt eine Seite für Pagination
-     */
-    private Node createPage(int pageIndex) {
-        int fromIndex = pageIndex * rowsPerPage;
-        int toIndex = Math.min(fromIndex + rowsPerPage, filteredData.size());
-        List<RowData> pageData = filteredData.subList(fromIndex, toIndex);
-
-        buildTableColumns();
-        populateTableData(pageData);
-
-        return new VBox();
+    private void markDataChanged() {
+        cleanRanForThisPage = false;
+        if (this.cleanColumnsButton != null) {
+            this.cleanColumnsButton.setDisable(false);
+        }
     }
 
 
@@ -479,13 +610,10 @@ public class EnhancedTableManager {
     private void addContextMenuToColumn(TableColumn<ObservableList<String>, String> column) {
         MenuItem renameItem = new MenuItem("Spalte umbenennen");
         MenuItem deleteItem = new MenuItem("Spalte löschen");
-
         renameItem.setStyle("-fx-text-fill: #000;");
         deleteItem.setStyle("-fx-text-fill: #d00;");
-
         renameItem.setOnAction(e -> renameColumn(column));
         deleteItem.setOnAction(e -> deleteColumn(column));
-
         ContextMenu contextMenu = new ContextMenu(renameItem, new SeparatorMenuItem(), deleteItem);
         column.setContextMenu(contextMenu);
     }
@@ -498,7 +626,6 @@ public class EnhancedTableManager {
         dialog.setTitle("Spalte umbenennen");
         dialog.setHeaderText("Neuer Name für '" + column.getText() + "':");
         dialog.setContentText("Name:");
-
         dialog.showAndWait().ifPresent(newName -> {
             if (!newName.isBlank()) {
                 column.setText(newName);
@@ -551,18 +678,13 @@ public class EnhancedTableManager {
         Set<String> originalKeysToDelete = columnsToDelete.stream()
                 .map(col -> String.valueOf(col.getUserData()))
                 .collect(Collectors.toSet());
-
-        // Aus TableView entfernen
         tableView.getColumns().removeAll(columnsToDelete);
-
-        // Aus Datenstrukturen entfernen
         for (RowData row : originalData) {
             row.getValues().keySet().removeAll(originalKeysToDelete);
         }
         for (RowData row : filteredData) {
             row.getValues().keySet().removeAll(originalKeysToDelete);
         }
-
         updateResultsCount();
         tableView.refresh();
         logger.info("Deleted {} columns", columnsToDelete.size());
@@ -573,8 +695,8 @@ public class EnhancedTableManager {
      */
     private void updateResultsCount() {
         if (resultsCountLabel != null) {
-            int total = filteredData.size();
-            resultsCountLabel.setText("(" + total + " Ergebnis" + (total != 1 ? "se" : "") + ")");
+            int countToDisplay = serverPaginationEnabled ? totalCount : filteredData.size();
+            resultsCountLabel.setText("(" + countToDisplay + " Ergebnis" + (countToDisplay != 1 ? "se" : "") + ")");
         }
     }
 
@@ -611,13 +733,19 @@ public class EnhancedTableManager {
         return new ArrayList<>(originalData);
     }
 
-    public boolean isGroupStripingEnabled() {return groupStripingEnabled;}
+    public boolean isGroupStripingEnabled() {
+        return groupStripingEnabled;
+    }
 
-    public String getGroupStripingHeader() {return groupStripingHeader;}
+    public String getGroupStripingHeader() {
+        return groupStripingHeader;
+    }
 
-    public Color getGroupColorA() {return groupColorA;}
+    public Color getGroupColorA() {
+        return groupColorA;
+    }
 
-    public Color getGroupColorB() {return groupColorB;}
-
-
+    public Color getGroupColorB() {
+        return groupColorB;
+    }
 }

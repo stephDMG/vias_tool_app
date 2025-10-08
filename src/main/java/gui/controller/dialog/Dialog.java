@@ -29,6 +29,13 @@ public class Dialog {
         alert.showAndWait();
     }
 
+    public static void showInfoDialog(String title, String message){
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+    }
+
     public static boolean showWarningDialog() {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
         alert.setTitle("Spalten löschen");
@@ -61,7 +68,7 @@ public class Dialog {
 
 
     public static boolean showWarningDialog(String spalte, String s) {
-        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        Alert alert = new Alert(Alert.AlertType.WARNING);
         alert.setTitle(spalte);
         alert.setHeaderText(spalte);
         alert.setContentText(s);

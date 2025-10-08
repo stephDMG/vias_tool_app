@@ -115,7 +115,6 @@ public class CachedDatabaseService implements DatabaseService {
     }
 
 
-
     @Override
     public List<RowData> executeHartrodtQuery() throws Exception {
         // Ein einfacher Cache-Schlüssel ohne Parameter
@@ -134,7 +133,7 @@ public class CachedDatabaseService implements DatabaseService {
     @Override
     public List<RowData> executeOpListeQuery(String policyNr) throws Exception {
         // Erstelle einen Cache-Schlüssel mit der Policennummer als Parameter
-        CacheKey key = new CacheKey(QueryRepository.SCHADEN_REPORT_BY_MAKLER, List.of(policyNr)); // Dummy-QueryRepository für den Cache-Key
+        CacheKey key = new CacheKey(QueryRepository.SCHADEN_REPORT_BY_MAKLER, List.of(policyNr));
 
         return cache.get(key, k -> {
             try {

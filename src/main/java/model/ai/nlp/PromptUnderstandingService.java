@@ -15,6 +15,7 @@ public interface PromptUnderstandingService {
         public boolean isCapabilitiesIntent;
         public Status status = Status.INVALID;
         public double confidence = 0.0;
+
         public enum Status {OK, AMBIGUOUS, INVALID}
     }
 

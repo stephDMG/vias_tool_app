@@ -1,17 +1,25 @@
 package service;
 
+import formatter.contract.CoverFormatter;
+import formatter.op.OpListeFormatter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import service.cache.CachedDatabaseService;
+import service.cache.CoverCacheService;
+import service.contract.CoverService;
+import service.contract.rbac.CoverAccessGuard;
+import service.contract.repository.CoverDetailsRepository;
+import service.contract.repository.CoverRepository;
 import service.impl.DatabaseServiceImpl;
 import service.impl.FileServiceImpl;
 import service.impl.LocalAiServiceImpl;
 import service.interfaces.AiService;
 import service.interfaces.DatabaseService;
 import service.interfaces.FileService;
-
 import service.op.OPListenService;
 import service.op.OpRepository;
+import service.rbac.AccessControlService;
+import service.rbac.LoginService;
 
 /**
  * Zentrale Factory für Service-Singletons (Datenbank, Datei, OP-Liste, AI).
@@ -23,6 +31,7 @@ public final class ServiceFactory {
 
     private static final DatabaseService databaseService;
     private static OPListenService opListenServiceInstance;
+    private static volatile CoverService COVER_SERVICE;
 
     private static FileService fileService = new FileServiceImpl();
     private static AiMode currentAiMode = AiMode.LOCAL;
@@ -59,7 +68,7 @@ public final class ServiceFactory {
         if (OP_REPOSITORY == null) {
             synchronized (ServiceFactory.class) {
                 if (OP_REPOSITORY == null) {
-                    var formatter = new formatter.OpListeFormatter();
+                    var formatter = new OpListeFormatter();
                     OP_REPOSITORY = new service.op.OpRepository(getDatabaseService(), formatter);
                 }
             }
@@ -88,6 +97,37 @@ public final class ServiceFactory {
         logger.debug("🤖 AiService bereitgestellt (Mode: {})", currentAiMode);
         return aiServiceInstance;
     }
+
+    public static CoverService getContractService() {
+        if (COVER_SERVICE == null) {
+            synchronized (ServiceFactory.class) {
+                if (COVER_SERVICE == null) {
+                    // RBAC / Guard
+                    AccessControlService access = new AccessControlService();
+                    CoverAccessGuard guard = new CoverAccessGuard(
+                            access,
+                            () -> new LoginService().getCurrentWindowsUsername()
+                    );
+
+                    // Infrastruktur
+                    var db = getDatabaseService();
+                    var formatter = new CoverFormatter();
+                    var repo = new CoverRepository(db, formatter);
+                    var details = new CoverDetailsRepository(db);
+                    var coverCache = new CoverCacheService();
+
+                    // Fassade
+                    COVER_SERVICE = new CoverService(guard, coverCache, repo, details, formatter);
+                }
+            }
+        }
+        return COVER_SERVICE;
+    }
+
+    public static CoverService getCoverService() {
+        return getContractService();
+    }
+
 
     public static void setAiMode(AiMode mode) {
         if (currentAiMode != mode) {

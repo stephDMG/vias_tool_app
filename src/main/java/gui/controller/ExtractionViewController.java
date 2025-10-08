@@ -1,6 +1,5 @@
 package gui.controller;
 
-// Alle Imports bleiben gleich wie im alten MainController
 
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
@@ -11,8 +10,8 @@ import javafx.stage.FileChooser;
 import model.enums.ExportFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import service.ExtractionService;
 import service.ServiceFactory;
+import service.pdfextraction.ExtractionService;
 import util.FileSearchTool;
 
 import java.io.File;
@@ -22,11 +21,7 @@ import java.util.ResourceBundle;
 import static gui.controller.dialog.Dialog.showErrorDialog;
 import static gui.controller.dialog.Dialog.showSuccessDialog;
 
-// Diese Klasse enthält die gesamte Logik für die Extraktionsansicht
 public class ExtractionViewController implements Initializable {
-
-    // Alle FXML-Felder und die Logik aus dem alten MainController werden hierher verschoben.
-    // Der Code ist identisch.
 
     private static final Logger logger = LoggerFactory.getLogger(ExtractionViewController.class);
 
@@ -157,70 +152,77 @@ public class ExtractionViewController implements Initializable {
         setProcessingMode(true);
         clearLog();
         appendLog("🚀 Extraktion wird gestartet...");
-        Task<Void> extractionTask = createExtractionTask();
+        Task<Boolean> extractionTask = createExtractionTask();
         progressBar.progressProperty().bind(extractionTask.progressProperty());
         Thread taskThread = new Thread(extractionTask);
         taskThread.setDaemon(true);
         taskThread.start();
     }
 
-    private Task<Void> createExtractionTask() {
-        return new Task<>() {
+    private Task<Boolean> createExtractionTask() {
+        return new Task<Boolean>() {
+
             @Override
-            protected Void call() throws Exception {
+            protected Boolean call() throws Exception {
+                boolean anyExportSucceeded = false;
                 try {
                     String pdfPath = pdfFileField.getText();
                     String outputDir = outputDirectoryField.getText();
-                    updateProgress(0.1, 1.0);
-                    updateMessage("PDF wird analysiert...");
+
+                    String baseName = new File(pdfPath).getName().replace(".pdf", "");
+
                     if (xlsxCheckBox.isSelected()) {
-                        updateProgress(0.3, 1.0);
                         updateMessage("XLSX-Export läuft...");
-                        String xlsxPath = outputDir + "\\versicherung_extract.xlsx";
-                        extractionService.extractAndExport(pdfPath, xlsxPath, ExportFormat.XLSX);
-                        javafx.application.Platform.runLater(() -> appendLog("✅ XLSX-Export abgeschlossen: versicherung_extract.xlsx"));
+                        String xlsxPath = outputDir + File.separator + baseName + ".xlsx";
+                        if (extractionService.extractAndExport(pdfPath, xlsxPath, ExportFormat.XLSX)) {
+                            anyExportSucceeded = true;
+                            appendLog("✅ XLSX-Export abgeschlossen: " + baseName + ".xlsx");
+                        }
                     }
+
                     if (csvCheckBox.isSelected()) {
-                        updateProgress(0.7, 1.0);
                         updateMessage("CSV-Export läuft...");
-                        String csvPath = outputDir + "\\versicherung_extract.csv";
-                        extractionService.extractAndExport(pdfPath, csvPath, ExportFormat.CSV);
-                        javafx.application.Platform.runLater(() -> appendLog("✅ CSV-Export abgeschlossen: versicherung_extract.csv"));
+                        String csvPath = outputDir + File.separator + baseName + ".csv";
+                        if (extractionService.extractAndExport(pdfPath, csvPath, ExportFormat.CSV)) {
+                            anyExportSucceeded = true;
+                            appendLog("✅ CSV-Export abgeschlossen: " + baseName + ".csv");
+                        }
                     }
+
                     updateProgress(1.0, 1.0);
-                    updateMessage("Extraktion erfolgreich abgeschlossen");
+                    return anyExportSucceeded;
+
                 } catch (Exception e) {
                     logger.error("❌ Fehler bei GUI-Extraktion", e);
-                    javafx.application.Platform.runLater(() -> {
-                        appendLog("❌ Fehler: " + e.getMessage());
-                        showErrorDialog("Extraktionsfehler", e.getMessage());
-                    });
                     throw e;
                 }
-                return null;
             }
 
             @Override
             protected void succeeded() {
-                javafx.application.Platform.runLater(() -> {
-                    setProcessingMode(false);
+                Boolean wasAnythingExported = getValue(); // Récupère le 'return' de call()
+
+                setProcessingMode(false);
+                if (Boolean.TRUE.equals(wasAnythingExported)) {
                     statusLabel.setText("Extraktion erfolgreich abgeschlossen");
                     appendLog("🎉 Alle Exports erfolgreich abgeschlossen!");
                     showSuccessDialog("Erfolg", "PDF-Extraktion erfolgreich abgeschlossen!");
-                });
+                } else {
+                    statusLabel.setText("Abgeschlossen, keine Daten exportiert");
+                    appendLog("ℹ️ Prozess beendet. Keine Daten entsprachen den Kriterien für den Export.");
+                }
             }
 
             @Override
             protected void failed() {
-                javafx.application.Platform.runLater(() -> {
-                    setProcessingMode(false);
-                    statusLabel.setText("Extraktion fehlgeschlagen");
-                });
+                setProcessingMode(false);
+                statusLabel.setText("Extraktion fehlgeschlagen");
+                String errorMessage = getException().getMessage();
+                appendLog("❌ Fehler: " + errorMessage);
+                showErrorDialog("Extraktionsfehler", errorMessage);
             }
         };
     }
-
-    // In der Datei: ExtractionViewController.java
 
     private boolean validateInputs() {
         if (pdfFileField.getText().trim().isEmpty()) {
@@ -228,28 +230,19 @@ public class ExtractionViewController implements Initializable {
             return false;
         }
 
-        // --- GEÄNDERTER TEIL ---
         if (outputDirectoryField.getText().trim().isEmpty()) {
-            // Wir verwenden jetzt den "Downloads"-Ordner des Benutzers als Standard.
             String downloadsPath = System.getProperty("user.home") + File.separator + "Downloads";
             File downloadsDir = new File(downloadsPath);
 
-            // Prüfen, ob der Downloads-Ordner existiert.
-            if (downloadsDir.exists() && downloadsDir.isDirectory()) {
-                outputDirectoryField.setText(downloadsPath);
-                appendLog("📁 Standard-Ausgabeverzeichnis verwendet: " + downloadsPath);
-            } else {
-                // Fallback, falls es keinen Downloads-Ordner gibt (sehr unwahrscheinlich)
-                String userHomePath = System.getProperty("user.home");
-                outputDirectoryField.setText(userHomePath);
-                appendLog("📁 Standard-Ausgabeverzeichnis verwendet: " + userHomePath);
+            if (outputDirectoryField.getText().trim().isEmpty()) {
+                showErrorDialog("Eingabefehler", "Bitte wählen Sie ein Ausgabeverzeichnis aus.");
+                return false;
             }
-        }
-        // --- ENDE DES GEÄNDERTEN TEILS ---
 
-        if (!xlsxCheckBox.isSelected() && !csvCheckBox.isSelected()) {
-            showErrorDialog("Eingabefehler", "Bitte wählen Sie mindestens ein Exportformat aus.");
-            return false;
+            if (!xlsxCheckBox.isSelected() && !csvCheckBox.isSelected()) {
+                showErrorDialog("Eingabefehler", "Bitte wählen Sie mindestens ein Exportformat aus.");
+                return false;
+            }
         }
         return true;
     }

@@ -7,16 +7,10 @@ package service.op;
  */
 public class ExecutionResult {
 
-    public enum Status {
-        SUCCESS,
-        FAILURE
-    }
-
     private final Status status;
     private final String message;
     private final String outputPath; // Chemin du fichier exporté
     private final int rowCount;      // Nombre de lignes exportées
-
     /**
      * Konstruktor für ein einfaches Ergebnis ohne zusätzliche Daten.
      */
@@ -34,9 +28,28 @@ public class ExecutionResult {
         this.rowCount = rowCount;
     }
 
-    public Status getStatus() { return status; }
-    public String getMessage() { return message; }
-    public String getOutputPath() { return outputPath; }
-    public int getRowCount() { return rowCount; }
-    public boolean isSuccess() { return status == Status.SUCCESS; }
+    public Status getStatus() {
+        return status;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public String getOutputPath() {
+        return outputPath;
+    }
+
+    public int getRowCount() {
+        return rowCount;
+    }
+
+    public boolean isSuccess() {
+        return status == Status.SUCCESS;
+    }
+
+    public enum Status {
+        SUCCESS,
+        FAILURE
+    }
 }

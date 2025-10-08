@@ -31,7 +31,8 @@ public class RowData {
      * @param value  der Wert, der für die Spalte hinzugefügt wird
      */
     public void put(String column, String value) {
-        values.put(column.trim(), value.trim());
+        if (column == null) return;
+        this.values.put(column.trim(), value == null ? "" : value.trim());
     }
 
     //putAll Methode

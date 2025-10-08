@@ -41,11 +41,17 @@ public class Kunde {
         return ort;
     }
 
-    public String getKundeName() {return kundeName;}
+    public String getKundeName() {
+        return kundeName;
+    }
 
-    public String getPathName() {return pathName;}
-    public void setPathName(String pathName) {this.pathName = pathName;}
+    public String getPathName() {
+        return pathName;
+    }
 
+    public void setPathName(String pathName) {
+        this.pathName = pathName;
+    }
 
 
     @Override
@@ -64,7 +70,7 @@ public class Kunde {
 
     @Override
     public String toString() {
-        return kundeName+"{" +
+        return kundeName + "{" +
                 "policeNr='" + policeNr + '\'' +
                 ", name='" + name + '\'' +
                 ", land='" + land + '\'' +

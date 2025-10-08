@@ -75,11 +75,14 @@ Die Anwendung lädt DB-Zugangsdaten aus einer Properties-Datei in folgender Reih
 
 Vorgehen:
 
-- Kopieren Sie config/db.properties.example nach config/db.properties und passen Sie die Werte (db.url, db.user, db.password, db.driver) an Ihre Umgebung an.
+- Kopieren Sie config/db.properties.example nach config/db.properties und passen Sie die Werte (db.url, db.user,
+  db.password, db.driver) an Ihre Umgebung an.
 - Die Datei config/db.properties ist in .gitignore eingetragen und sollte nicht eingecheckt werden.
-- Unterstützte JDBC-Treiber können per Klassenpfad eingebunden werden (siehe db.driver, z. B. com.pervasive.jdbc.v2.Driver).
+- Unterstützte JDBC-Treiber können per Klassenpfad eingebunden werden (siehe db.driver, z. B.
+  com.pervasive.jdbc.v2.Driver).
 
-Hinweis: Ohne gültige Zugangsdaten kann das Tool nicht auf Ihre Datenbank zugreifen. Teilen Sie keine Zugangsdaten im Klartext in Repos/Tickets.
+Hinweis: Ohne gültige Zugangsdaten kann das Tool nicht auf Ihre Datenbank zugreifen. Teilen Sie keine Zugangsdaten im
+Klartext in Repos/Tickets.
 
 ## Lizenz/Urheber
 
@@ -87,9 +90,12 @@ Hinweis: Ohne gültige Zugangsdaten kann das Tool nicht auf Ihre Datenbank zugre
 
 ## Datenbank-Check (CSTEST erreichbar?)
 
-Um zu prüfen, ob Sie von Ihrem Rechner aus Zugriff auf die konfigurierte Datenbank (z. B. CSTEST) haben, können Sie den Health‑Check starten:
+Um zu prüfen, ob Sie von Ihrem Rechner aus Zugriff auf die konfigurierte Datenbank (z. B. CSTEST) haben, können Sie den
+Health‑Check starten:
 
 - Maven:
-  - mvn exec:java -Dexec.mainClass=console.DbHealthCheck
+    - mvn exec:java -Dexec.mainClass=console.DbHealthCheck
 
-Der Check verwendet die in DatabaseConfig geladenen Werte (Prio: config/db.properties, dann src/main/resources/db.properties) und gibt „Verbindung erfolgreich“ oder eine Fehlermeldung aus. Achten Sie darauf, dass der passende JDBC‑Treiber im Klassenpfad ist (z. B. com.pervasive.jdbc.v2.Driver für Pervasive).
+Der Check verwendet die in DatabaseConfig geladenen Werte (Prio: config/db.properties, dann
+src/main/resources/db.properties) und gibt „Verbindung erfolgreich“ oder eine Fehlermeldung aus. Achten Sie darauf, dass
+der passende JDBC‑Treiber im Klassenpfad ist (z. B. com.pervasive.jdbc.v2.Driver für Pervasive).

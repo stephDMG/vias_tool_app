@@ -16,7 +16,6 @@ public class CoverKnowledgeProvider implements AiKnowledgeProvider {
     private static final AiReportTemplate DYNAMIC_COVER_REPORT_TEMPLATE;
 
     static {
-        // The expanded column library, based on the new, more detailed query.
         Map<String, AiColumnSpec> standardColumns = Map.ofEntries(
                 // === Identifiers & Numbers ===
                 Map.entry("vsn", new AiColumnSpec("LAL.LU_VSN", "VSN", "", List.of("vsn", "versicherungsschein", "policeNr"))),
@@ -63,8 +62,8 @@ public class CoverKnowledgeProvider implements AiKnowledgeProvider {
 
 
                 // === Clerks (Sachbearbeiter) - Complex Fields ===
-                Map.entry("sb_vertrag", new AiColumnSpec("(SELECT SB.LU_SB_VOR + ' ' + SB.LU_SB_NAM FROM SACHBEA SB WHERE LAL.LU_SACHBEA_VT = SB.LU_SB_KURZ)", "SB Vertrag", "", List.of("sb vertrag"))),
-                Map.entry("sb_schaden", new AiColumnSpec("(SELECT SB.LU_SB_VOR + ' ' + SB.LU_SB_NAM FROM SACHBEA SB WHERE LAL.LU_SACHBEA_SC = SB.LU_SB_KURZ)", "SB Schaden", "", List.of("sb schaden"))),
+                Map.entry("sb_vertrag", new AiColumnSpec("(SELECT SB.LU_SB_VOR + ' ' + SB.LU_SB_NAM FROM SACHBEA SB WHERE LAL.LU_SACHBEA_VT = SB.LU_SB_KURZ)", "SB Vertrag", "", List.of("sb vertrag, SB Vertr."))),
+                Map.entry("sb_schaden", new AiColumnSpec("(SELECT SB.LU_SB_VOR + ' ' + SB.LU_SB_NAM FROM SACHBEA SB WHERE LAL.LU_SACHBEA_SC = SB.LU_SB_KURZ)", "SB Schaden", "", List.of("sb schaden, SB Scha."))),
                 Map.entry("sb_rechnung", new AiColumnSpec("(SELECT SB.LU_SB_VOR + ' ' + SB.LU_SB_NAM FROM SACHBEA SB WHERE LAL.LU_SACHBEA_RG = SB.LU_SB_KURZ)", "SB Rechnung", "", List.of("sb rechnung", "rechnung"))),
                 Map.entry("sb_gl", new AiColumnSpec("(SELECT SB.LU_SB_VOR + ' ' + SB.LU_SB_NAM FROM SACHBEA SB WHERE LAL.LU_SACHBEA_GL = SB.LU_SB_KURZ)", "SB GL/Prokurist", "", List.of("sb gl", "prokurist"))),
                 Map.entry("sb_buha", new AiColumnSpec("(SELECT SB.LU_SB_VOR + ' ' + SB.LU_SB_NAM FROM SACHBEA SB WHERE LAL.LU_SACHBEA_BUH = SB.LU_SB_KURZ)", "SB BuHa", "", List.of("sb buha", "buchhaltung")))

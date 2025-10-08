@@ -14,5 +14,6 @@ public class UnderstandingResult {
     public boolean isCapabilitiesIntent;  // "was kannst du"...
     public Status status = Status.INVALID;
     public double confidence = 0.0;
+
     public enum Status {OK, AMBIGUOUS, INVALID}
 }

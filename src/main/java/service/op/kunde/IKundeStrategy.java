@@ -32,13 +32,12 @@ public interface IKundeStrategy {
     Map<String, Map<String, List<Kunde>>> loadGroups(KundeRepository repository) throws Exception;
 
 
-
     /**
      * Erzeugt einen spezifischen Dateinamen für den Export.
      *
-     * @param policeNr Policen-Nr
-     * @param land Landname
-     * @param ort Ortname
+     * @param policeNr  Policen-Nr
+     * @param land      Landname
+     * @param ort       Ortname
      * @param extension Dateiendung (z.B. "xlsx" oder "pdf")
      * @return Vollständiger Dateiname
      */

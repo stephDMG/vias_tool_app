@@ -1,4 +1,4 @@
-package service;
+package service.enrichment;
 
 import model.RowData;
 import org.slf4j.Logger;
@@ -24,6 +24,12 @@ public class DatenanreicherungService {
     private final FileService fileService;
     private final DatabaseService databaseService;
 
+    /**
+     * Erstellt den Service zur Datenanreicherung.
+     *
+     * @param fileService Dienst zum Lesen/Schreiben von Dateien
+     * @param databaseService Dienst für Datenbankabfragen (VIAS)
+     */
     public DatenanreicherungService(FileService fileService, DatabaseService databaseService) {
         this.fileService = fileService;
         this.databaseService = databaseService;

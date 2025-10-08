@@ -1,4 +1,4 @@
-package file.extrator;
+package file.extrator.versicherung;
 
 import config.DatabaseConfig;
 import model.VersicherungsData;

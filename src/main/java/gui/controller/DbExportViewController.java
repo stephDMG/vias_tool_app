@@ -1,7 +1,7 @@
 package gui.controller;
 
-import gui.controller.manager.TableViewBuilder;
 import gui.controller.manager.EnhancedTableManager;
+import gui.controller.manager.TableViewBuilder;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
@@ -80,8 +80,7 @@ public class DbExportViewController implements Initializable {
     @FXML
     private Label statusLabel;
     @FXML
-    private VBox resultsContainer;  // Container für die neue Tabelle
-    // Parameter-Eingabe (spezielle Listen-Ansicht)
+    private VBox resultsContainer;
     @FXML
     private VBox parameterListBox;
     @FXML

@@ -1,16 +1,18 @@
 package gui.controller;
 
-import formatter.OpListeFormatter;
-import gui.controller.dialog.GroupingDialogController;
-import gui.controller.manager.TableViewBuilder;
+import formatter.op.OpListeFormatter;
 import gui.controller.dialog.Dialog;
+import gui.controller.dialog.GroupingDialogController;
 import gui.controller.manager.EnhancedTableManager;
+import gui.controller.manager.TableViewBuilder;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.control.*;
+import javafx.scene.control.Label;
+import javafx.scene.control.ProgressBar;
+import javafx.scene.control.TextField;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import model.RowData;
@@ -31,11 +33,16 @@ import java.util.stream.Collectors;
  */
 public class OpListViewerController {
 
-    @FXML private VBox resultsContainer;
-    @FXML private ProgressBar progressBar;
-    @FXML private Label statusLabel;
-    @FXML private Label countLabel;
-    @FXML private TextField policyFilterField;
+    @FXML
+    private VBox resultsContainer;
+    @FXML
+    private ProgressBar progressBar;
+    @FXML
+    private Label statusLabel;
+    @FXML
+    private Label countLabel;
+    @FXML
+    private TextField policyFilterField;
 
     private OpRepository opRepository;
     private OpListeFormatter formatter;
@@ -46,10 +53,13 @@ public class OpListViewerController {
     private List<RowData> cur;
 
     private boolean cfgEnabled = false;
-    private String  cfgHeader  = null;
+    private String cfgHeader = null;
     private javafx.scene.paint.Color cfgA = null;
     private javafx.scene.paint.Color cfgB = null;
 
+    /**
+     * Initialisiert die OP-Liste-Ansicht, baut die Tabellenkomponente und startet das Laden der Daten.
+     */
     @FXML
     private void initialize() {
 
@@ -84,6 +94,10 @@ public class OpListViewerController {
         loadDataAsync();
     }
 
+    /**
+     * Lädt die OP-Hauptliste asynchron und aktualisiert anschließend die Tabelle.
+     * Zeigt währenddessen einen Fortschrittsbalken an und behandelt Fehler dialoggestützt.
+     */
     private void loadDataAsync() {
         progressBar.setVisible(true);
         statusLabel.setText("Lade OP-Hauptliste…");
@@ -123,11 +137,17 @@ public class OpListViewerController {
         new Thread(task, "oplist-viewer-load").start();
     }
 
+    /**
+     * Aktualisiert die Anzeige der Ergebnisanzahl basierend auf der aktuellen Teilmenge.
+     */
     private void updateCount() {
         int n = (cur == null) ? 0 : cur.size();
         countLabel.setText(String.valueOf(n));
     }
 
+    /**
+     * Öffnet den Dialog zur Konfiguration der Gruppierung und wendet die Auswahl auf die Tabelle an.
+     */
     @FXML
     private void openGroupingDialog() {
         try {
@@ -136,8 +156,8 @@ public class OpListViewerController {
             GroupingDialogController ctrl = loader.getController();
 
             var selectable = java.util.List.of(
-                    "Makler","Rg-NR","Policen-Nr","Zeichnungsjahr","Versicherungsnehmer",
-                    "Rg-Datum","Fälligkeit","courtage","A.LU_VSTLD"
+                    "Makler", "Rg-NR", "Policen-Nr", "Zeichnungsjahr", "Versicherungsnehmer",
+                    "Rg-Datum", "Fälligkeit", "courtage", "A.LU_VSTLD"
             );
 
             // Alimenter le dialog avec l’état courant
@@ -157,9 +177,9 @@ public class OpListViewerController {
             if (res != null) {
                 // 1) mémoriser localement pour la prochaine ouverture
                 cfgEnabled = res.enabled;
-                cfgHeader  = res.header;
-                cfgA       = res.colorA;
-                cfgB       = res.colorB;
+                cfgHeader = res.header;
+                cfgA = res.colorA;
+                cfgB = res.colorB;
 
                 // 2) appliquer à la table
                 tableManager.applyGroupingConfig(cfgEnabled, cfgHeader, cfgA, cfgB);
@@ -170,8 +190,10 @@ public class OpListViewerController {
     }
 
 
-
-
+    /**
+     * Filtert die angezeigten Zeilen nach der eingegebenen Policen-Nummer.
+     * Setzt die Tabelle zurück, wenn der Filter leer ist.
+     */
     @FXML
     private void applyFilter() {
         if (full == null) return;
@@ -194,6 +216,9 @@ public class OpListViewerController {
         updateCount();
     }
 
+    /**
+     * Schließt das aktuelle Fenster.
+     */
     @FXML
     private void closeWindow() {
         Stage st = (Stage) resultsContainer.getScene().getWindow();
