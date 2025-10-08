@@ -63,7 +63,7 @@ public class KundeRepository {
 
             String name = safeGet(row, "Firma/Name");
             String land = safeGet(row, "Land");
-            String ort = safeGet(row, "Ort");
+            String ort  = safeGet(row, "Ort");
 
             kundeList.add(new Kunde(likeName, policeNr, name, land, ort));
         }
