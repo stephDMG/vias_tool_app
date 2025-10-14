@@ -238,7 +238,9 @@ public class CoverCacheService {
                 : "";
         String kuendigInit = norm(filter.getKuendigVerkInitiator());
 
-        String stornoGrund = norm(filter.getStornoGrund());
+        // FIX: stornoGrund durch stornoGrundIds (List<String>) ersetzen
+        String stornoGrund = filter.getStornoGrundIds() != null
+                ? String.join(",", filter.getStornoGrundIds()) : "";
 
         String groupBy = (filter.getGroupBy() != null && !filter.getGroupBy().isEmpty())
                 ? norm(String.join(",", filter.getGroupBy()))

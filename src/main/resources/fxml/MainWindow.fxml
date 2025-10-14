@@ -59,6 +59,8 @@
                               text="Daten anreichern"/>
                     <MenuItem fx:id="statusItem" mnemonicParsing="false" onAction="#showOpListView"
                               styleClass="menu-item" text="OP-Listen Export" visible="false"/>
+                    <MenuItem mnemonicParsing="false" onAction="#showAuditView"
+                              styleClass="menu-item" text="Audit-Tool" />
                 </Menu>
 
                 <Menu text="Verträge">

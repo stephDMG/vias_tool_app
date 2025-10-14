@@ -1,6 +1,7 @@
-package service.op.kunde;
+package service.op.repository;
 
 import model.RowData;
+import model.op.kunde.Kunde;
 import service.interfaces.DatabaseService;
 
 import java.util.*;

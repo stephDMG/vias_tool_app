@@ -15,10 +15,10 @@ import model.enums.ExportFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import service.ServiceFactory;
-import service.op.ExecutionResult;
-import service.op.GenerateOpListeTask;
+import model.op.kunde.ExecutionResult;
+import service.op.task.GenerateOpListeTask;
 import service.op.OPListenService;
-import service.op.OpRepository;
+import service.op.repository.OpRepository;
 
 import java.net.URL;
 import java.util.List;

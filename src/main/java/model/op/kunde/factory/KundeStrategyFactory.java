@@ -1,10 +1,10 @@
-package service.op.kunde.factory;
+package model.op.kunde.factory;
 
-import service.op.kunde.IKundeStrategy;
-import service.op.kunde.fivestar.FiveStar;
-import service.op.kunde.gateway.Gateway;
-import service.op.kunde.hartrodt.Hartrodt;
-import service.op.kunde.saco.Saco;
+import model.op.kunde.IKundeStrategy;
+import model.op.kunde.fivestar.FiveStar;
+import model.op.kunde.gateway.Gateway;
+import model.op.kunde.hartrodt.Hartrodt;
+import model.op.kunde.saco.Saco;
 
 import java.util.HashMap;
 import java.util.Map;

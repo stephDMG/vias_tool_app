@@ -48,7 +48,7 @@ public class MainController implements Initializable {
     // Views
     private Parent opListView;
     private Parent extractionView, dataView, dbExportView, aiAssistantView, pivotView,
-            dashboardView, showEnrichmentView, settingsView, coverDashboardView;
+            dashboardView, showEnrichmentView, settingsView, coverDashboardView, auditView;
 
     // CoverService global
     private CoverService coverService;
@@ -111,6 +111,7 @@ public class MainController implements Initializable {
             opListView = FXMLLoader.load(Objects.requireNonNull(getClass().getResource("/fxml/OpListView.fxml")));
             settingsView = FXMLLoader.load(Objects.requireNonNull(getClass().getResource("/fxml/SettingsView.fxml")));
             coverDashboardView = FXMLLoader.load(Objects.requireNonNull(getClass().getResource("/fxml/CoverDashboardView.fxml")));
+            auditView = FXMLLoader.load(Objects.requireNonNull(getClass().getResource("/fxml/AuditView.fxml")));
         } catch (IOException e) {
             logger.error("❌ Fehler beim Vorladen der Ansichten", e);
         }
@@ -194,6 +195,9 @@ public class MainController implements Initializable {
 
     /** Zeigt das Cover-Dashboard. */
     @FXML private void showCoverDashboardView() { mainBorderPane.setCenter(coverDashboardView); }
+
+
+    @FXML private void showAuditView(){mainBorderPane.setCenter(auditView);}
 
     /** Beendet die Anwendung. */
     @FXML private void closeApplication() { Platform.exit(); }

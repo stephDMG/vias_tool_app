@@ -4,6 +4,9 @@ import formatter.contract.CoverFormatter;
 import formatter.op.OpListeFormatter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import service.audit.AuditService;
+import service.audit.repository.AuditRepository;
+import service.audit.repository.AuditRepositoryImpl;
 import service.cache.CachedDatabaseService;
 import service.cache.CoverCacheService;
 import service.contract.CoverService;
@@ -17,7 +20,7 @@ import service.interfaces.AiService;
 import service.interfaces.DatabaseService;
 import service.interfaces.FileService;
 import service.op.OPListenService;
-import service.op.OpRepository;
+import service.op.repository.OpRepository;
 import service.rbac.AccessControlService;
 import service.rbac.LoginService;
 
@@ -36,6 +39,9 @@ public final class ServiceFactory {
     private static FileService fileService = new FileServiceImpl();
     private static AiMode currentAiMode = AiMode.LOCAL;
     private static AiService aiServiceInstance = null;
+
+    private static volatile AuditRepository AUDIT_REPOSITORY;
+    private static volatile AuditService AUDIT_SERVICE;
 
     private static volatile OpRepository OP_REPOSITORY;
 
@@ -69,7 +75,7 @@ public final class ServiceFactory {
             synchronized (ServiceFactory.class) {
                 if (OP_REPOSITORY == null) {
                     var formatter = new OpListeFormatter();
-                    OP_REPOSITORY = new service.op.OpRepository(getDatabaseService(), formatter);
+                    OP_REPOSITORY = new OpRepository(getDatabaseService(), formatter);
                 }
             }
         }
@@ -97,6 +103,41 @@ public final class ServiceFactory {
         logger.debug("🤖 AiService bereitgestellt (Mode: {})", currentAiMode);
         return aiServiceInstance;
     }
+
+
+    // --- NOUVELLES MÉTHODES POUR AUDIT ---
+
+    /**
+     * Repository für Audit-Zwecke (Singleton).
+     */
+    public static AuditRepository getAuditRepository() {
+        if (ServiceFactory.AUDIT_REPOSITORY == null) {
+            synchronized (ServiceFactory.class) {
+                if (ServiceFactory.AUDIT_REPOSITORY == null) {
+                    ServiceFactory.AUDIT_REPOSITORY = new AuditRepositoryImpl(ServiceFactory.getDatabaseService());
+                }
+            }
+        }
+        return ServiceFactory.AUDIT_REPOSITORY;
+    }
+
+    /**
+     * Liefert den Singleton des neuen {@link AuditService}.
+     */
+    public static AuditService getAuditService() {
+        if (ServiceFactory.AUDIT_SERVICE == null) {
+            synchronized (ServiceFactory.class) {
+                if (ServiceFactory.AUDIT_SERVICE == null) {
+                    // AuditService benötigt den FileService und das AuditRepository
+                    ServiceFactory.AUDIT_SERVICE = new AuditService(ServiceFactory.getFileService(), getAuditRepository());
+                }
+            }
+        }
+        logger.debug("🛠️ AuditService bereitgestellt");
+        return ServiceFactory.AUDIT_SERVICE;
+    }
+
+
 
     public static CoverService getContractService() {
         if (COVER_SERVICE == null) {
@@ -181,6 +222,7 @@ public final class ServiceFactory {
         }
     }
 }
+
 
 /**
  * Hybrid AI Service - Kombiniert HuggingFace und lokalen Service

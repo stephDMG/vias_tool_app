@@ -1,4 +1,6 @@
-package service.op.kunde;
+package model.op.kunde;
+
+import service.op.repository.KundeRepository;
 
 import java.util.List;
 import java.util.Map;

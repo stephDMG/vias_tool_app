@@ -17,7 +17,7 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import model.RowData;
 import service.ServiceFactory;
-import service.op.OpRepository;
+import service.op.repository.OpRepository;
 
 import java.util.List;
 import java.util.stream.Collectors;

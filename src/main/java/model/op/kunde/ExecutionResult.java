@@ -1,4 +1,4 @@
-package service.op;
+package model.op.kunde;
 
 /**
  * Repräsentiert das detaillierte Ergebnis einer Dienstoperation.

@@ -4,82 +4,70 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<BorderPane prefHeight="370.0" prefWidth="852.0"
-            xmlns="http://javafx.com/javafx/17.0.12"
-            xmlns:fx="http://javafx.com/fxml/1"
-            fx:controller="gui.cover.CoverDomainController">
-
-    <!-- ===== HEADER ===== -->
-    <top>
-        <VBox prefHeight="265.0" prefWidth="856.0" spacing="8">
-            <padding>
-                <Insets bottom="10" left="10" right="10" top="10"/>
-            </padding>
-
-            <!-- Bannière -->
-            <HBox alignment="CENTER" prefHeight="45.0" prefWidth="477.0" styleClass="banner-header">
-                <Label fx:id="domainTitle"
-                       style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: white;"/>
-            </HBox>
-
-            <!-- Toolbar -->
-            <ToolBar>
-                <Button fx:id="ausfuehrenButton" onAction="#runKernfrage"
-                        styleClass="toolbar-button-special"
-                        text="🔍 Ausführen"
-                        disable="true"/>
-                <Region HBox.hgrow="ALWAYS"/> <!-- Spacer -->
-                <Label style="-fx-font-weight: bold;" text="Filter anwenden:"/>
-            </ToolBar>
-
-            <!-- Kernfrage Auswahl -->
-            <HBox alignment="CENTER_LEFT" spacing="10">
-                <Label text="Kernfrage:"/>
-                <ChoiceBox fx:id="kernfrageChoice" prefWidth="300"/>
-            </HBox>
-
-            <!-- Paramètres dynamiques -->
-            <HBox fx:id="parameter" alignment="CENTER_LEFT" spacing="20" visible="false">
-                <!-- Vertragsstand -->
-                <VBox spacing="6">
-                    <Label text="Vertragsstand"/>
-                    <ComboBox fx:id="vertragsstandCombo" prefWidth="220"/>
-                </VBox>
-
-                <!-- Bearbeitungsstand (mehrfach) -->
-                <VBox spacing="6">
-                    <Label text="Bearbeitungsstand (mehrfach)"/>
-                    <ListView fx:id="bearbeitungsstandList" prefHeight="120" prefWidth="260"/>
-                    <Label fx:id="bastandSelectedLabel" text="Ausgewählt: -"
-                           style="-fx-font-style: italic; -fx-text-fill: gray;"/>
-                </VBox>
-
-                <!-- Date filters (hidden by default) -->
-                <HBox fx:id="dateBox" prefHeight="129.0" prefWidth="320.0" spacing="20.0"
-                      visible="false" managed="false">
-                    <children>
-                        <VBox spacing="6">
-                            <Label text="Ab-Datum"/>
-                            <DatePicker fx:id="abDatePicker"/>
-                        </VBox>
-                        <VBox spacing="6">
-                            <Label text="Bis-Datum"/>
-                            <DatePicker fx:id="bisDatePicker"/>
-                        </VBox>
-                    </children>
-                </HBox>
-            </HBox>
-        </VBox>
-    </top>
+<BorderPane prefHeight="370.0" prefWidth="852.0" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.cover.CoverDomainController">
 
     <!-- ===== CENTER (Tableau résultat) ===== -->
     <center>
         <VBox prefHeight="14.0" prefWidth="580.0" spacing="10" VBox.vgrow="ALWAYS">
             <padding>
-                <Insets bottom="10" left="10" right="10" top="10"/>
+                <Insets bottom="10" left="10" right="10" top="10" />
             </padding>
-            <Label style="-fx-font-weight: bold;" text="Ergebnis"/>
-            <VBox fx:id="resultsContainer" VBox.vgrow="ALWAYS"/>
+           <VBox prefHeight="265.0" prefWidth="856.0" spacing="8">
+               <padding>
+                   <Insets bottom="10" left="10" right="10" top="10" />
+               </padding>
+   
+               <!-- Bannière -->
+               <HBox alignment="CENTER" prefHeight="45.0" prefWidth="477.0" styleClass="banner-header">
+                   <Label fx:id="domainTitle" style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: white;" />
+               </HBox>
+   
+               <!-- Toolbar -->
+               <ToolBar>
+                   <Button fx:id="ausfuehrenButton" disable="true" onAction="#runKernfrage" styleClass="toolbar-button-special" text="🔍 Ausführen" />
+                   <Region HBox.hgrow="ALWAYS" /> <!-- Spacer -->
+                   <Label style="-fx-font-weight: bold;" text="Filter anwenden:" />
+               </ToolBar>
+   
+               <!-- Kernfrage Auswahl -->
+               <HBox alignment="CENTER_LEFT" spacing="10">
+                   <Label text="Kernfrage:" />
+                   <ChoiceBox fx:id="kernfrageChoice" prefWidth="300" />
+               </HBox>
+   
+               <!-- Paramètres dynamiques -->
+               <HBox fx:id="parameter" alignment="CENTER_LEFT" spacing="20" visible="false">
+                   <!-- Vertragsstand -->
+                   <VBox spacing="6">
+                       <Label text="Vertragsstand" />
+                       <ComboBox fx:id="vertragsstandCombo" prefWidth="220" />
+                   </VBox>
+   
+                   <!-- Bearbeitungsstand (mehrfach) -->
+                   <VBox spacing="6">
+                       <Label text="Bearbeitungsstand (mehrfach)" />
+                       <ListView fx:id="bearbeitungsstandList" prefHeight="120" prefWidth="260" />
+                       <Label fx:id="bastandSelectedLabel" style="-fx-font-style: italic; -fx-text-fill: gray;" text="Ausgewählt: -" />
+                   </VBox>
+   
+                   <!-- Date filters (hidden by default) -->
+                   <HBox fx:id="dateBox" managed="false" prefHeight="129.0" prefWidth="320.0" spacing="20.0" visible="false">
+                       <children>
+                           <VBox spacing="6">
+                               <Label text="Ab-Datum" />
+                               <DatePicker fx:id="abDatePicker" />
+                           </VBox>
+                           <VBox spacing="6">
+                               <Label text="Bis-Datum" />
+                               <DatePicker fx:id="bisDatePicker" />
+                           </VBox>
+                       </children>
+                   </HBox>
+               </HBox>
+               <Label style="-fx-font-weight: bold;" text="Ergebnis" />
+               <VBox fx:id="resultsContainer" VBox.vgrow="ALWAYS" />
+           </VBox>
+
         </VBox>
     </center>
 
@@ -88,7 +76,7 @@
         <HBox alignment="CENTER_RIGHT" spacing="10">
             <Button onAction="#closeWindow" text="Schließen">
                 <HBox.margin>
-                    <Insets bottom="8.0" left="8.0" right="8.0" top="8.0"/>
+                    <Insets bottom="8.0" left="8.0" right="8.0" top="8.0" />
                 </HBox.margin>
             </Button>
         </HBox>

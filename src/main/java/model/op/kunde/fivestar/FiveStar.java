@@ -1,8 +1,8 @@
-package service.op.kunde.fivestar;
+package model.op.kunde.fivestar;
 
-import service.op.kunde.IKundeStrategy;
-import service.op.kunde.Kunde;
-import service.op.kunde.KundeRepository;
+import model.op.kunde.IKundeStrategy;
+import model.op.kunde.Kunde;
+import service.op.repository.KundeRepository;
 import util.FileUtil;
 
 import java.util.List;

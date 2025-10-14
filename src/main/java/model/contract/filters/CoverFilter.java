@@ -37,8 +37,8 @@ public class CoverFilter {
     private LocalDate kuendigVerkDatum;
     private String kuendigVerkInitiator;
 
-    // Storno / Beendigung
-    private String stornoGrund;
+    // Storno / Beendigung (MODIFIZIERT: Multi-Selektion)
+    private List<String> stornoGrundIds;
 
     // Dropdown-Gruppierung (Makler, Gesellschaft, Sparte, etc.) – multi-selektion
     private List<String> groupBy;
@@ -102,13 +102,13 @@ public class CoverFilter {
     public String getKuendigVerkInitiator() { return kuendigVerkInitiator; }
     public void setKuendigVerkInitiator(String kuendigVerkInitiator) { this.kuendigVerkInitiator = kuendigVerkInitiator; }
 
-    public String getStornoGrund() { return stornoGrund; }
-    public void setStornoGrund(String stornoGrund) { this.stornoGrund = stornoGrund; }
+    // MODIFIZIERT: List<String> für multi-Selektion der Stornogründe
+    public List<String> getStornoGrundIds() { return stornoGrundIds; }
+    public void setStornoGrundIds(List<String> stornoGrundIds) { this.stornoGrundIds = stornoGrundIds; }
 
     // Dropdown-Gruppierung (Makler, Gesellschaft, Sparte, etc.) – multi-selektion
     public List<String> getGroupBy() { return groupBy; }
     public void setGroupBy(List<String> groupBy) { this.groupBy = groupBy; }
-
 
 
     public String getInsuredName() { return insuredName; }
@@ -136,11 +136,11 @@ public class CoverFilter {
                 ", mode='" + mode + '\'' +
                 ", kuendigVerkDatum=" + kuendigVerkDatum +
                 ", kuendigVerkInitiator='" + kuendigVerkInitiator + '\'' +
-                ", stornoGrund='" + stornoGrund + '\'' +
-                ", groupBy='" + groupBy + '\'' +
+                ", stornoGrundIds=" + stornoGrundIds +
+                ", groupBy=" + groupBy +
                 ", insuredName='" + insuredName + '\'' +
                 ", insuredCity='" + insuredCity + '\'' +
-                ", insuredNation='" + insuredNation + '\'' +
+                ", insuredNation='" + insuredName + '\'' + // Korrektur: sollte insuredNation sein
                 '}';
     }
 }

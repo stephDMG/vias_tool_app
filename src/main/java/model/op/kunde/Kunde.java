@@ -1,4 +1,4 @@
-package service.op.kunde;
+package model.op.kunde;
 
 
 import java.util.Objects;

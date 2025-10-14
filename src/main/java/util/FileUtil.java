@@ -11,6 +11,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Set;
 
 /**
  * Hilfsklasse für Dateioperationen.
@@ -20,6 +24,11 @@ import java.nio.file.Paths;
  */
 public class FileUtil {
     private static final Logger logger = LoggerFactory.getLogger(FileServiceImpl.class);
+
+
+    public static final String BASE_AUDIT_PATH = "X:\\FREIE ZONE\\000_AUDIT_2025\\AUDIT\\";
+    private static final DateTimeFormatter FILE_DATETIME_FMT = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm:ss");
+
 
     /**
      * Erstellt Ausgabeverzeichnis falls nicht vorhanden.
@@ -83,13 +92,20 @@ public class FileUtil {
     /**
      * Bereinigt Dateinamen von ungültigen Zeichen.
      */
+    // Dans src/main/java/util/FileUtil.java
     public static String sanitizeFileName(String fileName) {
         if (fileName == null || fileName.isEmpty()) {
             return "unbekannt";
         }
-        String sanitized = fileName.replaceAll("[\\\\/:*?\"<>|\\s]", "_"); // Remplace les caractères invalides et les espaces
-        sanitized = sanitized.replaceAll("\\.+$", ""); // Supprime les points à la fin du nom de fichier
-        sanitized = sanitized.replaceAll("_{2,}", "_"); // Remplace les underscores consécutifs par un seul
+        // Remplacer uniquement les caractères ILLÉGAUX (pas les espaces) par un underscore.
+        // Les caractères illégaux Windows sont : \ / : * ? " < > |
+        String sanitized = fileName.replaceAll("[\\\\/:*?\"<>|]", "_");
+
+        // Supprimer les points à la fin et les underscores multiples
+        sanitized = sanitized.replaceAll("\\.+$", "");
+        sanitized = sanitized.replaceAll("_{2,}", "_");
+
+        // L'espace est maintenant CONSERVÉ, ce qui résout votre problème d'affichage (01) Schriftwechsel - ...)
 
         if (sanitized.isEmpty()) {
             return "unbekannt";
@@ -109,5 +125,141 @@ public class FileUtil {
         if (size < 1024 * 1024) return (size / 1024) + " KB";
         if (size < 1024 * 1024 * 1024) return (size / 1024 / 1024) + " MB";
         return (size / 1024 / 1024 / 1024) + " GB";
+    }
+
+
+
+
+    /**
+     * Erstellt den vollständigen Zielpfad für das Dokument gemäß der Audit-Struktur und stellt sicher,
+     * dass alle Verzeichnisse existieren.
+     * Struktur: X:\...\SB_[Vorname]_[Nachname]\[Vertrag|Schaden]\[Schlüssel]\[Beschreibung]\
+     *
+     * @param vorname Vorname des Sachbearbeiters.
+     * @param nachname Nachname des Sachbearbeiters.
+     * @param auditType "Vertrag" oder "Schaden".
+     * @param schluessel Policennummer oder Schaden-Nummer.
+     * @param beschreibung Dokumenten-Beschreibung (z.B. "01) Schriftwechsel").
+     * @return Der vollständige Zielpfad als String.
+     */
+    public static String buildAndEnsureTargetPath(String vorname, String nachname, String auditType,
+                                                  String schluessel, String beschreibung) {
+
+        // 1. Pfad-Teile bereinigen
+        String sbDir = sanitizeFileName(vorname) + " " + sanitizeFileName(nachname);
+        String schluesselDir = sanitizeFileName(schluessel);
+        String beschreibungDir = sanitizeFileName(beschreibung);
+        String typeDir = sanitizeFileName(auditType);
+
+        Path targetPath = Path.of(BASE_AUDIT_PATH)
+                .resolve(sbDir)
+                .resolve(typeDir)
+                .resolve(schluesselDir)
+                .resolve(beschreibungDir);
+
+        // 2. Verzeichnisse erstellen
+        try {
+            // Files.createDirectories ist sicher für bereits existierende Pfade
+            Files.createDirectories(targetPath);
+        } catch (IOException e) {
+            logger.error("❌ Konnte Zielverzeichnis nicht erstellen: {}", targetPath, e);
+            throw new RuntimeException("Konnte Zielverzeichnis nicht erstellen: " + targetPath, e);
+        }
+
+        return targetPath.toString();
+    }
+
+
+
+    /**
+     * Generiert einen eindeutigen Dateinamen (Betreff.Extension) unter Berücksichtigung von Konflikten.
+     * Wenn der Betreff bereits in 'existingBetreffs' enthalten ist, wird er mit Datum/Uhrzeit ergänzt.
+     *
+     * @param betreff Der Betreff (Basis-Dateiname).
+     * @param bezugsdatum Das Bezugsdatum des Dokuments.
+     * @param uhrzeit Die Erstellungszeit des Dokuments.
+     * @param extension Die Dateierweiterung (ohne Punkt).
+
+     * @return Der eindeutige, sichere Dateiname (ohne Pfad).
+     */
+    // FileUtil.java
+    public static String generateUniqueFileName(String betreff, java.time.LocalDateTime bezugsdatum,
+                                                java.time.LocalDateTime uhrzeit, String extension,
+                                                java.util.Set<String> existingBaseNames,
+                                                boolean stampAlways) {
+        String safeBetreff = sanitizeFileName(betreff);
+        String baseName = safeBetreff.isEmpty() ? "Dokument_ohne_Betreff" : safeBetreff;
+
+        boolean mustStamp = stampAlways || existingBaseNames.contains(baseName);
+
+        if (!mustStamp) {
+            // Pas de doublon => on garde le nom simple
+            existingBaseNames.add(baseName);
+            return baseName + "." + extension;
+        }
+
+        // Priorité à l'heure réelle
+        java.time.LocalDateTime dateTimeToUse = (uhrzeit != null) ? uhrzeit : bezugsdatum;
+
+        java.time.format.DateTimeFormatter FN_FMT =
+                java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy HH.mm.ss");
+
+        String dateTimePart = (dateTimeToUse != null)
+                ? dateTimeToUse.format(FN_FMT)
+                : java.time.LocalDateTime.now().format(FN_FMT);
+
+        String finalBaseName = baseName + " - " + dateTimePart;
+
+        // Si deux docs tombent à la même seconde, on différencie (2), (3), ...
+        String uniqueName = finalBaseName;
+        int suffix = 2;
+        while (existingBaseNames.contains(uniqueName)) {
+            uniqueName = finalBaseName + " (" + suffix++ + ")";
+        }
+        existingBaseNames.add(uniqueName);
+
+        return uniqueName + "." + extension;
+    }
+
+
+
+    // FileUtil.java
+    public static String buildTargetPathString(String vorname, String nachname, String auditType,
+                                               String schluessel, String beschreibung) {
+        String sbDir = sanitizeFileName(vorname) + " " + sanitizeFileName(nachname);
+        String schluesselDir = sanitizeFileName(schluessel);
+        String beschreibungDir = sanitizeFileName(beschreibung);
+        String typeDir = sanitizeFileName(auditType);
+
+        java.nio.file.Path targetPath = java.nio.file.Path.of(BASE_AUDIT_PATH)
+                .resolve(sbDir)
+                .resolve(typeDir)
+                .resolve(schluesselDir)
+                .resolve(beschreibungDir);
+
+        return targetPath.toString();
+    }
+
+
+
+
+    /**
+     * Führt die Kopieroperation einer Datei von Quelle zu Ziel durch.
+     * @param sourcePath Physischer Pfad der Quelldatei.
+     * @param targetDirectory Pfad zum Zielordner.
+     * @param newFileName Der neue, eindeutige Dateiname (inkl. Extension).
+     * @throws IOException Wenn die Datei nicht kopiert werden kann.
+     */
+    public static void copyFile(String sourcePath, String targetDirectory, String newFileName) throws IOException {
+        Path source = Paths.get(sourcePath);
+        Path target = Paths.get(targetDirectory, newFileName);
+
+        // Überprüfung, ob Quelldatei existiert und lesbar ist
+        if (!Files.exists(source) || !Files.isRegularFile(source)) {
+            logger.warn("❌ Quelldatei nicht gefunden oder nicht zugreifbar: {}", sourcePath);
+            throw new IOException("Quelldatei nicht gefunden oder nicht zugreifbar: " + sourcePath);
+        }
+
+        Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING);
     }
 }
