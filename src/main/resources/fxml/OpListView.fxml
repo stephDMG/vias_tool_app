@@ -47,9 +47,9 @@
                     <VBox alignment="CENTER" prefHeight="110.0" prefWidth="265.0">
                         <Label alignment="BOTTOM_CENTER" prefHeight="7.0" prefWidth="64.0" style="-fx-font-size: 18px; -fx-font-weight: bold;" text="Prozess" />
                         <HBox alignment="CENTER" prefHeight="100.0" prefWidth="200.0">
-                            <Button fx:id="startButton" contentDisplay="CENTER" onAction="#startExportProcess" prefHeight="51.0" prefWidth="114.0" style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-background-color: #4CAF50; -fx-text-fill: white; -fx-padding: 10 20; -fx-border-radius: 50; -fx-background-radius: 50;" text="▶ starten" />
+                            <Button fx:id="startButton" contentDisplay="CENTER" onAction="#startExportProcess" prefHeight="45.0" prefWidth="110.0" style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-background-color: #4CAF50; -fx-text-fill: white; -fx-padding: 10 20; -fx-border-radius: 50; -fx-background-radius: 50;" text="▶ starten" />
                             <VBox prefHeight="83.0" prefWidth="30.0" />
-                            <Button fx:id="stopButton" contentDisplay="CENTER" disable="true" onAction="#stopExportProcess" prefHeight="41.0" prefWidth="108.0" style="-fx-font-size: 16px; -fx-background-color: #F44336; -fx-text-fill: white; -fx-padding: 10 20; -fx-background-radius: 50; -fx-border-radius: 50;" text="⏹ Stop" />
+                            <Button fx:id="stopButton" contentDisplay="CENTER" disable="true" onAction="#stopExportProcess" prefHeight="45.0" prefWidth="108.0" style="-fx-font-size: 16px; -fx-background-color: #F44336; -fx-text-fill: white; -fx-padding: 10 20; -fx-background-radius: 50; -fx-border-radius: 50;" text="⏹ Stop" />
                         </HBox>
                     </VBox>
                 </HBox>

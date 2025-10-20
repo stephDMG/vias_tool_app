@@ -12,14 +12,14 @@ import java.io.File;
 
 public class DetectVSymbol {
 
-    private static final String PDF_PATH = "C:\\Users\\stephane.dongmo\\Downloads\\März2025_115863-100209-21.07.2025-€ - 207.202,05.pdf";
+    private static final String PDF_PATH = "C:\\Users\\stephane.dongmo\\Downloads\\Mai2025_115896-100209-25.08.2025-€ - 234.677,11.pdf";
     private static final String TESSDATA_PATH = "C:\\Program Files\\Tesseract-OCR\\tessdata";
 
     public static void main(String[] args) {
         ITesseract t = new Tesseract();
         t.setDatapath(TESSDATA_PATH);
         t.setLanguage("deu");
-        t.setPageSegMode(6); // standard mode pour texte en colonnes
+        t.setPageSegMode(6);
 
         try (PDDocument doc = Loader.loadPDF(new File(PDF_PATH))) {
             PDFRenderer renderer = new PDFRenderer(doc);

@@ -2,113 +2,110 @@
 
 <?import javafx.geometry.*?>
 <?import javafx.scene.control.*?>
+<?import javafx.scene.image.*?>
 <?import javafx.scene.layout.*?>
 
-<BorderPane prefHeight="500.0" prefWidth="950.0"
-            xmlns="http://javafx.com/javafx/17.0.12"
-            xmlns:fx="http://javafx.com/fxml/1"
-            fx:controller="gui.cover.CoverDomainController">
+<BorderPane prefHeight="800.0" prefWidth="1200.0" style="-fx-font-family: 'Segoe UI', Arial, sans-serif; -fx-font-size: 12px;" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.cover.CoverDomainController">
 
+    <!-- ====== HEADER ====== -->
     <top>
         <VBox spacing="10">
-            <padding>
-                <Insets bottom="10" left="10" right="10" top="10"/>
-            </padding>
-
-            <!-- 🔹 Titre principal -->
-            <Label fx:id="domainTitle"
-                   style="-fx-font-size: 20px; -fx-font-weight: bold;"/>
-
-            <!-- 🔹 Sélecteur de Kernfrage -->
-            <HBox alignment="CENTER_LEFT" spacing="10">
-                <Label text="Kernfrage:"/>
-                <ChoiceBox fx:id="kernfrageChoice" prefWidth="400"/>
+            <HBox alignment="CENTER_LEFT" spacing="12" style="-fx-background-color: linear-gradient(to right, #263240, #1f2833);">
+                <padding>
+                    <Insets bottom="12" left="16" right="16" top="12" />
+                </padding>
+                <ImageView fitHeight="28.0" preserveRatio="true">
+                    <Image url="@/images/logo.png" />
+                </ImageView>
+                <Label fx:id="domainTitle" style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: white;" />
             </HBox>
 
-            <!-- 🔹 Paramètres dynamiques -->
-            <HBox fx:id="parameter" spacing="20" visible="true" managed="true">
-
-                <!-- 🔸 Vertragsstand -->
-                <VBox spacing="6">
-                    <Label text="Vertragsstand"/>
-                    <!-- remplacé : ComboBox → ListView -->
-                    <ListView fx:id="vertragsstandList" prefHeight="100" prefWidth="200"/>
-                    <Label fx:id="vertragsstandSelectedLabel"
-                           text="Ausgewählt: -"
-                           wrapText="true"
-                           maxWidth="200"
-                           style="-fx-font-style: italic; -fx-text-fill: gray;"/>
-                </VBox>
-
-                <!-- 🔸 Bearbeitungsstand -->
-                <VBox spacing="6">
-                    <Label text="Bearbeitungsstand"/>
-                    <ListView fx:id="bearbeitungsstandList" prefHeight="100" prefWidth="200"/>
-                    <Label fx:id="bastandSelectedLabel"
-                           text="Ausgewählt: -"
-                           wrapText="true"
-                           maxWidth="200"
-                           style="-fx-font-style: italic; -fx-text-fill: gray;"/>
-                </VBox>
-
-                <!-- 🔸 Gruppierung -->
-                <VBox spacing="6">
-                    <HBox spacing="10" alignment="CENTER_LEFT">
-                        <Label text="Gruppierung"/>
-                        <CheckBox fx:id="groupByAllCheck" text="Alles"/>
-                    </HBox>
-                    <ListView fx:id="groupByList" prefHeight="100" prefWidth="200"/>
-                    <Label fx:id="groupBySelectedLabel"
-                           text="Ausgewählt: Standard (all)"
-                           wrapText="true"
-                           maxWidth="200"
-                           style="-fx-font-style: italic; -fx-text-fill: gray;"/>
-                </VBox>
-
-                <!-- 🔸 Date filters -->
-                <HBox fx:id="dateBox" spacing="20" visible="false" managed="false">
-                    <VBox spacing="6">
-                        <Label text="Ab-Datum"/>
-                        <DatePicker fx:id="abDatePicker"/>
-                    </VBox>
-                    <VBox spacing="6">
-                        <Label text="Bis-Datum"/>
-                        <DatePicker fx:id="bisDatePicker"/>
-                    </VBox>
-                </HBox>
-
-                <!-- 🔸 Stornogründe -->
-                <!-- ✅ visible uniquement pour la KF “Abgelehnte/Storno Angebote” -->
-                <VBox fx:id="stornoGrundFilterBox" spacing="6" visible="false" managed="false">
-                    <Label text="Stornogründe filtern"/>
-                    <ListView fx:id="stornoGrundList" prefHeight="100" prefWidth="220"/>
-                </VBox>
-
-                <!-- 🔸 Exécution -->
-                <VBox alignment="BOTTOM_RIGHT">
-                    <Button fx:id="ausfuehrenButton"
-                            onAction="#runKernfrage"
-                            text="🔍 Ausführen"
-                            disable="true"/>
-                </VBox>
-
-            </HBox>
+            <ToolBar style="-fx-background-insets: 0 0 1 0; -fx-padding: 6 12 6 12;">
+                <Button fx:id="ausfuehrenButton" disable="true" onAction="#runKernfrage" style="-fx-background-color: #15a66b; -fx-text-fill: white; -fx-background-radius: 8; -fx-padding: 8 14; -fx-font-weight: bold;" text="🔍 Ausführen" />
+                <Region HBox.hgrow="ALWAYS" />
+                <Label style="-fx-font-weight: bold;" text="Kernfrage:" />
+                <ChoiceBox fx:id="kernfrageChoice" prefWidth="380" />
+            </ToolBar>
         </VBox>
     </top>
 
-    <!-- 🔹 Table & Messages -->
+    <!-- ====== CONTENU ====== -->
     <center>
-        <VBox spacing="10" VBox.vgrow="ALWAYS">
-            <Label fx:id="messageLabel" style="-fx-text-fill: gray;"/>
-            <VBox fx:id="resultsContainer" VBox.vgrow="ALWAYS"/>
-        </VBox>
+        <ScrollPane fitToHeight="true" fitToWidth="true" hbarPolicy="NEVER" pannable="false" vbarPolicy="AS_NEEDED">
+            <content>
+                <VBox spacing="14" VBox.vgrow="ALWAYS">
+                    <padding>
+                        <Insets bottom="16" left="16" right="16" top="14" />
+                    </padding>
+
+                    <!-- Filtres -->
+                    <TitledPane expanded="true" style="-fx-font-weight: bold;" text="Filter">
+                        <content>
+                            <HBox fx:id="parameter" alignment="TOP_LEFT" fillHeight="true" managed="true" prefHeight="149.0" prefWidth="1165.0" spacing="20" visible="true">
+
+                                <!-- Vertragsstand -->
+                                <VBox prefHeight="155.0" prefWidth="264.0" spacing="6" HBox.hgrow="ALWAYS">
+                                    <Label style="-fx-font-weight: bold;" text="Vertragsstand" />
+                                    <ListView fx:id="vertragsstandList" fixedCellSize="22" minHeight="112.0" prefHeight="112.0" prefWidth="90.0" style="-fx-background-radius: 8; -fx-border-color: rgba(0,0,0,0.1); -fx-border-radius: 8;" VBox.vgrow="ALWAYS" />
+                                    <Label fx:id="vertragsstandSelectedLabel" maxWidth="260" style="-fx-font-style: italic; -fx-text-fill: gray;" text="Ausgewählt: -" wrapText="true" />
+                                </VBox>
+
+                                <!-- Bearbeitungsstand -->
+                                <VBox spacing="6" HBox.hgrow="ALWAYS">
+                                    <Label style="-fx-font-weight: bold;" text="Bearbeitungsstand" />
+                                    <ListView fx:id="bearbeitungsstandList" fixedCellSize="22" minHeight="160" prefHeight="240" style="-fx-background-radius: 8; -fx-border-color: rgba(0,0,0,0.1); -fx-border-radius: 8;" VBox.vgrow="ALWAYS" />
+                                    <Label fx:id="bastandSelectedLabel" maxWidth="260" style="-fx-font-style: italic; -fx-text-fill: gray;" text="Ausgewählt: -" wrapText="true" />
+                                </VBox>
+
+                                <!-- Gruppierung -->
+                                <VBox spacing="6" HBox.hgrow="ALWAYS">
+                                    <HBox alignment="CENTER_LEFT" spacing="10">
+                                        <Label style="-fx-font-weight: bold;" text="Gruppierung" />
+                                        <CheckBox fx:id="groupByAllCheck" text="Alles" />
+                                    </HBox>
+                                    <ListView fx:id="groupByList" fixedCellSize="22" minHeight="140" prefHeight="200" style="-fx-background-radius: 8; -fx-border-color: rgba(0,0,0,0.1); -fx-border-radius: 8;" VBox.vgrow="ALWAYS" />
+                                    <Label fx:id="groupBySelectedLabel" maxWidth="260" style="-fx-font-style: italic; -fx-text-fill: gray;" text="Ausgewählt: Standard (all)" wrapText="true" />
+                                </VBox>
+
+                                <!-- Date filters -->
+                                <HBox fx:id="dateBox" alignment="TOP_LEFT" managed="false" spacing="16" visible="false">
+                                    <VBox spacing="6">
+                                        <Label style="-fx-font-weight: bold;" text="Ab-Datum" />
+                                        <DatePicker fx:id="abDatePicker" />
+                                    </VBox>
+                                    <VBox spacing="6">
+                                        <Label style="-fx-font-weight: bold;" text="Bis-Datum" />
+                                        <DatePicker fx:id="bisDatePicker" />
+                                    </VBox>
+                                </HBox>
+
+                                <!-- Stornogründe -->
+                                <VBox fx:id="stornoGrundFilterBox" managed="false" spacing="6" visible="false" HBox.hgrow="ALWAYS">
+                                    <Label style="-fx-font-weight: bold;" text="Stornogründe filtern" />
+                                    <ListView fx:id="stornoGrundList" fixedCellSize="22" minHeight="160" prefHeight="240" style="-fx-background-radius: 8; -fx-border-color: rgba(0,0,0,0.1); -fx-border-radius: 8;" VBox.vgrow="ALWAYS" />
+                                </VBox>
+
+                            </HBox>
+                        </content>
+                    </TitledPane>
+
+                    <!-- Messages + Table -->
+                    <VBox spacing="8" VBox.vgrow="ALWAYS">
+                        <Label fx:id="messageLabel" style="-fx-text-fill: gray;" />
+                        <VBox fx:id="resultsContainer" VBox.vgrow="ALWAYS" />
+                    </VBox>
+                </VBox>
+            </content>
+        </ScrollPane>
     </center>
 
-    <!-- 🔹 Bouton Fermer -->
+    <!-- ====== FOOTER ====== -->
     <bottom>
         <HBox alignment="CENTER_RIGHT">
-            <Button onAction="#closeWindow" text="Schließen"/>
+            <padding>
+                <Insets bottom="8" left="12" right="12" top="8" />
+            </padding>
+            <Button onAction="#closeWindow" style="-fx-background-radius: 8; -fx-padding: 6 12;" text="Schließen" />
         </HBox>
     </bottom>
-
 </BorderPane>

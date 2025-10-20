@@ -1,8 +1,10 @@
 package service.pdfextraction;
 
 import file.extrator.DataExtractor;
+import file.extrator.protocol.ProtocolAware;
+import file.extrator.protocol.ProtocolExporter;
+import file.extrator.protocol.ProtocolReport;
 import file.extrator.schadenregelierung.SchadenregulierungExtractor;
-import file.extrator.versicherung.ValidationService;
 import file.extrator.versicherung.VersicherungsExtractor;
 import model.RowData;
 import model.SchadenregulierungData;
@@ -13,6 +15,8 @@ import org.slf4j.LoggerFactory;
 import service.interfaces.FileService;
 
 import java.io.File;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -32,14 +36,10 @@ public class ExtractionService {
     private final ValidationService validationService;
     private final List<DataExtractor<?>> availableExtractors;
 
-    public ExtractionService(FileService fileService) {
-        this.fileService = fileService;
-        this.validationService = new ValidationService();
-        this.availableExtractors = List.of(
-                new VersicherungsExtractor(),
-                new SchadenregulierungExtractor()
-        );
-    }
+
+    private final ProtocolExporter protocolExporter;
+
+
 
     /**
      * Hauptprozess für Extraktion und Export.
@@ -63,6 +63,7 @@ public class ExtractionService {
 
             if (extractedData == null || extractedData.isEmpty()) {
                 logger.warn("⚠️ Keine exportierbaren Daten in der Datei gefunden. Export für '{}' wird übersprungen.", pdfPath);
+                maybeExportProtocol(extractor, outputPath, format);
                 return false;
             }
 
@@ -75,12 +76,14 @@ public class ExtractionService {
                 List<VersicherungsData> dataToValidate = (List<VersicherungsData>) extractedData;
                 List<VersicherungsData> validatedData = validateVersicherungsData(dataToValidate);
                 exportVersicherungsData(validatedData, outputPath, format);
+                maybeExportProtocol(extractor, outputPath, format);
 
             } else if (firstItem instanceof SchadenregulierungData) {
                 // WORKFLOW: Für Schadenregulierungen (Direktexport)
                 logger.info("Führe den direkten Export-Workflow für Schadenregulierungen aus...");
                 List<SchadenregulierungData> dataToExport = (List<SchadenregulierungData>) extractedData;
                 exportSchadenregulierungData(dataToExport, outputPath, format);
+                maybeExportProtocol(extractor, outputPath, format);
 
             } else {
                 throw new IllegalStateException("Unbekannter Datentyp kann nicht exportiert werden: " + firstItem.getClass().getName());
@@ -156,5 +159,62 @@ public class ExtractionService {
             }
         }
         logger.info("---------------------------------------------");
+    }
+
+    private String buildProtocolOutputPath(String dataOutputPath, boolean preferXlsx) {
+        try {
+            Path p = Paths.get(dataOutputPath);
+            String file = p.getFileName().toString();
+            int dot = file.lastIndexOf('.');
+            String base = (dot > 0) ? file.substring(0, dot) : file;
+            return p.getParent().resolve(base + (preferXlsx ? ".protocol.xlsx" : ".protocol.csv")).toString();
+        } catch (Exception e) {
+            return dataOutputPath + (preferXlsx ? ".protocol.xlsx" : ".protocol.csv");
+        }
+    }
+
+    public ExtractionService(FileService fileService) {
+        this.fileService = fileService;
+        this.validationService = new ValidationService();
+        this.availableExtractors = List.of(
+                new VersicherungsExtractor(),
+                new SchadenregulierungExtractor()
+        );
+        this.protocolExporter = new ProtocolExporter(fileService);
+    }
+
+    private void maybeExportProtocol(Object extractor, String dataOutputPath, ExportFormat format) {
+        if (!(extractor instanceof ProtocolAware pa)) return;
+        ProtocolReport report = pa.getProtocolReport();
+        if (report == null) return;
+
+        logger.info("🧾 Protokoll: total={}, warn={}, corr={}, missing={}, symbol={}",
+                report.getTotalCount(),
+                report.getWarnCount(),
+                report.getCorrectionCount(),
+                report.getMissingCount(),
+                report.getSymbolCount());
+
+        // si tout est OK → pas de fichier, on garde seulement les logs
+        if (!report.hasWarningsOrCorrectionsOrMissing()) return;
+
+        boolean preferXlsx = (format == ExportFormat.XLSX);
+        String protocolPath = buildProtocolOutputPath(dataOutputPath, preferXlsx);
+
+        // ⛳️ Skip si déjà généré par l’autre export (XLSX/CSV)
+        try {
+            java.nio.file.Path p = java.nio.file.Paths.get(protocolPath);
+            if (java.nio.file.Files.exists(p)) {
+                logger.info("ℹ️ Protokoll-Datei existiert bereits, wird nicht erneut erzeugt: {}", protocolPath);
+                return;
+            }
+        } catch (Exception ignore) { /* best-effort */ }
+
+        try {
+            protocolExporter.export(report, protocolPath, preferXlsx ? ExportFormat.XLSX : ExportFormat.CSV);
+            logger.info("📄 Protokoll-Datei geschrieben: {}", protocolPath);
+        } catch (Exception ex) {
+            logger.warn("⚠️ Konnte Protokoll nicht schreiben: {}", ex.getMessage(), ex);
+        }
     }
 }

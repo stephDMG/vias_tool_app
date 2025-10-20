@@ -24,11 +24,17 @@ public class CoverRepository {
     private final DatabaseService databaseService;
     private final CoverFormatter coverFormatter;
 
-
     public CoverRepository(DatabaseService databaseService,
                            CoverFormatter coverFormatter) {
         this.databaseService = databaseService;
         this.coverFormatter = coverFormatter;
+
+        // Diagnose-Log: Sicherstellen, dass kein Stub injiziert ist
+        if (this.databaseService != null) {
+            log.info("CoverRepository initialisiert. DatabaseService: {}", this.databaseService.getClass().getName());
+        } else {
+            log.warn("CoverRepository initialisiert OHNE DatabaseService (null)!");
+        }
     }
 
     // =====================================================================================
@@ -90,12 +96,12 @@ public class CoverRepository {
         int total = fetchCount(filter);
         String today = LocalDate.now().toString();
 
-        // Active
+        // Aktiv
         String activeSql = buildCountSql(filter) + " AND (COVER.LU_ABL IS NULL OR COVER.LU_ABL >= '" + escape(today) + "')";
         int active = countFromSql(activeSql);
         int ended = Math.max(0, total - active);
 
-        // Cancelled / Storno
+        // Beendet / Storno
         String cancelledSql = buildCountSql(filter) + " AND COVER.LU_STA = 'S'";
         int cancelled = countFromSql(cancelledSql);
 
@@ -138,30 +144,23 @@ public class CoverRepository {
         // NEU: Logik für StornoGrund (MAP_ALLE_AGR) mit Fallback
         if ("MAP_ALLE_AGR".equals(upper)) {
             try {
-                // Versuch, die tatsächliche Dictionary-Tabelle zu laden (falls sie repariert wurde)
                 String sqlAgr = "SELECT * FROM " + dictName;
                 List<RowData> rows = executeQuery(sqlAgr);
                 if (rows.isEmpty() || rows.get(0).getValues().size() < 2) {
                     throw new Exception("AGR map table empty or invalid, using fallback.");
                 }
-                // Verwendung des klassischen Mappings, falls die Tabelle OK ist
                 return processDictionaryRows(rows);
             } catch (Exception ex) {
                 log.warn("Failed to load dictionary MAP_ALLE_AGR directly. Using fallback on LU_ALLE.", ex);
-
-                // FALLBACK: Werte direkt aus der LU_ALLE Tabelle lesen
                 String fallbackSql = "SELECT DISTINCT LU_AGR AS CODE, LU_AGR AS TEXT FROM LU_ALLE WHERE LU_AGR IS NOT NULL AND LU_AGR <> ''";
                 List<RowData> fallbackRows = executeQuery(fallbackSql);
                 return processFallbackRows(fallbackRows);
             }
         }
-        // ENDE NEU
 
         String sql = buildDictionarySql(dictName);
         List<RowData> rows = executeQuery(sql);
-
-        Map<String, String> out = processDictionaryRows(rows);
-        return out;
+        return processDictionaryRows(rows);
     }
 
     // NEU: Hilfsmethoden für die Dictionary-Verarbeitung
@@ -200,8 +199,22 @@ public class CoverRepository {
         StringBuilder sql = new StringBuilder();
         sql.append("SELECT TOP ").append(limit).append("\n");
 
-        // Block 0 – Versicherungsnehmer
+        //Muss zuerst sein
+        sql.append("  COVER.LU_VSN AS Versicherungsschein_Nr,\n");
         sql.append("  LUM.LU_NAM AS Versicherungsnehmer_Name,\n");
+        sql.append("  COVER.LU_RIS_ID AS Versicherungsart_Code,\n");
+        sql.append("  COVER.LU_RIS AS Versicherungsart_Text,\n");
+        sql.append("  COVER.LU_GES_Text AS Gesellschaft_Name,\n");
+        sql.append("  COVER.LU_VMT AS MaklerNr,\n");
+        sql.append("  MAK.LU_NAM AS Makler,\n");
+        sql.append("  COVER.LU_VMT2 AS Altmakler,\n");
+        sql.append("  COVER.LU_ART AS Vertragsparte_Code,\n");
+        sql.append("  COVER.LU_ART_Text AS Vertragsparte_Text,\n");
+        sql.append("  COVER.LU_BAUST_RIS AS Baustein_Typ_Code,\n");
+        sql.append("  MCR.TAB_VALUE AS Baustein_Typ_Text,\n");
+
+
+        // Block 0 – Versicherungsnehmer
         sql.append("  LUM.LU_VOR AS Versicherungsnehmer_Vorname,\n");
         sql.append("  LUM.LU_NA2 AS Versicherungsnehmer_Name2,\n");
         sql.append("  LUM.LU_NA3 AS Versicherungsnehmer_Name3,\n");
@@ -211,15 +224,9 @@ public class CoverRepository {
         sql.append("  LUM.LU_NAT AS Versicherungsnehmer_Nation,\n");
 
         // Block 1 – Basis/Art/Risiko
-        sql.append("  COVER.LU_VSN AS Versicherungsschein_Nr,\n");
         sql.append("  COVER.LU_VSN_VR AS VSN_Versicherer,\n");
         sql.append("  COVER.LU_VSN_MAKLER AS VSN_Makler,\n");
-        sql.append("  COVER.LU_RIS_ID AS Versicherungsart_Code,\n");
-        sql.append("  COVER.LU_RIS AS Versicherungsart_Text,\n");
-        sql.append("  COVER.LU_ART AS Vertragsparte_Code,\n");
-        sql.append("  COVER.LU_ART_Text AS Vertragsparte_Text,\n");
-        sql.append("  COVER.LU_BAUST_RIS AS Baustein_Typ_Code,\n");
-        sql.append("  MCR.TAB_VALUE AS Baustein_Typ_Text,\n");
+
 
         // Block 2 – Laufzeit/Status
         sql.append("  COVER.LU_NEUVERTRAG_JN AS Beginn_Neuvertrag_JN,\n");
@@ -247,10 +254,6 @@ public class CoverRepository {
         // Block 4 – Vorgang & Partner
         sql.append("  COVER.LU_VORGANG_ID AS Vorgang_ID,\n");
         sql.append("  COVER.LU_GES AS Gesellschaft_Code,\n");
-        sql.append("  COVER.LU_GES_Text AS Gesellschaft_Name,\n");
-        sql.append("  COVER.LU_VMT AS MaklerNr,\n");
-        sql.append("  MAK.LU_NAM AS Makler,\n");
-        sql.append("  COVER.LU_VMT2 AS Altmakler,\n");
         sql.append("  COVER.LU_SPAKZ AS Courtagesatz,\n");
         sql.append("  COVER.LU_AGT AS Prov_Vereinbarung,\n");
 
@@ -309,7 +312,6 @@ public class CoverRepository {
         sql.append("WHERE COVER.Sparte LIKE '%COVER' ").append(where).append("\n");
 
         sql.append("ORDER BY COVER.LU_BEG DESC, COVER.LU_VSN");
-
         return sql.toString();
     }
 
@@ -323,44 +325,40 @@ public class CoverRepository {
         return "SELECT COUNT(1) AS total\n" + from + "WHERE COVER.Sparte LIKE '%COVER' " + where;
     }
 
-
     // =====================================================
-// NEUE Version der buildWhere-Methode
-// =====================================================
+    // NEUE Version der buildWhere-Methode
+    // =====================================================
     private String buildWhere(CoverFilter filter) {
         if (filter == null) return "";
         StringBuilder sb = new StringBuilder();
 
-        // 🟢 1. Vertragsstand (LU_STA)
-        // Wenn mehrere Statuswerte vorhanden → IN-Klausel
+        // 1) Vertragsstand (LU_STA)
         if (filter.getContractStatusList() != null && !filter.getContractStatusList().isEmpty()) {
             String inClause = filter.getContractStatusList().stream()
                     .map(id -> "'" + escape(id) + "'")
                     .collect(Collectors.joining(","));
             sb.append(" AND COVER.LU_STA IN (").append(inClause).append(")");
-        }
-        // Wenn kein contractStatusList, aber einzelner Status gesetzt → einfache Gleichung
-        else if (nz(filter.getStatus())) {
+        } else if (nz(filter.getStatus())) {
             sb.append(" AND COVER.LU_STA = '").append(escape(filter.getStatus())).append("'");
         }
 
-        // 🟢 2. Vertragsstatus (LU_OPZ)
+        // 2) Vertragsstatus (LU_OPZ)
         if (nz(filter.getContractStatus())) {
             sb.append(" AND COVER.LU_OPZ = '").append(escape(filter.getContractStatus())).append("'");
         }
 
-        // 🟢 3. Makler
+        // 3) Makler
         if (nz(filter.getBroker())) {
             sb.append(" AND COVER.LU_VMT = '").append(escape(filter.getBroker())).append("'");
         }
 
-        // 🟢 4. Textsuche (Name oder VSN)
+        // 4) Textsuche
         if (nz(filter.getTextSearch())) {
             String t = "%" + escapeLike(filter.getTextSearch()) + "%";
             sb.append(" AND (LUM.LU_NAM LIKE '").append(t).append("' OR COVER.LU_VSN LIKE '").append(t).append("')");
         }
 
-        // 🟢 5. Bearbeitungsstand (LU_BASTAND)
+        // 5) Bearbeitungsstand (LU_BASTAND)
         if (filter.getBearbeitungsstandIds() != null && !filter.getBearbeitungsstandIds().isEmpty()) {
             String inClause = filter.getBearbeitungsstandIds().stream()
                     .map(id -> "'" + escape(id) + "'")
@@ -368,17 +366,15 @@ public class CoverRepository {
             sb.append(" AND COVER.LU_BASTAND IN (").append(inClause).append(")");
         }
 
-        // 🟢 6. Stornogründe (LU_AGR)
-        // Falls keine Auswahl erfolgt → keine Filterung
+        // 6) Stornogründe (LU_AGR)
         if (filter.getStornoGrundIds() != null && !filter.getStornoGrundIds().isEmpty()) {
             String inClause = filter.getStornoGrundIds().stream()
-                    // Die Werte aus dem UI sind bereits LABELS, nicht IDs
                     .map(value -> "'" + escape(value) + "'")
                     .collect(Collectors.joining(","));
             sb.append(" AND COVER.LU_AGR IN (").append(inClause).append(")");
         }
 
-        // 🟢 7. Kündigungsfristverkürzung
+        // 7) Kündigungsfristverkürzung
         if (filter.getKuendigVerkDatum() != null) {
             sb.append(" AND COVER.LU_KUEFRIV_DAT = '").append(filter.getKuendigVerkDatum()).append("'");
         }
@@ -386,8 +382,46 @@ public class CoverRepository {
             sb.append(" AND COVER.LU_KUEFRIV_DURCH = '").append(escape(filter.getKuendigVerkInitiator())).append("'");
         }
 
+        // 🔸 8) Datumsfilter (Ab/Bis) – DB hält YYYYMMDD, daher Formatierung nötig
+        if (filter.getAbDate() != null || filter.getBisDate() != null) {
+            // Falls beide gesetzt und vertauscht → korrigieren
+            java.time.LocalDate ab = filter.getAbDate();
+            java.time.LocalDate bis = filter.getBisDate();
+            if (ab != null && bis != null && bis.isBefore(ab)) {
+                var tmp = ab; ab = bis; bis = tmp;
+            }
+
+            // Heuristik: Bei Storno/Beendet → LU_DST, sonst LU_BEG
+            String dateColumn = decideDateColumn(filter);
+
+            if (ab != null) {
+                sb.append(" AND ").append(dateColumn).append(" >= '").append(fmtDateYYYYMMDD(ab)).append("'");
+            }
+            if (bis != null) {
+                sb.append(" AND ").append(dateColumn).append(" <= '").append(fmtDateYYYYMMDD(bis)).append("'");
+            }
+        }
+
         return sb.toString();
     }
+
+    // Wählt die passende Datumsspalte je nach Kontext:
+// - Stornoauswahl oder Status "S" → Storno-Datum (LU_DST)
+// - sonst → Vertragsbeginn (LU_BEG)
+    private String decideDateColumn(CoverFilter filter) {
+        boolean hasStornoFilter = filter.getStornoGrundIds() != null && !filter.getStornoGrundIds().isEmpty();
+        boolean isStornoStatus =
+                "S".equalsIgnoreCase(filter.getStatus()) ||
+                        (filter.getContractStatusList() != null && filter.getContractStatusList().contains("S"));
+
+        return (hasStornoFilter || isStornoStatus) ? "COVER.LU_DST" : "COVER.LU_BEG";
+    }
+
+    // Formatiert LocalDate in 'yyyyMMdd' für die DB (z. B. 2026-01-01 → "20260101")
+    private String fmtDateYYYYMMDD(java.time.LocalDate d) {
+        return java.time.format.DateTimeFormatter.BASIC_ISO_DATE.format(d); // "yyyyMMdd"
+    }
+
 
 
     private String buildDictionarySql(String dictName) {
@@ -405,54 +439,117 @@ public class CoverRepository {
     }
 
     // =====================================================================================
-    // DB-Utils
+    // DB-Utils (KORRIGIERT: echte DB-Aufrufe, keine Stubs)
     // =====================================================================================
 
     @SuppressWarnings("unchecked")
     private List<RowData> executeQuery(String sql) {
+        // Echtes Durchreichen an den Datenbank-Service
         try {
-            return databaseService.executeRawQuery(sql);   // ← DOIT appeler la DB
+            if (databaseService == null) {
+                throw new IllegalStateException("DatabaseService ist null – keine DB-Verbindung vorhanden.");
+            }
+            return databaseService.executeRawQuery(sql);
         } catch (Exception ex) {
-            log.error("SQL failed.\nSQL:\n{}", sql, ex);
+            log.error("SQL fehlgeschlagen.\nSQL:\n{}", sql, ex);
             throw new IllegalStateException("Datenbankabfrage fehlgeschlagen: " + ex.getMessage(), ex);
         }
     }
 
-
     private int countFromSql(String sql) {
-        return 0;
+        List<RowData> rows = executeQuery(sql);
+        if (rows.isEmpty()) return 0;
+        String v = rows.get(0).getValues().values().stream().findFirst().orElse("0");
+        try {
+            return Integer.parseInt(v.replaceAll("[^\\d]", ""));
+        } catch (NumberFormatException e) {
+            return 0;
+        }
     }
 
+    // Case-insensitive Feldsuche: erstes nicht-leeres Feld aus Liste
+    private String firstNonBlankCI(Map<String, String> m, String... names) {
+        if (m == null || m.isEmpty()) return null;
+        for (String n : names) {
+            for (String k : m.keySet()) {
+                if (k != null && k.equalsIgnoreCase(n)) {
+                    String v = m.get(k);
+                    if (v != null && !v.isBlank()) return v;
+                }
+            }
+        }
+        return null;
+    }
+
+    // Erstes Spalten-Value (falls Keys unbekannt)
+    private String firstColumn(Map<String, String> m) {
+        return (m == null || m.isEmpty()) ? null : m.values().iterator().next();
+    }
+
+    // Zweites Spalten-Value oder Fallback
+    private String secondColumnOr(String fallback, Map<String, String> m) {
+        if (m == null || m.size() < 2) return fallback;
+        var it = m.values().iterator();
+        it.next();
+        return it.hasNext() ? it.next() : fallback;
+    }
+
+    // VSN-Suche (optimiert)
+    public List<String> suggestVsnOptimized(String query, int limit) {
+        String q = (query == null) ? "" : query.trim();
+        if (q.length() < 2) return List.of();
+        limit = Math.max(1, limit);
+
+        LinkedHashSet<String> out = new LinkedHashSet<>(limit);
+        out.addAll(runVsnLike(q + "%", limit));
+        if (out.size() >= limit) return new ArrayList<>(out);
+
+        for (String s : runVsnLike("%" + q + "%", limit * 2)) {
+            if (out.add(s) && out.size() >= limit) break;
+        }
+        return new ArrayList<>(out);
+    }
+
+    private List<String> runVsnLike(String likePattern, int limit) {
+        String like = likePattern.replace("'", "''");
+        String sql = "SELECT DISTINCT COVER.LU_VSN AS VSN FROM LU_ALLE AS COVER "
+                + "WHERE COVER.Sparte LIKE '%COVER' "
+                + "AND COVER.LU_VSN IS NOT NULL AND COVER.LU_VSN <> '' "
+                + "AND COVER.LU_VSN LIKE '" + like + "' ORDER BY COVER.LU_VSN";
+
+        List<RowData> rows = executeQuery(sql);
+        List<String> list = new ArrayList<>(Math.min(limit, rows.size()));
+        for (RowData r : rows) {
+            String vsn = String.valueOf(r.getValues().getOrDefault("VSN", "")).trim();
+            if (!vsn.isEmpty()) {
+                list.add(vsn);
+                if (list.size() >= limit) break;
+            }
+        }
+        return list;
+    }
+
+
+    // =====================================================================================
+    // String-/SQL-Utils (fehlende Helfer ergänzt)
+// =====================================================================================
+
+    /** Null/Leer-Prüfung (Whitespace ignorieren). */
     private boolean nz(String s) {
         return s != null && !s.trim().isEmpty();
     }
 
+    /** SQL-Escaping für Literale (einfaches Hochkomma verdoppeln). */
     private String escape(String s) {
-        return s == null ? "" : s.replace("'", "''").trim();
+        return (s == null) ? "" : s.replace("'", "''").trim();
     }
 
+    /** LIKE-Escaping: zuerst normales Escape, dann einfache Sonderzeichen maskieren. */
     private String escapeLike(String s) {
+        // Minimal ausreichend, weil wir '%' und '_' nur im Pattern anhängen.
+        // Wenn du echte LIKE-Maskierung brauchst, erweitern:
+        // return escape(s).replace("[", "[[]").replace("%", "[%]").replace("_", "[_]");
         return escape(s);
     }
 
-    private String firstNonBlankCI(Map<String,String> m, String... names) {
-        return null;
-    }
-
-    private String firstColumn(Map<String,String> m) {
-        return null;
-    }
-
-    private String secondColumnOr(String fallback, Map<String,String> m) {
-        return null;
-    }
-
-    // Suggest VSN
-    public List<String> suggestVsnOptimized(String query, int limit) {
-        return List.of();
-    }
-
-    private List<String> runVsnLike(String likePattern, int limit) {
-        return List.of();
-    }
 }

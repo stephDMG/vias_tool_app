@@ -1,4 +1,75 @@
 ﻿====================
+Version 1.2.24 (2025-10-20)
+====================
+- [Aenderung] 
+
+====================
+Version 1.2.23 (2025-10-20)
+====================
+
+
+====================
+Version 1.2.22 (2025-10-20)
+====================
+- [Aenderung] test
+
+====================
+Version 1.2.21 (2025-10-20)
+====================
+- [Aenderung] test
+
+====================
+Version 1.2.20 (2025-10-20)
+====================
+- [Aenderung] test
+
+====================
+Version 1.2.19 (2025-10-20)
+====================
+- [Aenderung] Automatisierung von Update besteht.  
+
+====================
+Version 1.2.18 (2025-10-20)
+====================
+- [Aenderung] SchadenregulierungExtractor fixxen.
+- [Aenderung] - Beim SCHA-NR 202301 1920/005    sollte das Program die NR Formatieren, bei dem leeren Space entfernt wird zB: 202301 1920/005  -> 2023011920/005
+- [Aenderung] - Niemals einen Null-Return für „SCHA-NR nicht gefunden”, „Datum nicht gefunden”, „Buchungstext nicht gefunden” oder fehlende Beträge: Man füllt leer/null aus, protokolliert in WARN und behält die Zeile bei.
+- [Aenderung] - Erkennung des V-Symbols: Die Leitung wird nicht mehr gefiltert. Wir protokollieren [V-SYMBOL] und zählen, exportieren aber trotzdem.
+- [Aenderung] - Erweiterte Endstatistiken: Anzahl der Zeilen, SCHA-NR-Korrekturen, Zeilen mit fehlenden Feldern, Zeilen mit V-Symbol, exportierte Zeilen.
+
+====================
+Version 1.2.17 (2025-10-20)
+====================
+- [Aenderung] Test aupdate
+
+====================
+Version 1.2.16 (2025-10-20)
+====================
+- [Aenderung] Update Error testen
+
+====================
+Version 1.2.15 (2025-10-20)
+====================
+- [Aenderung] auto Update fixen
+
+====================
+Version 1.2.14 (2025-10-20)
+====================
+- [Aenderung] Test Updated Function
+
+====================
+Version 1.2.13 (2025-10-20)
+====================
+- [Aenderung] automatisches Update function fixen
+
+====================
+Version 1.2.12 (2025-10-14)
+====================
+- [Aenderung] Audit Tool
+- [Aenderung] exit
+- [Aenderung] end
+
+====================
 Version 1.2.11 (2025-09-23)
 ====================
 - [Aenderung] Entwicklung von Vertrags- und Angebotsmanagement -> Angebotswesen
@@ -306,6 +377,19 @@ Version 1.0.1 (2025-08-07)
 ====================
 - [Aenderung] Es wurde eine Build-Automatisierung eingebunden, die sollte nur mit PowerShell-Skript umsetzen. Zum starten einfach ./release.ps1
 - [Aenderung] 
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

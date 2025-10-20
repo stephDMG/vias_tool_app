@@ -17,6 +17,8 @@ import service.contract.CoverService;
 import service.rbac.AccessControlService;
 import service.rbac.LoginService;
 import service.theme.ThemeService;
+
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
@@ -24,6 +26,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.*;
 
 
@@ -88,8 +91,7 @@ public class MainController implements Initializable {
         LoginService loginService = new LoginService();
         String username = loginService.getCurrentWindowsUsername();
         AccessControlService accessControl = new AccessControlService();
-        statusItem.setVisible(accessControl.hasPermission(username, "op-list")
-                || accessControl.hasPermission(username, "all"));
+        statusItem.setVisible(accessControl.hasPermission(username, "op-list") || accessControl.hasPermission(username, "all"));
        // coverDashboardItem.setVisible(accessControl.hasPermission(username, "view") || accessControl.hasPermission(username, "all"));
 
         // Begrüßung
@@ -277,8 +279,10 @@ public class MainController implements Initializable {
         return false;
     }
 
+
     /**
      * Zeigt einen Hinweisdialog für ein verfügbares Update an.
+     * Führt die Update-Logik aus, wenn der Benutzer zustimmt.
      *
      * @param info Informationen zur verfügbaren Version inkl. Changelog
      */
@@ -287,12 +291,115 @@ public class MainController implements Initializable {
         alert.setTitle("Update verfügbar");
         alert.setHeaderText("Neue Version: " + info.version);
         alert.setContentText("Möchten Sie jetzt aktualisieren?");
+
+        // Définir les types de boutons pour la gestion des événements
         alert.getButtonTypes().setAll(
-                new ButtonType("Jetzt aktualisieren"),
-                new ButtonType("Später", ButtonBar.ButtonData.CANCEL_CLOSE)
+                new ButtonType("Jetzt aktualisieren", ButtonBar.ButtonData.YES), // Type YES
+                new ButtonType("Später", ButtonBar.ButtonData.CANCEL_CLOSE)     // Type NO
         );
-        alert.showAndWait();
+
+        alert.showAndWait().ifPresent(response -> {
+            // Gérer la réponse "Jetzt aktualisieren"
+            if (response.getButtonData() == ButtonBar.ButtonData.YES) {
+                logger.info("Benutzer hat Update zugestimmt. Starte Download/Installation.");
+
+                // Le nom du fichier MSI à télécharger depuis le chemin UNC
+                String installerFileName = String.format("VIAS Export Tool-%s.msi", info.version);
+                String remoteInstallerPath = Paths.get(BASE, installerFileName).toString(); // BASE est le chemin UNC
+
+                try {
+                    // Lancer le processus de mise à jour externe
+                    startUpdateProcess(remoteInstallerPath);
+                } catch (Exception e) {
+                    logger.error("❌ Kritischer Fehler beim Starten des Update-Prozesses.", e);
+                    // Afficher une alerte en cas d'échec critique
+                    Platform.runLater(() -> {
+                        Alert errorAlert = new Alert(Alert.AlertType.ERROR);
+                        errorAlert.setTitle("Update-Fehler");
+                        errorAlert.setHeaderText("Konnte Installer nicht starten.");
+                        errorAlert.setContentText("Prüfen Sie, ob der UNC-Pfad erreichbar ist: " + remoteInstallerPath);
+                        errorAlert.showAndWait();
+                    });
+                }
+            }
+        });
     }
+
+    /**
+     * Führt den Update-Prozess robust aus, ohne Cmdline-Parsing-Probleme:
+     *  - Kopiert das MSI vom UNC in %LOCALAPPDATA%\VIAS\ updates\<version>\
+     *  - Erzeugt eine updater.ps1 (saubere Argument-Quoting)
+     *  - Startet PowerShell mit -File (kein -Command-Quoting-Chaos)
+     *  - msiexec läuft mit /passive (sichtbar) + /norestart + /l*v (Logging)
+     *  - Danach Relaunch der App; aktuelle App beendet sich sofort
+     *
+     * @param remoteInstallerPath UNC-Pfad zum MSI (z. B. \\server\share\VIAS Export Tool-1.2.15.msi)
+     * @throws IOException bei Kopierfehlern
+     */
+    private void startUpdateProcess(String remoteInstallerPath) throws IOException {
+        // --- 1) Dateinamen & Version ermitteln ---------------------------------
+        Path remote = Paths.get(remoteInstallerPath);
+        String msiName = remote.getFileName().toString();
+
+        // Version aus dem Dateinamen ziehen (Fallback "current")
+        String version = "current";
+        var m = java.util.regex.Pattern.compile("(\\d+\\.\\d+\\.\\d+)").matcher(msiName);
+        if (m.find()) version = m.group(1);
+
+        // --- 2) Staging-Ziel unter LOCALAPPDATA vorbereiten ---------------------
+        Path localBase = Paths.get(System.getenv("LOCALAPPDATA"), "VIAS", "updates", version);
+        Files.createDirectories(localBase);
+        Path localMsi  = localBase.resolve(msiName);
+        Path msiLog    = localBase.resolve("install-" + version + ".log");
+        Path updaterPs = localBase.resolve("updater.ps1");
+
+        logger.info("Update: kopiere MSI {} -> {}", remote, localMsi);
+        Files.copy(remote, localMsi, StandardCopyOption.REPLACE_EXISTING);
+
+        // --- 3) MOTW entfernen (best effort) -----------------------------------
+        try {
+            new ProcessBuilder("powershell", "-NoProfile", "-ExecutionPolicy", "Bypass",
+                    "-Command", "Unblock-File -Path \"" + localMsi.toString().replace("\"","\\\"") + "\"")
+                    .inheritIO()
+                    .start()
+                    .waitFor();
+        } catch (Exception ignore) {
+            logger.warn("Unblock-File nicht ausgeführt (ok): {}", ignore.toString());
+        }
+
+        // --- 4) PS1-Skript erzeugen (Argumente korrekt quoten) -----------------
+        // WICHTIG: In PS1 nutzen wir einen EINZIGEN ArgumentList-String und quoten mit `"
+        String appExe = Paths.get(System.getenv("LOCALAPPDATA"), "Programs", "VIAS Export Tool", "VIAS Export Tool.exe").toString();
+
+        String ps1 = String.join("\r\n",
+                "$ErrorActionPreference = 'Stop'",
+                "$msi = '" + localMsi.toString().replace("'", "''") + "'",
+                "$log = '" + msiLog.toString().replace("'", "''") + "'",
+                "$app = '" + appExe.replace("'", "''") + "'",
+                // msiexec sichtbar + Logging; ein einziger ArgumentString, innere Quotes mit Backtick `
+                "Start-Process -FilePath 'msiexec.exe' -ArgumentList \"/i `\"$msi`\" /passive /norestart /l*v `\"$log`\"\" -Wait",
+                "Start-Sleep -Seconds 1",
+                "if (Test-Path $app) { Start-Process -FilePath $app }"
+        );
+
+        Files.write(updaterPs, ps1.getBytes(StandardCharsets.UTF_8));
+        logger.info("Updater-Skript erzeugt: {}", updaterPs);
+
+        // --- 5) PowerShell mit -File starten (keine -Command-Fallen) -----------
+        new ProcessBuilder("powershell", "-NoProfile", "-ExecutionPolicy", "Bypass",
+                "-File", updaterPs.toString())
+                .inheritIO()
+                .start();
+
+        // --- 6) Aktuelle App beenden (Dateisperren lösen) ----------------------
+        Platform.exit();
+        new Thread(() -> {
+            try { Thread.sleep(200); } catch (InterruptedException ignored) {}
+            System.exit(0);
+        }, "forced-exit").start();
+    }
+
+
 
     /**
      * Container für Versionsinformationen aus der Online-Quelle.

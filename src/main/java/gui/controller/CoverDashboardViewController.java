@@ -64,19 +64,29 @@ public class CoverDashboardViewController {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/CoverDomainViewer.fxml"));
             Parent root = loader.load();
 
+            // Controller + Domaine
             CoverDomainController controller = loader.getController();
             controller.initDomain(domain);
 
+            // Fenêtre
             Stage stage = new Stage();
             stage.setTitle("COVER • " + title);
-            Scene scene = new Scene(root, 1200, 700);
+
+            Scene scene = new Scene(root, 1200, 800);
+            // Applique la feuille de style globale
+            //scene.getStylesheets().add(getClass().getResource("/css/app.css").toExternalForm());
             stage.setScene(scene);
+
+            // Plein écran “fenêtré” (maximized) pour occuper l’espace
+            stage.setMaximized(true);
+
             stage.show();
         } catch (Exception e) {
             log.error("Fehler beim Öffnen von {}", domain, e);
             showErrorDialog("Ansichtsfehler", e.getMessage());
         }
     }
+
 
     @FXML
     private void openAngebotswesen() {
