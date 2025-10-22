@@ -1,5 +1,7 @@
 package model.contract.filters;
 
+import javafx.scene.control.ToggleButton;
+
 import java.time.LocalDate;
 import java.util.List;
 
@@ -49,16 +51,20 @@ public class CoverFilter {
     private String insuredCity;
     private String insuredNation;
 
+    private boolean isWithVersion = false;
+
     public CoverFilter() {}
 
     public CoverFilter(String fromDate, String toDate,
                        String status, String broker,
-                       String textSearch) {
+                       String textSearch,
+                       boolean isWithVersion) {
         this.fromDate = fromDate;
         this.toDate = toDate;
         this.status = status;
         this.broker = broker;
         this.textSearch = textSearch;
+        this.isWithVersion = isWithVersion;
     }
 
     // -------------------- Getter/Setter --------------------
@@ -110,6 +116,10 @@ public class CoverFilter {
     public List<String> getGroupBy() { return groupBy; }
     public void setGroupBy(List<String> groupBy) { this.groupBy = groupBy; }
 
+    public void setIsWithVersion(boolean isWithVersion) { this.isWithVersion = isWithVersion; }
+    public boolean isWithVersion() {return isWithVersion;}
+
+
 
     public String getInsuredName() { return insuredName; }
     public void setInsuredName(String insuredName) { this.insuredName = insuredName; }
@@ -143,4 +153,5 @@ public class CoverFilter {
                 ", insuredNation='" + insuredName + '\'' + // Korrektur: sollte insuredNation sein
                 '}';
     }
+
 }

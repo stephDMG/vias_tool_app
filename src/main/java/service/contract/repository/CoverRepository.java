@@ -206,7 +206,7 @@ public class CoverRepository {
         sql.append("  COVER.LU_RIS AS Versicherungsart_Text,\n");
         sql.append("  COVER.LU_GES_Text AS Gesellschaft_Name,\n");
         sql.append("  COVER.LU_VMT AS MaklerNr,\n");
-        sql.append("  MAK.LU_NAM AS Makler,\n");
+        sql.append("  VMT.LU_VNA AS Makler,\n");
         sql.append("  COVER.LU_VMT2 AS Altmakler,\n");
         sql.append("  COVER.LU_ART AS Vertragsparte_Code,\n");
         sql.append("  COVER.LU_ART_Text AS Vertragsparte_Text,\n");
@@ -301,7 +301,7 @@ public class CoverRepository {
         // FROM + JOINs
         sql.append("FROM LU_ALLE AS COVER\n");
         sql.append("LEFT JOIN LU_MASKEP AS LUM ON COVER.PPointer = LUM.PPointer\n");
-        sql.append("LEFT JOIN MAKLERV AS MAK ON COVER.LU_VMT = MAK.LU_VMTNR\n");
+        sql.append("LEFT JOIN VERMITTLER AS VMT ON COVER.LU_VMT = VMT.LU_VMT \n");
         sql.append("LEFT JOIN MAP_ALLE_COVERRIS AS MCR ON COVER.LU_BAUST_RIS = MCR.TAB_ID\n");
         sql.append("LEFT JOIN MAP_ALLE_BETSTAT AS MABT ON COVER.LU_BET_STAT = MABT.TAB_ID\n");
         sql.append("LEFT JOIN MAP_ALLE_OPZ AS MAO ON COVER.LU_OPZ = MAO.TAB_ID\n");
@@ -312,6 +312,7 @@ public class CoverRepository {
         sql.append("WHERE COVER.Sparte LIKE '%COVER' ").append(where).append("\n");
 
         sql.append("ORDER BY COVER.LU_BEG DESC, COVER.LU_VSN");
+
         return sql.toString();
     }
 
@@ -382,6 +383,7 @@ public class CoverRepository {
             sb.append(" AND COVER.LU_KUEFRIV_DURCH = '").append(escape(filter.getKuendigVerkInitiator())).append("'");
         }
 
+
         // 🔸 8) Datumsfilter (Ab/Bis) – DB hält YYYYMMDD, daher Formatierung nötig
         if (filter.getAbDate() != null || filter.getBisDate() != null) {
             // Falls beide gesetzt und vertauscht → korrigieren
@@ -400,6 +402,12 @@ public class CoverRepository {
             if (bis != null) {
                 sb.append(" AND ").append(dateColumn).append(" <= '").append(fmtDateYYYYMMDD(bis)).append("'");
             }
+        }
+
+        if (filter.isWithVersion()){
+            sb.append(" AND COVER.HVPointer IS NOT NULL ");
+        }else {
+            sb.append(" AND COVER.HVPointer = 0 ");
         }
 
         return sb.toString();

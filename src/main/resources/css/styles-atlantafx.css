@@ -237,7 +237,29 @@
 
 
 
+/********************
+ Toggle Button with class view-toggle-switch
+*********************/
 
+.view-toggle-switch {
+    -fx-background-color: -color-neutral-muted;
+    -fx-background-radius: 10;
+    -fx-padding: 4;
+    -fx-cursor: hand;
+}
 
+.view-toggle-switch:hover {
+    -fx-background-color: -color-neutral-muted-hover;
+}
 
+.view-toggle-switch:selected {
+    -fx-background-color: -color-accent-emphasis;
+}
 
+.view-toggle-switch:selected:hover {
+    -fx-background-color: -color-accent-emphasis-hover;
+}
+
+.view-toggle-switch:selected:pressed {
+    -fx-background-color: -color-accent-emphasis-pressed;
+}

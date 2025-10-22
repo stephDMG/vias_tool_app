@@ -70,4 +70,32 @@ public class RowData {
     public String toString() {
         return values.toString();
     }
+
+
+    // ---- champ à ajouter dans la classe
+    private java.util.function.Function<model.RowData, java.util.List<String>> groupingPathProvider =
+            row -> java.util.List.of("Alle"); // fallback par défaut
+
+    // ---- setter à ajouter
+    public void setGroupingPathProvider(java.util.function.Function<model.RowData, java.util.List<String>> provider) {
+        this.groupingPathProvider = (provider != null) ? provider : (r -> java.util.List.of("Alle"));
+    }
+
+    // ---- surcharge (2 arguments) pour éviter "expected 3 arguments but found 2"
+    public void loadDataFromServer(int totalCount,
+                                   gui.controller.manager.DataLoader dataLoader) {
+        loadDataFromServer(totalCount, dataLoader, this.groupingPathProvider);
+    }
+
+    // ---- version 3 arguments (utilisée en interne et à l’endroit où tu veux forcer un provider)
+    public void loadDataFromServer(int totalCount,
+                                   gui.controller.manager.DataLoader dataLoader,
+                                   java.util.function.Function<model.RowData, java.util.List<String>> provider) {
+        this.groupingPathProvider = (provider != null) ? provider : this.groupingPathProvider;
+        // ... puis ton init pagination/chargement serveur existant ...
+        // Quand tu construis l’arbre: pour chaque RowData `row`,
+        // récupère le chemin avec: List<String> path = groupingPathProvider.apply(row);
+        // et construis/accroche les nœuds correspondants.
+    }
+
 }

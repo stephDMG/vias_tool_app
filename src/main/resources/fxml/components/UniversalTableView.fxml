@@ -32,7 +32,11 @@
     </HBox>
 
     <!-- Pagination Section - wird dynamisch ein/ausgeblendet -->
-    <Pagination fx:id="pagination" managed="false" maxPageIndicatorCount="10" pageCount="0" visible="false" />
+    <Pagination fx:id="pagination"
+                managed="true" visible="false"
+                prefHeight="36"
+                maxPageIndicatorCount="10" pageCount="0"/>
+
 
     <!-- Export Section - wird dynamisch konfiguriert -->
     <HBox fx:id="exportSection" alignment="CENTER_RIGHT" managed="false" spacing="10" visible="false">

@@ -1,13 +1,12 @@
 package gui.cover;
 
-import gui.controller.manager.DataLoader;
-import gui.controller.manager.EnhancedTableManager;
-import gui.controller.manager.TableViewBuilder;
+import gui.controller.manager.*;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import model.contract.filters.CoverFilter;
@@ -20,7 +19,6 @@ import service.rbac.LoginService;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.stream.Collectors;
 
 public class CoverDomainController {
     private static final Logger log = LoggerFactory.getLogger(CoverDomainController.class);
@@ -44,7 +42,15 @@ public class CoverDomainController {
     @FXML private VBox stornoGrundFilterBox;
     @FXML private ListView<String> stornoGrundList;
 
+    @FXML private StackPane resultsStack;
+    @FXML private VBox tableHost, treeHost;
+    @FXML private ToggleButton toggleTreeView;
+    @FXML private ToggleButton toggleVersionView;
+
     private EnhancedTableManager tableManager;
+    private TreeTableManager treeManager;
+    private TreeTableViewBuilder treeBuilder;
+
     private CoverService coverService;
     private String username;
     private String currentDomain;
@@ -52,7 +58,7 @@ public class CoverDomainController {
     private Map<String, String> dictSta;
     private Map<String, String> dictBastand;
 
-    // Hardcoded Storno Key→Value; wir senden die VALUES (Labels) an das Backend (LU_AGR speichert Texte)
+    // Hardcoded Storno Key→Value (Labels ans Backend)
     private final Map<String, String> hardcodedStornoReasons = Map.ofEntries(
             Map.entry("005", "Ab Beginn aufgehoben"),
             Map.entry("025", "Anteils-/Beteiligungsänderung"),
@@ -94,7 +100,7 @@ public class CoverDomainController {
             "Sachbearbeiter (Vertrag)", "Sachbearbeiter (Schaden)"
     );
 
-    // Persistenz: Gruppierung pro KF (einfach)
+    // Persistenz: Gruppierung pro KF
     private final Map<String, List<String>> groupByMemory = new HashMap<>();
 
     // Ladevorgang
@@ -115,15 +121,55 @@ public class CoverDomainController {
         }
 
         setupGroupBy();
-        setupParams();          // lädt Dictionaries + füllt Listen
+        setupParams();
         setupTable();
+
+        treeBuilder = TreeTableViewBuilder.create()
+                .withFeatures(TreeTableViewBuilder.Feature.SEARCH,
+                        TreeTableViewBuilder.Feature.PAGINATION,
+                        TreeTableViewBuilder.Feature.EXPORT);
+        treeBuilder.withExportLabel("Vollständigen Bericht exportieren als:");
+
+        // Container setzen
+        treeHost.getChildren().setAll(treeBuilder.getTreeContainer());
+        // Manager erzeugen
+        treeManager = treeBuilder.buildManager();
+
+        // Toggle View
+        toggleTreeView.selectedProperty().addListener((obs, wasTree, isTree) -> {
+            treeHost.setVisible(isTree);
+            treeHost.setManaged(isTree);
+            tableHost.setVisible(!isTree);
+            tableHost.setManaged(!isTree);
+
+        });
+
+        if (toggleVersionView != null) {
+            toggleVersionView.selectedProperty().addListener((obs, oldV, newV) -> {
+                Platform.runLater(this::runKernfrage);
+            });
+        }
+
+        if (toggleVersionView != null) {
+            toggleVersionView.setText("Ohne Version");
+
+            toggleVersionView.selectedProperty().addListener((obs, oldV, newV) -> {
+                if (newV) {
+                    toggleVersionView.setText("Mit Versionen");
+                } else {
+                    toggleVersionView.setText("Ohne Version");
+                }
+                Platform.runLater(this::runKernfrage);
+            });
+        }
+
         setupBindings();
-        setupKernfragenChoice(); // nur der Listener, Items werden via initDomain gesetzt
+        setupKernfragenChoice();
         showMessage("Bitte wählen Sie eine Kernfrage aus.");
     }
 
     // =====================================================
-    // INIT DOMAIN (vom Dashboard aufgerufen)
+    // INIT DOMAIN
     // =====================================================
     public void initDomain(String domain) {
         this.currentDomain = domain;
@@ -168,7 +214,6 @@ public class CoverDomainController {
         parameter.setManaged(true);
         ausfuehrenButton.setDisable(false);
 
-        // Automatisch erste KF wählen → Listener feuert (wenn Dictionaries da sind, sonst pending)
         if (!kernfrageChoice.getItems().isEmpty()) {
             kernfrageChoice.getSelectionModel().selectFirst();
         }
@@ -229,7 +274,7 @@ public class CoverDomainController {
                             .sorted().toList();
                     bearbeitungsstandList.setItems(FXCollections.observableArrayList(bastandItems));
 
-                    // Stornogründe (Key - Value im UI anzeigen)
+                    // Stornogründe
                     stornoGrundList.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
                     var stornoItems = hardcodedStornoReasons.entrySet().stream()
                             .map(e -> e.getKey() + " - " + e.getValue())
@@ -239,7 +284,6 @@ public class CoverDomainController {
 
                     dictionariesLoaded = true;
 
-                    // Falls der Nutzer bereits eine KF gewählt hat, Defaults anwenden & ausführen
                     String currentKF = kernfrageChoice.getSelectionModel().getSelectedItem();
                     if (pendingKernfrage != null || currentKF != null) {
                         applyKernfrageDefaults(pendingKernfrage != null ? pendingKernfrage : currentKF);
@@ -260,8 +304,12 @@ public class CoverDomainController {
                         TableViewBuilder.Feature.PAGINATION,
                         TableViewBuilder.Feature.EXPORT,
                         TableViewBuilder.Feature.SEARCH);
-        this.tableManager = builder.buildManager().enableSelection().enableSearch().enableCleanTable();
-        resultsContainer.getChildren().setAll(builder.getTableContainer());
+
+        tableManager = builder.buildManager()
+                .enableSearch()
+                .enableSelection()
+                .enableCleanTable();
+        tableHost.getChildren().setAll(builder.getTableContainer());
     }
 
     private void setupBindings() {
@@ -284,12 +332,9 @@ public class CoverDomainController {
         kernfrageChoice.getSelectionModel().selectedItemProperty().addListener((obs, oldV, newV) -> {
             if (newV == null) return;
 
-            // Gruppierung pro KF wiederherstellen (falls vorhanden), sonst "alle"
             restoreGroupByForKF(newV);
-
             resetParamSelection();
 
-            // Falls Dictionaries noch nicht bereit sind → merken und später anwenden
             if (!dictionariesLoaded) {
                 pendingKernfrage = newV;
                 return;
@@ -317,7 +362,6 @@ public class CoverDomainController {
     }
 
     private void applyKernfrageDefaults(String kf) {
-        // Sichtbarkeit per KF
         if ("Unbearbeitete Angebote".equals(kf)) {
             selectListByIds(vertragsstandList, nonNullList(findIdByText(dictSta, "Angebot")));
             selectListByIds(bearbeitungsstandList, List.of("0", "1"));
@@ -339,13 +383,11 @@ public class CoverDomainController {
             if (oId != null) ids.add(oId);
             if (sId != null) ids.add(sId);
             selectListByIds(vertragsstandList, ids);
-            // Bearbeitungsstand hier optional, keine Defaults
             dateBox.setVisible(true);
             dateBox.setManaged(true);
             stornoGrundFilterBox.setVisible(true);
             stornoGrundFilterBox.setManaged(true);
         } else {
-            // andere Domains/KF – defaults defensiv
             dateBox.setVisible(false);
             dateBox.setManaged(false);
             stornoGrundFilterBox.setVisible(false);
@@ -358,13 +400,18 @@ public class CoverDomainController {
     // =====================================================
     @FXML
     private void runKernfrage() {
+        CoverFilter filter = new CoverFilter();
+
         String selectedKF = kernfrageChoice.getSelectionModel().getSelectedItem();
         if (selectedKF == null) return;
 
+        // 🔑 Étape CLÉ : Lier le ToggleButton au filtre
+        if (toggleVersionView != null) {
+            filter.setIsWithVersion(toggleVersionView.isSelected()); // ✅ C'est la source unique de vérité
+        }
+
         // Gruppierung für diese KF merken
         groupByMemory.put(selectedKF, new ArrayList<>(groupByList.getSelectionModel().getSelectedItems()));
-
-        CoverFilter filter = new CoverFilter();
 
         // Vertragsstand → IDs (LU_STA)
         List<String> staIds = vertragsstandList.getSelectionModel().getSelectedItems().stream()
@@ -377,7 +424,7 @@ public class CoverDomainController {
         filter.setBearbeitungsstandIds(bearbeitungsstandList.getSelectionModel().getSelectedItems()
                 .stream().map(this::extractSelectedId).filter(Objects::nonNull).toList());
 
-        // Stornogründe → VALUES (Labels!)
+        // Stornogründe → VALUES (Label)
         List<String> stornoValues = stornoGrundList.getSelectionModel().getSelectedItems().stream()
                 .map(this::extractSelectedLabel)
                 .filter(Objects::nonNull)
@@ -388,16 +435,46 @@ public class CoverDomainController {
         if (abDatePicker.getValue() != null) filter.setAbDate(abDatePicker.getValue());
         if (bisDatePicker.getValue() != null) filter.setBisDate(bisDatePicker.getValue());
 
-        // Gruppierung (null = alles)
+        // Gruppierung
         List<String> selectedGroupBys = new ArrayList<>(groupByList.getSelectionModel().getSelectedItems());
         filter.setGroupBy(selectedGroupBys.size() == groupByOptions.size() ? null : selectedGroupBys);
 
         EXECUTOR.submit(() -> {
             int total = coverService.count(username, filter);
             DataLoader loader = (page, size) -> coverService.searchRaw(username, filter, page, size).getRows();
+
             Platform.runLater(() -> {
+                // Table (Server-Pagination)
                 tableManager.loadDataFromServer(total, loader);
                 showMessage(null);
+
+                // Snapshot der Gruppierung
+                java.util.List<String> groupSnapshot =
+                        new java.util.ArrayList<>(groupByList.getSelectionModel().getSelectedItems());
+
+                // Pfad-Provider fürs Tree
+                java.util.function.Function<model.RowData, java.util.List<String>> pathProvider = row -> {
+                    java.util.Map<String, String> v = row.getValues();
+                    java.util.List<String> path = new java.util.ArrayList<>();
+                    for (String g : groupSnapshot) {
+                        switch (g) {
+                            case "Makler" -> path.add(v.getOrDefault("Makler", ""));
+                            case "Gesellschaft" -> path.add(v.getOrDefault("Gesellschaft_Name", ""));
+                            case "Versicherungsart" -> path.add(v.getOrDefault("Versicherungsart_Text", ""));
+                            case "Beteiligungsform" -> path.add(v.getOrDefault("Beteiligungsform_Text", ""));
+                            case "Sachbearbeiter (Vertrag)" -> path.add(v.getOrDefault("SB_Vertr", ""));
+                            case "Sachbearbeiter (Schaden)" -> path.add(v.getOrDefault("SB_Schad", ""));
+                            case "Cover Art" -> path.add(v.getOrDefault("Vertragsparte_Text", ""));
+                            case "Versicherungssparte" -> path.add("COVER");
+                            default -> { }
+                        }
+                    }
+                    if (path.isEmpty()) path.add("Alle");
+                    return path;
+                };
+
+                // Tree (Server-Pagination + Provider)
+                treeManager.loadDataFromServer(total, loader, pathProvider);
             });
         });
     }

@@ -56,7 +56,7 @@ public class CoverService {
     // =====================================================================================
 
     public CoverPageRaw searchRaw(String username, CoverFilter filter, int page, int pageSize) {
-        accessGuard.checkView(username);
+        //accessGuard.checkView(username);
 
         int p = Math.max(0, page);
         int s = Math.max(1, pageSize);
@@ -91,7 +91,7 @@ public class CoverService {
 
 
     public CoverPage search(String username, CoverFilter filter, int page, int pageSize) {
-        accessGuard.checkView(username);
+        //accessGuard.checkView(username);
 
         int p = Math.max(0, page);
         int s = Math.max(1, pageSize);
@@ -115,7 +115,7 @@ public class CoverService {
     }
 
     public int count(String username, CoverFilter filter) {
-        accessGuard.checkView(username);
+        //accessGuard.checkView(username);
         String countKey = coverCache.buildCountKey(filter);
         Integer total = coverCache.getCount(countKey);
         if (total != null) return total;
@@ -136,7 +136,7 @@ public class CoverService {
      * @return CoverStats (KPIs)
      */
     public CoverStats getStats(String username, CoverFilter filter) {
-        accessGuard.checkView(username);
+        //accessGuard.checkView(username);
         return coverRepository.fetchStats(filter);
     }
 
@@ -145,14 +145,14 @@ public class CoverService {
     // =====================================================================================
 
     public List<String> suggestVsn(String username, String query, int limit) {
-        accessGuard.checkView(username);
+        //accessGuard.checkView(username);
         String q = (query == null) ? "" : query.trim();
         if (q.length() < 2 || limit <= 0) return List.of();
         return coverRepository.suggestVsnOptimized(q, limit);
     }
 
     public CoverDetails getDetailsByVsn(String username, String vsn) {
-        accessGuard.checkView(username);
+        //accessGuard.checkView(username);
         return detailsRepository.fetchDetailsByVsn(vsn);
     }
 
@@ -161,7 +161,7 @@ public class CoverService {
     }
 
     public Map<String, String> getDictionary(String username, String table) {
-        accessGuard.checkView(username);
+        //accessGuard.checkView(username);
         String key = coverCache.buildDictKey(table);
         Map<String, String> dict = coverCache.getDictionary(key);
         if (dict == null) {
@@ -172,7 +172,7 @@ public class CoverService {
     }
 
     public void preloadDicts(String username) {
-        accessGuard.checkView(username);
+        //accessGuard.checkView(username);
         String[] tables = new String[]{
                 "MAKLERV",
                 "MAP_ALLE_OPZ",

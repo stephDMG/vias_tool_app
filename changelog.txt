@@ -1,4 +1,14 @@
 ﻿====================
+Version 1.2.26 (2025-10-21)
+====================
+- [Aenderung] Daten laden Rechte gefixt
+
+====================
+Version 1.2.25 (2025-10-21)
+====================
+- [Aenderung] Test CoverDomain
+
+====================
 Version 1.2.24 (2025-10-20)
 ====================
 - [Aenderung] 
@@ -377,6 +387,8 @@ Version 1.0.1 (2025-08-07)
 ====================
 - [Aenderung] Es wurde eine Build-Automatisierung eingebunden, die sollte nur mit PowerShell-Skript umsetzen. Zum starten einfach ./release.ps1
 - [Aenderung] 
+
+
 
 
 

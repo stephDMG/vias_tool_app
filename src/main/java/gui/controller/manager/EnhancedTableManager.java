@@ -18,21 +18,19 @@ import model.RowData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 /**
- * Universelle Tabellenverwaltung für alle Controller.
- * Features: Suche, Spaltenmanagement, Pagination, Kontextmenü, Export-Header.
+ * Universelle Tabellenverwaltung für TableView&lt;ObservableList&lt;String&gt;&gt;.
  *
- * Diese Version unterstützt zwei Modi der Pagination:
- * 1. Client-seitige Pagination (für kleine Datenmengen, alte Logik bleibt erhalten).
- * 2. Server-seitige Pagination (für große Datenmengen, neue, performante Logik).
+ * <p><b>Funktionen:</b> Suche (Client), Spaltenauswahl/Löschen,
+ * Bereinigen leerer Spalten, Pagination (Client/Server), Kontextmenü
+ * (Spalte umbenennen/löschen), Gruppierungs-Striping (optional), Export-Header.</p>
+ *
+ * <p>Diese Version ist bewusst „konservativ“, um bestehende Logik nicht zu brechen.</p>
  */
 public class EnhancedTableManager {
     private static final Logger logger = LoggerFactory.getLogger(EnhancedTableManager.class);
@@ -46,38 +44,35 @@ public class EnhancedTableManager {
     private final Pagination pagination;
     private final Label resultsCountLabel;
 
-    // Data Management
+    // Data
     private List<RowData> originalData = new ArrayList<>();
     private List<RowData> filteredData = new ArrayList<>();
     private List<String> currentHeaders = new ArrayList<>();
+
+    // Paging
     private int rowsPerPage = DEFAULT_ROWS_PER_PAGE;
     private int totalCount = 0;
     private DataLoader dataLoader = null;
-
-    // Feature Flags
-    private boolean searchEnabled = false;
     private boolean paginationEnabled = false;
     private boolean serverPaginationEnabled = false;
-    private boolean selectionEnabled = false;
-
     private Integer lastRowsPerPage = null;
 
+    // Features
+    private boolean searchEnabled = false;
+    private boolean selectionEnabled = false;
+
+    // Group striping (optional)
     private int groupColIndex = -1;
     private List<Boolean> stripeIsA = new ArrayList<>();
-
     private Color groupColorA = null;
     private Color groupColorB = null;
     private boolean groupStripingEnabled = false;
     private String groupStripingHeader = null;
+
     private Button cleanColumnsButton;
-
-
     private boolean cleanRanForThisPage = false;
 
-
-    /**
-     * Konstruktor - Alle optionalen Komponenten können null sein
-     */
+    /** Konstruktor – Komponenten können optional null sein. */
     public EnhancedTableManager(TableView<ObservableList<String>> tableView,
                                 TextField searchField,
                                 Button deleteButton,
@@ -94,96 +89,68 @@ public class EnhancedTableManager {
         }
     }
 
-    /**
-     * Simplified constructor for basic table only
-     */
+    /** Vereinfachter Konstruktor. */
     public EnhancedTableManager(TableView<ObservableList<String>> tableView) {
         this(tableView, null, null, null, null);
     }
 
-    private static String toRgbaCss(Color c) {
-        int r = (int) Math.round(c.getRed() * 255);
-        int g = (int) Math.round(c.getGreen() * 255);
-        int b = (int) Math.round(c.getBlue() * 255);
-        String a = String.format(java.util.Locale.US, "%.3f", c.getOpacity());
-        return "rgba(" + r + "," + g + "," + b + "," + a + ")";
-    }
+    // ---------------------------------------------------------
+    // Features
+    // ---------------------------------------------------------
 
-    /**
-     * Aktiviert Suchfunktion (nur wenn SearchField verfügbar)
-     */
+    /** Aktiviert die clientseitige Suche. */
     public EnhancedTableManager enableSearch() {
         if (searchField == null) {
             logger.warn("Search requested but no SearchField provided");
             return this;
         }
-
         searchEnabled = true;
         searchField.textProperty().addListener((obs, oldVal, newVal) -> {
-            // Die Suchlogik muss sich an den Paginierungsmodus anpassen
             if (serverPaginationEnabled) {
-                // Bei Server-Pagination wird die Suche über den DataLoader neu gestartet
-                // TODO: Hier muss eine neue Anfrage an den Server mit dem Suchfilter gesendet werden
                 logger.warn("Server-side search is not yet implemented. Please handle this in the controller.");
             } else {
                 filterData(newVal);
             }
         });
-        logger.info("Search functionality enabled");
         return this;
     }
 
-
-    /**
-     * Aktiviert Spaltenauswahl und Löschen
-     */
+    /** Aktiviert Spaltenauswahl/Löschen. */
     public EnhancedTableManager enableSelection() {
         if (deleteButton == null) {
             logger.warn("Selection requested but no DeleteButton provided");
             return this;
         }
-
         selectionEnabled = true;
+
         tableView.getSelectionModel().setCellSelectionEnabled(true);
         tableView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
 
         tableView.getSelectionModel().getSelectedCells().addListener(
-                (ListChangeListener<TablePosition>) c -> {
-                    deleteButton.setDisable(tableView.getSelectionModel().getSelectedCells().isEmpty());
-                });
-
-        logger.info("Selection functionality enabled");
+                (ListChangeListener<TablePosition>) c ->
+                        deleteButton.setDisable(tableView.getSelectionModel().getSelectedCells().isEmpty())
+        );
         return this;
     }
 
-    // =====================================================
-    // ============ CLIENT-SIDE PAGINATION =================
-    // =====================================================
+    // ---------------------------------------------------------
+    // Client-Pagination
+    // ---------------------------------------------------------
 
-    /**
-     * Aktiviert Pagination
-     */
     public EnhancedTableManager enablePagination(int rowsPerPage) {
         if (pagination == null) {
             logger.warn("Pagination requested but no Pagination component provided");
             return this;
         }
-        this.rowsPerPage = rowsPerPage;
+        this.rowsPerPage = Math.max(1, rowsPerPage);
         this.paginationEnabled = true;
         pagination.setVisible(false);
-        logger.info("Client-side pagination enabled with {} rows per page", rowsPerPage);
         return this;
     }
 
-    /**
-     * Lädt Daten in die Tabelle (Client-seitige Pagination).
-     * Diese Methode ist für die Abwärtskompatibilität und kleine Datenmengen gedacht.
-     *
-     * @param data Die vollständige Liste der zu ladenden Daten.
-     */
+    /** Lädt komplette Daten (Clientmodus). */
     public void populateTableView(List<RowData> data) {
-        serverPaginationEnabled = false; // Deaktiviert den Server-Modus
-        // this.dataLoader = null;
+        serverPaginationEnabled = false;
 
         if (data == null || data.isEmpty()) {
             clearTable();
@@ -199,33 +166,25 @@ public class EnhancedTableManager {
         }
     }
 
-    /**
-     * Aktualisiert die Tabellenanzeige basierend auf dem Modus.
-     */
     private void refreshTable() {
         updateResultsCount();
 
-        if(serverPaginationEnabled) {
+        if (serverPaginationEnabled) {
             setupServerPagination();
         } else if (paginationEnabled && pagination != null) {
             setupClientPagination();
-        }else {
+        } else {
             buildTableColumns(filteredData);
             populateTableData(filteredData);
             recomputeGroupStripes();
         }
     }
 
-    /**
-     * Setup für Client-seitige Pagination
-     */
     private void setupClientPagination() {
         int pageCount = (int) Math.ceil((double) filteredData.size() / rowsPerPage);
         pagination.setPageCount(Math.max(pageCount, 1));
         pagination.setCurrentPageIndex(0);
-        //pagination.setVisible(filteredData.size() > rowsPerPage);
         pagination.setVisible(filteredData.size() > 0);
-
         pagination.setPageFactory(this::createClientPage);
         updateResultsCount();
     }
@@ -242,14 +201,10 @@ public class EnhancedTableManager {
         return new VBox();
     }
 
-    // =====================================================
-    // ============ SERVER-SIDE PAGINATION =================
-    // =====================================================
+    // ---------------------------------------------------------
+    // Server-Pagination
+    // ---------------------------------------------------------
 
-    /**
-     * Setup für Server-seitige Pagination.
-     * Konfiguriert den PageFactory-Callback, um den DataLoader zu nutzen.
-     */
     private void setupServerPagination() {
         if (pagination == null) return;
 
@@ -257,7 +212,6 @@ public class EnhancedTableManager {
         pagination.setPageCount(Math.max(pageCount, 1));
         pagination.setCurrentPageIndex(0);
         pagination.setVisible(totalCount > 0);
-
         pagination.setPageFactory(this::createServerPage);
 
         updateResultsCount();
@@ -291,10 +245,22 @@ public class EnhancedTableManager {
         });
     }
 
+    /** Initialisiert Server-Pagination. */
+    public void loadDataFromServer(int totalCount, DataLoader dataLoader) {
+        serverPaginationEnabled = true;
+        this.dataLoader = Objects.requireNonNull(dataLoader, "DataLoader must not be null for server-side pagination.");
+        this.totalCount = totalCount;
+        if (this.totalCount <= 0) {
+            clearTable();
+            return;
+        }
+        setupServerPagination();
+    }
 
-    /**
-     * Konfiguriert Gruppierungsstreifen
-     */
+    // ---------------------------------------------------------
+    // Gruppierung (optisches Striping)
+    // ---------------------------------------------------------
+
     public void applyGroupingConfig(boolean enabled, String headerName, Color colorA, Color colorB) {
         this.groupStripingEnabled = enabled && headerName != null && !headerName.isBlank();
         this.groupStripingHeader = this.groupStripingEnabled ? headerName : null;
@@ -308,35 +274,13 @@ public class EnhancedTableManager {
     }
 
     public EnhancedTableManager enableGroupStripingByHeader(String headerName) {
-        applyGroupingConfig(true, headerName, /*A*/ null, /*B*/ null);
+        applyGroupingConfig(true, headerName, null, null);
         return this;
     }
 
     public void disableGrouping() {
         applyGroupingConfig(false, null, null, null);
     }
-
-
-    /**
-     * Initialisiert die Tabelle für die Server-seitige Pagination.
-     * Diese Methode wird von Controllern wie CoverViewController verwendet.
-     *
-     * @param totalCount Die Gesamtanzahl der Datensätze.
-     * @param dataLoader Eine Funktion, die Daten seitenweise lädt.
-     */
-    public void loadDataFromServer(int totalCount, DataLoader dataLoader) {
-        serverPaginationEnabled = true;
-        this.dataLoader = Objects.requireNonNull(dataLoader, "DataLoader must not be null for server-side pagination.");
-        this.totalCount = totalCount;
-        if (this.totalCount <= 0) {
-            clearTable();
-            return;
-        }
-        setupServerPagination();
-        logger.info("Server-side pagination initialized. Total count: {}", totalCount);
-    }
-
-
 
     public void configureGrouping(String headerName, Color colorA, Color colorB) {
         this.groupStripingEnabled = (headerName != null && !headerName.isBlank());
@@ -345,6 +289,14 @@ public class EnhancedTableManager {
         if (colorB != null) this.groupColorB = colorB;
         installGroupRowFactory();
         recomputeGroupStripes();
+    }
+
+    private static String toRgbaCss(Color c) {
+        int r = (int) Math.round(c.getRed() * 255);
+        int g = (int) Math.round(c.getGreen() * 255);
+        int b = (int) Math.round(c.getBlue() * 255);
+        String a = String.format(java.util.Locale.US, "%.3f", c.getOpacity());
+        return "rgba(" + r + "," + g + "," + b + "," + a + ")";
     }
 
     private void installGroupRowFactory() {
@@ -407,9 +359,9 @@ public class EnhancedTableManager {
         tableView.refresh();
     }
 
-    /**
-     * Filtert Daten basierend auf Suchtext (Client-seitige Pagination).
-     */
+    // ---------------------------------------------------------
+    // Suche (Client)
+    // ---------------------------------------------------------
     private void filterData(String filterText) {
         String lowerCaseFilter = (filterText != null) ? filterText.toLowerCase() : "";
         if (lowerCaseFilter.isEmpty()) {
@@ -424,7 +376,9 @@ public class EnhancedTableManager {
         refreshTable();
     }
 
-
+    // ---------------------------------------------------------
+    // Auto-Row-Berechnung (bei Höhenänderung)
+    // ---------------------------------------------------------
     public void setRowsPerPage(int rowsPerPage) {
         if (rowsPerPage <= 0) return;
         this.rowsPerPage = rowsPerPage;
@@ -441,7 +395,7 @@ public class EnhancedTableManager {
         final int minRows = 10;
         final int changeThreshold = 2;
 
-        PauseTransition debounce = new PauseTransition(Duration.millis(120));
+        PauseTransition debounce = new PauseTransition(Duration.millis(200));
         observedRegion.heightProperty().addListener((obs, oldH, newH) -> {
             debounce.stop();
             debounce.setOnFinished(evt -> {
@@ -457,11 +411,10 @@ public class EnhancedTableManager {
         });
     }
 
-
-    /**
-     * Baut Tabellenspalten auf, basierend auf der ersten Zeile der geladenen Daten.
-     */
-    private void  buildTableColumns(List<RowData> data) {
+    // ---------------------------------------------------------
+    // Spaltenaufbau & Daten
+    // ---------------------------------------------------------
+    private void buildTableColumns(List<RowData> data) {
         if (data == null || data.isEmpty()) {
             tableView.getColumns().clear();
             currentHeaders = List.of();
@@ -494,9 +447,6 @@ public class EnhancedTableManager {
         markDataChanged();
     }
 
-    /**
-     * Füllt Tabellendaten
-     */
     private void populateTableData(List<RowData> data) {
         if (data == null || data.isEmpty()) {
             tableView.setItems(FXCollections.observableArrayList());
@@ -518,6 +468,9 @@ public class EnhancedTableManager {
         markDataChanged();
     }
 
+    // ---------------------------------------------------------
+    // Clean / Kontextmenü / Delete
+    // ---------------------------------------------------------
     public EnhancedTableManager enableCleanTable() {
         if (this.cleanColumnsButton == null) return this;
         this.cleanColumnsButton.setDisable(false);
@@ -525,16 +478,11 @@ public class EnhancedTableManager {
         return this;
     }
 
-
     public void setCleanButton(Button cleanButton) {
         this.cleanColumnsButton = cleanButton;
         this.cleanColumnsButton.setOnAction(e -> cleanTable());
     }
 
-
-    /**
-     * Supprime toutes les Spalten (Colonnes) deren Werte in allen Zeilen leer/null sind.
-     */
     private void cleanTable() {
         if (this.cleanColumnsButton != null && cleanRanForThisPage) {
             return;
@@ -545,7 +493,6 @@ public class EnhancedTableManager {
 
         if (cols.isEmpty() || items == null || items.isEmpty()) return;
 
-        // En mode serveur, prévenir que l’analyse ne couvre QUE la page courante
         if (serverPaginationEnabled) {
             boolean proceed = Dialog.showWarningDialog(
                     "Bereinigen (nur aktuelle Seite)",
@@ -554,7 +501,6 @@ public class EnhancedTableManager {
             if (!proceed) return;
         }
 
-        // Déterminer les colonnes entièrement vides sur CETTE page
         List<TableColumn<ObservableList<String>, ?>> toRemove = new ArrayList<>();
         for (int c = 0; c < cols.size(); c++) {
             boolean allEmpty = true;
@@ -570,12 +516,11 @@ public class EnhancedTableManager {
 
         if (toRemove.isEmpty()) {
             Dialog.showInfoDialog("Bereinigen", "Es gibt keine vollständig leeren Spalten auf dieser Seite.");
-            cleanRanForThisPage = true; // inutile de réessayer
+            cleanRanForThisPage = true;
             if (this.cleanColumnsButton != null) this.cleanColumnsButton.setDisable(true);
             return;
         }
 
-        // Option de sécurité: ne pas descendre sous 2 colonnes visibles
         int minKeep = 2;
         if (cols.size() - toRemove.size() < minKeep) {
             int canDelete = Math.max(0, cols.size() - minKeep);
@@ -591,7 +536,6 @@ public class EnhancedTableManager {
 
         deleteColumns(toRemove);
 
-        // Empêcher le “nettoyage” successif sur la même page/dataset
         cleanRanForThisPage = true;
         if (this.cleanColumnsButton != null) this.cleanColumnsButton.setDisable(true);
     }
@@ -603,10 +547,6 @@ public class EnhancedTableManager {
         }
     }
 
-
-    /**
-     * Fügt Kontextmenü zu Spalte hinzu
-     */
     private void addContextMenuToColumn(TableColumn<ObservableList<String>, String> column) {
         MenuItem renameItem = new MenuItem("Spalte umbenennen");
         MenuItem deleteItem = new MenuItem("Spalte löschen");
@@ -618,9 +558,6 @@ public class EnhancedTableManager {
         column.setContextMenu(contextMenu);
     }
 
-    /**
-     * Spalte umbenennen
-     */
     private void renameColumn(TableColumn<ObservableList<String>, String> column) {
         TextInputDialog dialog = new TextInputDialog(column.getText());
         dialog.setTitle("Spalte umbenennen");
@@ -635,9 +572,6 @@ public class EnhancedTableManager {
         });
     }
 
-    /**
-     * Einzelne Spalte löschen
-     */
     private void deleteColumn(TableColumn<ObservableList<String>, String> column) {
         if (Dialog.showWarningDialog("Spalte löschen",
                 "Möchten Sie die Spalte '" + column.getText() + "' wirklich löschen?")) {
@@ -645,9 +579,6 @@ public class EnhancedTableManager {
         }
     }
 
-    /**
-     * Ausgewählte Spalten löschen (für Delete-Button)
-     */
     public void handleDeleteSelectedColumns() {
         if (!selectionEnabled) {
             logger.warn("Selection not enabled but delete requested");
@@ -671,28 +602,21 @@ public class EnhancedTableManager {
         }
     }
 
-    /**
-     * Spalten löschen (interne Methode)
-     */
     private void deleteColumns(List<TableColumn<ObservableList<String>, ?>> columnsToDelete) {
         Set<String> originalKeysToDelete = columnsToDelete.stream()
                 .map(col -> String.valueOf(col.getUserData()))
                 .collect(Collectors.toSet());
         tableView.getColumns().removeAll(columnsToDelete);
-        for (RowData row : originalData) {
-            row.getValues().keySet().removeAll(originalKeysToDelete);
-        }
-        for (RowData row : filteredData) {
-            row.getValues().keySet().removeAll(originalKeysToDelete);
-        }
+        for (RowData row : originalData) row.getValues().keySet().removeAll(originalKeysToDelete);
+        for (RowData row : filteredData) row.getValues().keySet().removeAll(originalKeysToDelete);
         updateResultsCount();
         tableView.refresh();
         logger.info("Deleted {} columns", columnsToDelete.size());
     }
 
-    /**
-     * Aktualisiert Ergebniszähler
-     */
+    // ---------------------------------------------------------
+    // Anzeigezähler & Clear
+    // ---------------------------------------------------------
     private void updateResultsCount() {
         if (resultsCountLabel != null) {
             int countToDisplay = serverPaginationEnabled ? totalCount : filteredData.size();
@@ -700,9 +624,6 @@ public class EnhancedTableManager {
         }
     }
 
-    /**
-     * Leert die Tabelle
-     */
     private void clearTable() {
         tableView.getColumns().clear();
         tableView.getItems().clear();
@@ -712,7 +633,7 @@ public class EnhancedTableManager {
         updateResultsCount();
     }
 
-    // Getter für Export-Funktionalität
+    // Export-Helper
     public List<String> getDisplayHeaders() {
         return tableView.getColumns().stream()
                 .map(TableColumn::getText)
@@ -725,27 +646,11 @@ public class EnhancedTableManager {
                 .collect(Collectors.toList());
     }
 
-    public List<RowData> getFilteredData() {
-        return new ArrayList<>(filteredData);
-    }
+    public List<RowData> getFilteredData() { return new ArrayList<>(filteredData); }
+    public List<RowData> getOriginalData() { return new ArrayList<>(originalData); }
 
-    public List<RowData> getOriginalData() {
-        return new ArrayList<>(originalData);
-    }
-
-    public boolean isGroupStripingEnabled() {
-        return groupStripingEnabled;
-    }
-
-    public String getGroupStripingHeader() {
-        return groupStripingHeader;
-    }
-
-    public Color getGroupColorA() {
-        return groupColorA;
-    }
-
-    public Color getGroupColorB() {
-        return groupColorB;
-    }
+    public boolean isGroupStripingEnabled() { return groupStripingEnabled; }
+    public String getGroupStripingHeader() { return groupStripingHeader; }
+    public Color getGroupColorA() { return groupColorA; }
+    public Color getGroupColorB() { return groupColorB; }
 }
