@@ -404,12 +404,13 @@ public class CoverRepository {
             }
         }
 
-        if (filter.isWithVersion()){
-            sb.append(" AND COVER.HVPointer IS NOT NULL ");
-        }else {
-            sb.append(" AND COVER.HVPointer = 0 ");
+        if (filter.getWithVersion() != null) {
+            if (filter.getWithVersion()) {
+                sb.append(" AND (COVER.HVPointer IS NOT NULL OR COVER.HVPointer <> 0) ");
+            } else {
+                sb.append(" AND (COVER.HVPointer IS NULL OR COVER.HVPointer = 0) ");
+            }
         }
-
         return sb.toString();
     }
 

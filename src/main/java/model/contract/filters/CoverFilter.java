@@ -50,6 +50,7 @@ public class CoverFilter {
     private String insuredName;
     private String insuredCity;
     private String insuredNation;
+    private Boolean withVersion;
 
     private boolean isWithVersion = false;
 
@@ -68,6 +69,8 @@ public class CoverFilter {
     }
 
     // -------------------- Getter/Setter --------------------
+    public void setWithVersion(Boolean v) { this.withVersion = v; }
+    public Boolean getWithVersion() { return withVersion; }
 
     public String getFromDate() { return fromDate; }
     public void setFromDate(String fromDate) { this.fromDate = fromDate; }
@@ -117,7 +120,7 @@ public class CoverFilter {
     public void setGroupBy(List<String> groupBy) { this.groupBy = groupBy; }
 
     public void setIsWithVersion(boolean isWithVersion) { this.isWithVersion = isWithVersion; }
-    public boolean isWithVersion() {return isWithVersion;}
+    public boolean isWithVersion() { return Boolean.TRUE.equals(withVersion); }
 
 
 

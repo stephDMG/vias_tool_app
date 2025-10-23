@@ -1,14 +1,17 @@
 package gui.cover;
 
 import gui.controller.manager.*;
+import javafx.animation.PauseTransition;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
+import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
+import javafx.util.Duration;
 import model.contract.filters.CoverFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,6 +57,7 @@ public class CoverDomainController {
     private CoverService coverService;
     private String username;
     private String currentDomain;
+    private ProgressIndicator busy;
 
     private Map<String, String> dictSta;
     private Map<String, String> dictBastand;
@@ -100,6 +104,17 @@ public class CoverDomainController {
             "Sachbearbeiter (Vertrag)", "Sachbearbeiter (Schaden)"
     );
 
+    private void initBusyOverlay() {
+        busy = new ProgressIndicator();
+        busy.setMaxSize(90, 90);
+        busy.setVisible(false);
+        resultsStack.getChildren().add(busy);
+        StackPane.setAlignment(busy, Pos.CENTER);
+    }
+
+    private void showBusy() { if (busy != null) busy.setVisible(true); }
+    private void hideBusy() { if (busy != null) busy.setVisible(false); }
+
     // Persistenz: Gruppierung pro KF
     private final Map<String, List<String>> groupByMemory = new HashMap<>();
 
@@ -145,26 +160,18 @@ public class CoverDomainController {
         });
 
         if (toggleVersionView != null) {
-            toggleVersionView.selectedProperty().addListener((obs, oldV, newV) -> {
-                Platform.runLater(this::runKernfrage);
-            });
-        }
-
-        if (toggleVersionView != null) {
             toggleVersionView.setText("Ohne Version");
-
             toggleVersionView.selectedProperty().addListener((obs, oldV, newV) -> {
-                if (newV) {
-                    toggleVersionView.setText("Mit Versionen");
-                } else {
-                    toggleVersionView.setText("Ohne Version");
-                }
+                toggleVersionView.setText(newV ? "Mit Versionen" : "Ohne Version");
                 Platform.runLater(this::runKernfrage);
             });
         }
+
+
 
         setupBindings();
         setupKernfragenChoice();
+        initBusyOverlay();
         showMessage("Bitte wählen Sie eine Kernfrage aus.");
     }
 
@@ -254,6 +261,7 @@ public class CoverDomainController {
     // PARAMS + TABLE
     // =====================================================
     private void setupParams() {
+        showBusy();
         EXECUTOR.submit(() -> {
             try {
                 dictSta = coverService.getDictionary(username, "MAP_ALLE_STA");
@@ -294,6 +302,8 @@ public class CoverDomainController {
 
             } catch (Exception ex) {
                 log.error("Fehler beim Laden der Dictionaries", ex);
+            }finally {
+                Platform.runLater(this::hideBusy);
             }
         });
     }
@@ -407,7 +417,9 @@ public class CoverDomainController {
 
         // 🔑 Étape CLÉ : Lier le ToggleButton au filtre
         if (toggleVersionView != null) {
-            filter.setIsWithVersion(toggleVersionView.isSelected()); // ✅ C'est la source unique de vérité
+            filter.setIsWithVersion(toggleVersionView.isSelected());
+            log.info("runKernfrage -> toggle selected={}, filter.isWithVersion={}",
+                    toggleVersionView.isSelected(), filter.isWithVersion());
         }
 
         // Gruppierung für diese KF merken
@@ -438,44 +450,55 @@ public class CoverDomainController {
         // Gruppierung
         List<String> selectedGroupBys = new ArrayList<>(groupByList.getSelectionModel().getSelectedItems());
         filter.setGroupBy(selectedGroupBys.size() == groupByOptions.size() ? null : selectedGroupBys);
-
+        showBusy();
         EXECUTOR.submit(() -> {
-            int total = coverService.count(username, filter);
-            DataLoader loader = (page, size) -> coverService.searchRaw(username, filter, page, size).getRows();
+            try {
+                int total = coverService.count(username, filter);
+                DataLoader loader = (page, size) -> coverService.searchRaw(username, filter, page, size).getRows();
 
-            Platform.runLater(() -> {
-                // Table (Server-Pagination)
-                tableManager.loadDataFromServer(total, loader);
-                showMessage(null);
+                Platform.runLater(() -> {
+                    // Table (Server-Pagination)
+                    tableManager.loadDataFromServer(total, loader);
+                    showMessage(null);
 
-                // Snapshot der Gruppierung
-                java.util.List<String> groupSnapshot =
-                        new java.util.ArrayList<>(groupByList.getSelectionModel().getSelectedItems());
+                    // Snapshot der Gruppierung
+                    java.util.List<String> groupSnapshot =
+                            new java.util.ArrayList<>(groupByList.getSelectionModel().getSelectedItems());
 
-                // Pfad-Provider fürs Tree
-                java.util.function.Function<model.RowData, java.util.List<String>> pathProvider = row -> {
-                    java.util.Map<String, String> v = row.getValues();
-                    java.util.List<String> path = new java.util.ArrayList<>();
-                    for (String g : groupSnapshot) {
-                        switch (g) {
-                            case "Makler" -> path.add(v.getOrDefault("Makler", ""));
-                            case "Gesellschaft" -> path.add(v.getOrDefault("Gesellschaft_Name", ""));
-                            case "Versicherungsart" -> path.add(v.getOrDefault("Versicherungsart_Text", ""));
-                            case "Beteiligungsform" -> path.add(v.getOrDefault("Beteiligungsform_Text", ""));
-                            case "Sachbearbeiter (Vertrag)" -> path.add(v.getOrDefault("SB_Vertr", ""));
-                            case "Sachbearbeiter (Schaden)" -> path.add(v.getOrDefault("SB_Schad", ""));
-                            case "Cover Art" -> path.add(v.getOrDefault("Vertragsparte_Text", ""));
-                            case "Versicherungssparte" -> path.add("COVER");
-                            default -> { }
+                    // Pfad-Provider fürs Tree
+                    java.util.function.Function<model.RowData, java.util.List<String>> pathProvider = row -> {
+                        java.util.Map<String, String> v = row.getValues();
+                        java.util.List<String> path = new java.util.ArrayList<>();
+                        for (String g : groupSnapshot) {
+                            switch (g) {
+                                case "Makler" -> path.add(v.getOrDefault("Makler", ""));
+                                case "Gesellschaft" -> path.add(v.getOrDefault("Gesellschaft_Name", ""));
+                                case "Versicherungsart" -> path.add(v.getOrDefault("Versicherungsart_Text", ""));
+                                case "Beteiligungsform" -> path.add(v.getOrDefault("Beteiligungsform_Text", ""));
+                                case "Sachbearbeiter (Vertrag)" -> path.add(v.getOrDefault("SB_Vertr", ""));
+                                case "Sachbearbeiter (Schaden)" -> path.add(v.getOrDefault("SB_Schad", ""));
+                                case "Cover Art" -> path.add(v.getOrDefault("Vertragsparte_Text", ""));
+                                case "Versicherungssparte" -> path.add("COVER");
+                                default -> {
+                                }
+                            }
                         }
-                    }
-                    if (path.isEmpty()) path.add("Alle");
-                    return path;
-                };
+                        if (path.isEmpty()) path.add("Alle");
+                        return path;
+                    };
 
-                // Tree (Server-Pagination + Provider)
-                treeManager.loadDataFromServer(total, loader, pathProvider);
-            });
+                    // Tree (Server-Pagination + Provider)
+                    treeManager.loadDataFromServer(total, loader, pathProvider);
+                });
+            }catch(Exception ex){
+                log.error("runKernfrage() fehlgeschlagen", ex);
+            }finally {
+                Platform.runLater(() -> {
+                    PauseTransition pt = new PauseTransition(Duration.millis(150));
+                    pt.setOnFinished(ev -> hideBusy());
+                    pt.play();
+                });
+                }
         });
     }
 
