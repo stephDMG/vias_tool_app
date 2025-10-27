@@ -4,6 +4,9 @@ import formatter.ColumnValueFormatter;
 import gui.controller.dialog.Dialog;
 import javafx.animation.PauseTransition;
 import javafx.application.Platform;
+import javafx.beans.property.BooleanProperty;
+import javafx.beans.property.ReadOnlyBooleanProperty;
+import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
@@ -21,16 +24,13 @@ import org.slf4j.LoggerFactory;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 /**
- * Universelle Tabellenverwaltung für TableView&lt;ObservableList&lt;String&gt;&gt;.
- *
- * <p><b>Funktionen:</b> Suche (Client), Spaltenauswahl/Löschen,
- * Bereinigen leerer Spalten, Pagination (Client/Server), Kontextmenü
- * (Spalte umbenennen/löschen), Gruppierungs-Striping (optional), Export-Header.</p>
- *
- * <p>Diese Version ist bewusst „konservativ“, um bestehende Logik nicht zu brechen.</p>
+ * Universelle Tabellenverwaltung für TableView<ObservableList<String>>.
+ * Suche, Spaltenaktionen, Bereinigen, Pagination (Client/Server), Kontextmenü,
+ * optisches Gruppierungs-Striping, Export-Header-Helfer.
  */
 public class EnhancedTableManager {
     private static final Logger logger = LoggerFactory.getLogger(EnhancedTableManager.class);
@@ -72,7 +72,13 @@ public class EnhancedTableManager {
     private Button cleanColumnsButton;
     private boolean cleanRanForThisPage = false;
 
-    /** Konstruktor – Komponenten können optional null sein. */
+    private Consumer<String> onServerSearch;
+
+
+    private final BooleanProperty hasData = new SimpleBooleanProperty(false);
+    public ReadOnlyBooleanProperty hasDataProperty() { return hasData; }
+    public boolean hasData() { return hasData.get(); }
+
     public EnhancedTableManager(TableView<ObservableList<String>> tableView,
                                 TextField searchField,
                                 Button deleteButton,
@@ -84,21 +90,14 @@ public class EnhancedTableManager {
         this.pagination = pagination;
         this.resultsCountLabel = resultsCountLabel;
 
-        if (deleteButton != null) {
-            deleteButton.setDisable(true);
-        }
+        if (deleteButton != null) deleteButton.setDisable(true);
     }
 
-    /** Vereinfachter Konstruktor. */
     public EnhancedTableManager(TableView<ObservableList<String>> tableView) {
         this(tableView, null, null, null, null);
     }
 
-    // ---------------------------------------------------------
     // Features
-    // ---------------------------------------------------------
-
-    /** Aktiviert die clientseitige Suche. */
     public EnhancedTableManager enableSearch() {
         if (searchField == null) {
             logger.warn("Search requested but no SearchField provided");
@@ -107,7 +106,11 @@ public class EnhancedTableManager {
         searchEnabled = true;
         searchField.textProperty().addListener((obs, oldVal, newVal) -> {
             if (serverPaginationEnabled) {
-                logger.warn("Server-side search is not yet implemented. Please handle this in the controller.");
+                if (onServerSearch != null) {
+                    onServerSearch.accept(newVal == null ? "" : newVal.trim());
+                } else {
+                    filterData(newVal);
+                }
             } else {
                 filterData(newVal);
             }
@@ -115,7 +118,6 @@ public class EnhancedTableManager {
         return this;
     }
 
-    /** Aktiviert Spaltenauswahl/Löschen. */
     public EnhancedTableManager enableSelection() {
         if (deleteButton == null) {
             logger.warn("Selection requested but no DeleteButton provided");
@@ -133,10 +135,7 @@ public class EnhancedTableManager {
         return this;
     }
 
-    // ---------------------------------------------------------
     // Client-Pagination
-    // ---------------------------------------------------------
-
     public EnhancedTableManager enablePagination(int rowsPerPage) {
         if (pagination == null) {
             logger.warn("Pagination requested but no Pagination component provided");
@@ -148,7 +147,7 @@ public class EnhancedTableManager {
         return this;
     }
 
-    /** Lädt komplette Daten (Clientmodus). */
+    /** Client mode : charge toutes les données et construit la table. */
     public void populateTableView(List<RowData> data) {
         serverPaginationEnabled = false;
 
@@ -157,6 +156,7 @@ public class EnhancedTableManager {
             return;
         }
         this.originalData = new ArrayList<>(data);
+        hasData.set(true);
 
         if (searchEnabled && searchField != null) {
             filterData(searchField.getText());
@@ -201,10 +201,7 @@ public class EnhancedTableManager {
         return new VBox();
     }
 
-    // ---------------------------------------------------------
     // Server-Pagination
-    // ---------------------------------------------------------
-
     private void setupServerPagination() {
         if (pagination == null) return;
 
@@ -231,10 +228,12 @@ public class EnhancedTableManager {
                     if (pageData == null || pageData.isEmpty()) {
                         tableView.setItems(FXCollections.observableArrayList());
                         tableView.setPlaceholder(new Label("Keine Daten gefunden."));
+                        hasData.set(false); // <-- important pour désactiver export quand page vide
                     } else {
                         buildTableColumns(pageData);
                         populateTableData(pageData);
                         recomputeGroupStripes();
+                        hasData.set(true); // <-- données présentes -> export ON
                     }
                 });
             } catch (Exception e) {
@@ -245,30 +244,38 @@ public class EnhancedTableManager {
         });
     }
 
-    /** Initialisiert Server-Pagination. */
+    /** Initialise la pagination serveur et signale la présence de données. */
     public void loadDataFromServer(int totalCount, DataLoader dataLoader) {
         serverPaginationEnabled = true;
         this.dataLoader = Objects.requireNonNull(dataLoader, "DataLoader must not be null for server-side pagination.");
-        this.totalCount = totalCount;
+        this.totalCount = Math.max(0, totalCount);
+
         if (this.totalCount <= 0) {
             clearTable();
             return;
         }
-        setupServerPagination();
+
+        hasData.set(true);
+
+        // 🆕 reset pagination page index
+        if (pagination != null) {
+            pagination.setCurrentPageIndex(0);
+        }
+
+        setupServerPagination(); // reconstruit la pagination
+
+        // 🆕 force le recalcul du label
+        updateResultsCount();
     }
 
-    // ---------------------------------------------------------
-    // Gruppierung (optisches Striping)
-    // ---------------------------------------------------------
 
+    // Grouping (optical striping)
     public void applyGroupingConfig(boolean enabled, String headerName, Color colorA, Color colorB) {
         this.groupStripingEnabled = enabled && headerName != null && !headerName.isBlank();
         this.groupStripingHeader = this.groupStripingEnabled ? headerName : null;
         this.groupColorA = this.groupStripingEnabled ? colorA : null;
         this.groupColorB = this.groupStripingEnabled ? colorB : null;
-        if (!groupStripingEnabled) {
-            stripeIsA.clear();
-        }
+        if (!groupStripingEnabled) stripeIsA.clear();
         installGroupRowFactory();
         recomputeGroupStripes();
     }
@@ -359,9 +366,7 @@ public class EnhancedTableManager {
         tableView.refresh();
     }
 
-    // ---------------------------------------------------------
-    // Suche (Client)
-    // ---------------------------------------------------------
+    // Search (client)
     private void filterData(String filterText) {
         String lowerCaseFilter = (filterText != null) ? filterText.toLowerCase() : "";
         if (lowerCaseFilter.isEmpty()) {
@@ -376,9 +381,7 @@ public class EnhancedTableManager {
         refreshTable();
     }
 
-    // ---------------------------------------------------------
-    // Auto-Row-Berechnung (bei Höhenänderung)
-    // ---------------------------------------------------------
+    // Auto-rows per page
     public void setRowsPerPage(int rowsPerPage) {
         if (rowsPerPage <= 0) return;
         this.rowsPerPage = rowsPerPage;
@@ -411,9 +414,7 @@ public class EnhancedTableManager {
         });
     }
 
-    // ---------------------------------------------------------
-    // Spaltenaufbau & Daten
-    // ---------------------------------------------------------
+    // Table build & data
     private void buildTableColumns(List<RowData> data) {
         if (data == null || data.isEmpty()) {
             tableView.getColumns().clear();
@@ -468,9 +469,7 @@ public class EnhancedTableManager {
         markDataChanged();
     }
 
-    // ---------------------------------------------------------
     // Clean / Kontextmenü / Delete
-    // ---------------------------------------------------------
     public EnhancedTableManager enableCleanTable() {
         if (this.cleanColumnsButton == null) return this;
         this.cleanColumnsButton.setDisable(false);
@@ -614,9 +613,7 @@ public class EnhancedTableManager {
         logger.info("Deleted {} columns", columnsToDelete.size());
     }
 
-    // ---------------------------------------------------------
     // Anzeigezähler & Clear
-    // ---------------------------------------------------------
     private void updateResultsCount() {
         if (resultsCountLabel != null) {
             int countToDisplay = serverPaginationEnabled ? totalCount : filteredData.size();
@@ -630,10 +627,11 @@ public class EnhancedTableManager {
         if (pagination != null) {
             pagination.setVisible(false);
         }
+        hasData.set(false); // <-- important : export OFF quand plus de données
         updateResultsCount();
     }
 
-    // Export-Helper
+    // Export helpers
     public List<String> getDisplayHeaders() {
         return tableView.getColumns().stream()
                 .map(TableColumn::getText)
@@ -646,11 +644,30 @@ public class EnhancedTableManager {
                 .collect(Collectors.toList());
     }
 
-    public List<RowData> getFilteredData() { return new ArrayList<>(filteredData); }
-    public List<RowData> getOriginalData() { return new ArrayList<>(originalData); }
+    /**
+     * Gibt die aktuell gefilterten Daten (Client-seitig) zurück.
+     * Wird z.B. vom AiAssistantViewController verwendet.
+     */
+    public List<RowData> getFilteredData() {
+        return new ArrayList<>(filteredData);
+    }
 
-    public boolean isGroupStripingEnabled() { return groupStripingEnabled; }
-    public String getGroupStripingHeader() { return groupStripingHeader; }
-    public Color getGroupColorA() { return groupColorA; }
-    public Color getGroupColorB() { return groupColorB; }
+
+    public EnhancedTableManager setOnServerSearch(Consumer<String> handler) {
+        this.onServerSearch = handler;
+        return this;
+    }
+
+
+    /**
+     * Gibt die Originaldaten (ungefiltert) zurück.
+     */
+    public List<RowData> getOriginalData() {
+        return new ArrayList<>(originalData);
+    }
+
+    public TextField getSearchField() {
+        return searchField;
+    }
+
 }

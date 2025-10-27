@@ -39,7 +39,6 @@ public final class FormatterService {
         try (InputStreamReader reader = new InputStreamReader(Objects.requireNonNull(FormatterService.class.getResourceAsStream("/config/formatter.json")))) {
             return gson.fromJson(reader, FormatterConfig.class);
         } catch (Exception e) {
-            // Loggen Sie den Fehler
             return null;
         }
     }

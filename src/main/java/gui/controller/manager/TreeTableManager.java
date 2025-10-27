@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -73,6 +74,9 @@ public class TreeTableManager {
     private List<RowData> originalData = new ArrayList<>();
     private List<RowData> filteredData = new ArrayList<>();
     private List<String> currentHeaders = new ArrayList<>();
+    // Spalten, die der Benutzer dauerhaft entfernt hat (bis zum nächsten Reset)
+    private final Set<String> globallyRemovedColumns = new HashSet<>();
+
 
     // Server-Pagination
     private int totalCount = 0;
@@ -83,6 +87,7 @@ public class TreeTableManager {
 
     private boolean cleanRanForThisPage = false;
     private boolean serverPagerInitialized = false;
+    private Consumer<String> onServerSearch;
 
     /** Konstruktor. */
     public TreeTableManager(TreeTableView<ObservableList<String>> treeTableView,
@@ -119,13 +124,18 @@ public class TreeTableManager {
         searchEnabled = true;
         searchField.textProperty().addListener((obs, ov, nv) -> {
             if (serverPaginationEnabled) {
-                log.warn("Serversuche nicht implementiert – im Controller filtern und neu laden.");
+                if (onServerSearch != null) {
+                    onServerSearch.accept(nv == null ? "" : nv.trim());
+                } else {
+                    log.warn("Serversuche aktiviert, aber kein Handler gesetzt – bitte setOnServerSearch() verwenden.");
+                }
             } else {
                 filterClientData(nv);
             }
         });
         return this;
     }
+
 
     /** Aktiviert Spaltenauswahl/Löschen. */
     public TreeTableManager enableSelection() {
@@ -146,6 +156,10 @@ public class TreeTableManager {
         return this;
     }
 
+    public Button getCleanColumnsButton() {
+        return cleanColumnsButton;
+    }
+
     /** Aktiviert „Bereinigen“-Button (Parität zu Table-Manager). */
     public TreeTableManager enableCleanTable() {
         if (this.cleanColumnsButton != null) {
@@ -155,12 +169,14 @@ public class TreeTableManager {
         return this;
     }
 
+
+
     public void setAutoExpandRoot(boolean autoExpandRoot) { this.autoExpandRoot = autoExpandRoot; }
     public void setShowRoot(boolean showRoot) { this.showRoot = showRoot; this.treeTableView.setShowRoot(showRoot); }
 
     public void setCleanButton(Button cleanButton) {
         this.cleanColumnsButton = cleanButton;
-        if (cleanButton != null) cleanButton.setOnAction(e -> cleanColumnsOnCurrentPage());
+        if (cleanButton != null) cleanButton.setOnAction(e -> cleanColumnsAllPages());
     }
 
     public void setExpandAllButton(Button btn) {
@@ -240,7 +256,11 @@ public class TreeTableManager {
         this.serverPaginationEnabled = true;
         this.dataLoader = dataLoader;
         this.totalCount = totalCount;
+        if (pagination != null) pagination.setCurrentPageIndex(0); // 🆕 reset page
+
+
         setupServerPagination();
+        updateResultsCount();
     }
 
     // ---------------------------------------------------------
@@ -352,9 +372,13 @@ public class TreeTableManager {
     // ---------------------------------------------------------
     private void buildColumnsFromRows(List<RowData> data) {
         treeTableView.getColumns().clear();
+
         currentHeaders = (data == null || data.isEmpty())
                 ? new ArrayList<>()
                 : new ArrayList<>(data.get(0).getValues().keySet());
+
+        // 🚫 Appliquer la suppression globale persistante
+        currentHeaders.removeIf(globallyRemovedColumns::contains);
 
         for (int i = 0; i < currentHeaders.size(); i++) {
             final int idx = i;
@@ -366,14 +390,12 @@ public class TreeTableManager {
                 String value = (row != null && idx < row.size()) ? row.get(idx) : "";
                 return new ReadOnlyStringWrapper(value);
             });
-
-            // Kontextmenü
             addContextMenuToColumn(col);
-
             treeTableView.getColumns().add(col);
         }
         markDataChanged();
     }
+
 
     private void addContextMenuToColumn(TreeTableColumn<ObservableList<String>, String> column) {
         MenuItem renameItem = new MenuItem("Spalte umbenennen");
@@ -491,6 +513,7 @@ public class TreeTableManager {
         });
     }
 
+
     // ---------------------------------------------------------
     // Spalten-Operationen
     // ---------------------------------------------------------
@@ -513,22 +536,50 @@ public class TreeTableManager {
         }
     }
 
+    /**
+     * Löscht Spalten aus der TreeTableView UND merkt sich global, dass sie entfernt wurden,
+     * sodass sie auch auf nachfolgenden Seiten ausgeblendet bleiben.
+     *
+     * @param toRemove die zu löschenden Spalten
+     */
     private void deleteColumns(List<TreeTableColumn<ObservableList<String>, ?>> toRemove) {
-        Set<String> keys = toRemove.stream().map(c -> String.valueOf(c.getUserData())).collect(Collectors.toSet());
+        if (toRemove == null || toRemove.isEmpty()) return;
+
+        // 1️⃣ Récupère les clés (identifiants de colonnes)
+        Set<String> keys = toRemove.stream()
+                .map(c -> String.valueOf(c.getUserData()))
+                .collect(Collectors.toSet());
+
+        // 2️⃣ Sauvegarde globale (pour persistance inter-pages)
+        globallyRemovedColumns.addAll(keys);
+
+        // 3️⃣ Supprime les colonnes de la vue actuelle
         treeTableView.getColumns().removeAll(toRemove);
 
-        for (RowData r : originalData) r.getValues().keySet().removeAll(keys);
-        for (RowData r : filteredData) r.getValues().keySet().removeAll(keys);
+        // 4️⃣ Supprime les données correspondantes dans la page actuelle
+        for (RowData row : originalData) {
+            row.getValues().keySet().removeAll(keys);
+        }
+        for (RowData row : filteredData) {
+            row.getValues().keySet().removeAll(keys);
+        }
 
+        // 5️⃣ Supprime des en-têtes courants
         currentHeaders.removeIf(keys::contains);
 
+        // 6️⃣ Rafraîchit la vue ou recharge la page selon le mode
         if (serverPaginationEnabled) {
-            if (pagination != null) pagination.setCurrentPageIndex(pagination.getCurrentPageIndex());
-            else loadServerPage(0);
+            if (pagination != null)
+                pagination.setCurrentPageIndex(pagination.getCurrentPageIndex());
+            else
+                loadServerPage(0);
         } else {
             refreshClient();
         }
+
+        log.info("Spalten gelöscht: {} (persistiert für zukünftige Seiten)", keys);
     }
+
 
     /** Entfernt Spalten, die auf der sichtbaren Seite vollständig leer sind. */
     private void cleanColumnsOnCurrentPage() {
@@ -575,15 +626,40 @@ public class TreeTableManager {
     // ---------------------------------------------------------
     public void expandAll() {
         TreeItem<ObservableList<String>> root = treeTableView.getRoot();
-        if (root != null) setExpandedRecursively(root, true);
+        if (root != null) {
+            if (serverPaginationEnabled && dataLoader != null && totalCount > rowsPerPage) {
+                log.info("expandAll(): alle Seiten werden vorübergehend geladen …");
+                EXECUTOR.submit(() -> {
+                    List<RowData> allRows = new ArrayList<>();
+                    int pages = (int) Math.ceil(totalCount / (double) rowsPerPage);
+                    for (int p = 0; p < pages; p++) {
+                        try {
+                            List<RowData> part = dataLoader.loadPage(p, rowsPerPage);
+                            if (part != null) allRows.addAll(part);
+                        } catch (Exception ex) {
+                            log.error("Fehler beim Nachladen Seite {}", p, ex);
+                        }
+                    }
+                    Platform.runLater(() -> {
+                        TreeItem<ObservableList<String>> newRoot = buildTreeUsingPathProvider(allRows);
+                        applyRoot(newRoot);
+                        setExpandedRecursively(newRoot, true);
+                    });
+                });
+            } else {
+                setExpandedRecursively(root, true);
+            }
+        }
+
     }
 
     public void collapseAll() {
         TreeItem<ObservableList<String>> root = treeTableView.getRoot();
         if (root != null) {
             setExpandedRecursively(root, false);
-            if (showRoot) root.setExpanded(false);
+            root.setExpanded(true);
         }
+
     }
 
     private void expandLevel(TreeItem<?> item, int levels) {
@@ -624,6 +700,52 @@ public class TreeTableManager {
         }
     }
 
+    // ---------------------------------------------------------
+// Bereinigen – Entfernt leere Spalten in TreeTable (analog zu EnhancedTableManager)
+// ---------------------------------------------------------
+
+    public void cleanColumns() {
+        if (treeTableView.getRoot() == null) {
+            Dialog.showInfoDialog("Bereinigen", "Keine Daten vorhanden.");
+            return;
+        }
+
+        List<TreeTableColumn<ObservableList<String>, ?>> columns = new ArrayList<>(treeTableView.getColumns());
+        List<TreeItem<ObservableList<String>>> leaves = collectLeaves(treeTableView.getRoot());
+
+        if (columns.isEmpty() || leaves.isEmpty()) {
+            Dialog.showInfoDialog("Bereinigen", "Keine sichtbaren Daten zum Prüfen.");
+            return;
+        }
+
+        List<TreeTableColumn<ObservableList<String>, ?>> toRemove = new ArrayList<>();
+
+        for (int c = 0; c < columns.size(); c++) {
+            boolean allEmpty = true;
+            for (TreeItem<ObservableList<String>> leaf : leaves) {
+                ObservableList<String> row = leaf.getValue();
+                if (row != null && c < row.size()) {
+                    String val = row.get(c);
+                    if (val != null && !val.trim().isEmpty()) {
+                        allEmpty = false;
+                        break;
+                    }
+                }
+            }
+            if (allEmpty) toRemove.add(columns.get(c));
+        }
+
+        if (toRemove.isEmpty()) {
+            Dialog.showInfoDialog("Bereinigen", "Keine vollständig leeren Spalten gefunden.");
+        } else {
+            if (Dialog.showWarningDialog("Bereinigen",
+                    toRemove.size() + " leere Spalte(n) werden entfernt. Fortfahren?")) {
+                deleteColumns(toRemove);
+            }
+        }
+    }
+
+
     private void clearTree() {
         treeTableView.getColumns().clear();
         treeTableView.setRoot(null);
@@ -650,4 +772,43 @@ public class TreeTableManager {
     }
 
     public TreeTableView<ObservableList<String>> getTreeTableView() { return treeTableView; }
+    public void setOnServerSearch(java.util.function.Consumer<String> handler) {
+        this.onServerSearch = handler;
+    }
+
+    public TextField getSearchField() {
+        return searchField;
+    }
+
+    /** Entfernt leere Spalten nach dem Laden aller Seiten (Server-Modus). */
+    public void cleanColumnsAllPages() {
+        if (!serverPaginationEnabled || dataLoader == null) {
+            cleanColumns(); // fallback normal
+            return;
+        }
+
+        Dialog.showInfoDialog("Bereinigen", "Alle Seiten werden geladen – bitte warten...");
+
+        EXECUTOR.submit(() -> {
+            List<RowData> allRows = new ArrayList<>();
+            int pages = (int) Math.ceil(totalCount / (double) rowsPerPage);
+            for (int p = 0; p < pages; p++) {
+                try {
+                    List<RowData> part = dataLoader.loadPage(p, rowsPerPage);
+                    if (part != null) allRows.addAll(part);
+                } catch (Exception ex) {
+                    log.error("Fehler beim Laden Seite {}", p, ex);
+                }
+            }
+
+            Platform.runLater(() -> {
+                buildColumnsFromRows(allRows);
+                TreeItem<ObservableList<String>> root = buildTreeUsingPathProvider(allRows);
+                applyRoot(root);
+                cleanColumns(); // jetzt globale Bereinigung
+            });
+        });
+    }
+
+
 }

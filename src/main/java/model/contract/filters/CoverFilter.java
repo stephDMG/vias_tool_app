@@ -1,16 +1,15 @@
 package model.contract.filters;
 
-import javafx.scene.control.ToggleButton;
-
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * CoverFilter
  *
  * Zentrale Filterklasse für Vertrags- und Angebotsauswertungen.
- * Enthält Standardfilter (Datum, Status, Makler, Volltext)
- * sowie erweiterte Filter (Bearbeitungsstand, Vertragsstatus, Gruppierung, Stornogrund usw.).
+ * - API kanonisch für Version-Flag: getWithVersion()/setWithVersion(Boolean)
+ * - Kompatibilität: isWithVersion()/setIsWithVersion(boolean)
  */
 public class CoverFilter {
 
@@ -32,27 +31,26 @@ public class CoverFilter {
     // Bearbeitungsstand (multi-selektion)
     private List<String> bearbeitungsstandIds;
 
-    // Modus / Kontext (z. B. "Angebote", "Verträge")
+    // Modus / Kontext
     private String mode;
 
     // Kündigungsfristverkürzung
     private LocalDate kuendigVerkDatum;
     private String kuendigVerkInitiator;
 
-    // Storno / Beendigung (MODIFIZIERT: Multi-Selektion)
+    // Storno / Beendigung (multi)
     private List<String> stornoGrundIds;
 
-    // Dropdown-Gruppierung (Makler, Gesellschaft, Sparte, etc.) – multi-selektion
+    // Dropdown-Gruppierung – multi
     private List<String> groupBy;
 
+    // Version-Filter:
+    // - 'withVersion' = kanonisch (Boolean, tri-state)
+    // - 'isWithVersion' = Altkompatibilität (primitive boolean)
+    private Boolean withVersion;      // kanonisch
+    private boolean isWithVersion;    // kompat
 
-    // Versicherungsnehmer (optional für Suchfilter)
-    private String insuredName;
-    private String insuredCity;
-    private String insuredNation;
-    private Boolean withVersion;
-
-    private boolean isWithVersion = false;
+    private String searchTerm;
 
     public CoverFilter() {}
 
@@ -65,15 +63,21 @@ public class CoverFilter {
         this.status = status;
         this.broker = broker;
         this.textSearch = textSearch;
-        this.isWithVersion = isWithVersion;
+        setIsWithVersion(isWithVersion);
     }
 
     // -------------------- Getter/Setter --------------------
-    public void setWithVersion(Boolean v) { this.withVersion = v; }
-    public Boolean getWithVersion() { return withVersion; }
 
     public String getFromDate() { return fromDate; }
     public void setFromDate(String fromDate) { this.fromDate = fromDate; }
+
+    public void setSearchTerm(String term) {
+        this.searchTerm = (term == null || term.isBlank()) ? null : term;
+    }
+
+    public String getSearchTerm() {
+        return searchTerm;
+    }
 
     public String getToDate() { return toDate; }
     public void setToDate(String toDate) { this.toDate = toDate; }
@@ -111,27 +115,31 @@ public class CoverFilter {
     public String getKuendigVerkInitiator() { return kuendigVerkInitiator; }
     public void setKuendigVerkInitiator(String kuendigVerkInitiator) { this.kuendigVerkInitiator = kuendigVerkInitiator; }
 
-    // MODIFIZIERT: List<String> für multi-Selektion der Stornogründe
     public List<String> getStornoGrundIds() { return stornoGrundIds; }
     public void setStornoGrundIds(List<String> stornoGrundIds) { this.stornoGrundIds = stornoGrundIds; }
 
-    // Dropdown-Gruppierung (Makler, Gesellschaft, Sparte, etc.) – multi-selektion
     public List<String> getGroupBy() { return groupBy; }
     public void setGroupBy(List<String> groupBy) { this.groupBy = groupBy; }
 
-    public void setIsWithVersion(boolean isWithVersion) { this.isWithVersion = isWithVersion; }
-    public boolean isWithVersion() { return Boolean.TRUE.equals(withVersion); }
+    // ---- Version-Flag (API kanonisch pour le Repository) ----
+    public void setWithVersion(Boolean v) {
+        this.withVersion = v;
+        this.isWithVersion = (v != null && v);
+    }
+    public Boolean getWithVersion() {
+        // si non renseigné, retomber sur l’ancien booléen
+        if (withVersion != null) return withVersion;
+        return isWithVersion ? Boolean.TRUE : Boolean.FALSE;
+    }
 
+    // ---- Compatibilité (ce que le contrôleur appelait déjà) ----
+    public void setIsWithVersion(boolean isWithVersion) {
+        this.isWithVersion = isWithVersion;
+        this.withVersion = isWithVersion;
+    }
+    public boolean isWithVersion() { return isWithVersion; }
 
-
-    public String getInsuredName() { return insuredName; }
-    public void setInsuredName(String insuredName) { this.insuredName = insuredName; }
-
-    public String getInsuredCity() { return insuredCity; }
-    public void setInsuredCity(String insuredCity) { this.insuredCity = insuredCity; }
-
-    public String getInsuredNation() { return insuredNation; }
-    public void setInsuredNation(String insuredNation) { this.insuredNation = insuredNation; }
+    private String safeStr(String s) { return s == null ? "" : s; }
 
     @Override
     public String toString() {
@@ -151,10 +159,21 @@ public class CoverFilter {
                 ", kuendigVerkInitiator='" + kuendigVerkInitiator + '\'' +
                 ", stornoGrundIds=" + stornoGrundIds +
                 ", groupBy=" + groupBy +
-                ", insuredName='" + insuredName + '\'' +
-                ", insuredCity='" + insuredCity + '\'' +
-                ", insuredNation='" + insuredName + '\'' + // Korrektur: sollte insuredNation sein
+                ", withVersion=" + getWithVersion() +
                 '}';
     }
 
+    @Override
+    public int hashCode() {
+        return Objects.hash(
+                safeStr(fromDate), safeStr(toDate),
+                abDate, bisDate,
+                safeStr(status), safeStr(broker), safeStr(textSearch),
+                safeStr(contractStatus), contractStatusList, bearbeitungsstandIds,
+                safeStr(mode),
+                kuendigVerkDatum, safeStr(kuendigVerkInitiator),
+                stornoGrundIds, groupBy,
+                getWithVersion()
+        );
+    }
 }

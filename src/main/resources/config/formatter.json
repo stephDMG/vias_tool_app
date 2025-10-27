@@ -37,6 +37,10 @@
       "type": "MONEY"
     },
     {
+      "name": "Anteil CS",
+      "type": "MONEY"
+    },
+    {
       "name": "Gesamt",
       "type": "MONEY"
     },
@@ -91,6 +95,38 @@
     {
       "name": "Balance",
       "type": "MONEY"
+    },
+    {
+      "name": "Ablauf_Datum",
+      "type": "DATE"
+    },
+    {
+      "name": "Version_von",
+      "type": "DATE"
+    },
+    {
+      "name": "Version_bis",
+      "type": "DATE"
+    },
+    {
+      "name": "Letzte_Aenderung",
+      "type": "DATE"
+    },
+    {
+      "name": "Wiedervorlage_Datum_1",
+      "type": "DATE"
+    },
+    {
+      "name": "Kuendigungsfristverkuerzung_zum",
+      "type": "DATE"
+    },
+    {
+      "name": " Wiedervorlage_Datum_2",
+      "type": "DATE"
+    },
+    {
+      "name": "Beginn_Datum",
+      "type": "DATE"
     },
     {
       "name": "Schadentag",

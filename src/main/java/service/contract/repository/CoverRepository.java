@@ -24,6 +24,28 @@ public class CoverRepository {
     private final DatabaseService databaseService;
     private final CoverFormatter coverFormatter;
 
+    private static final List<String> GLOBAL_SEARCH_COLUMNS = List.of(
+            "COVER.LU_VSN",
+            "LUM.LU_NAM",
+            "COVER.LU_GES_Text",
+            "VMT.LU_VNA",
+            "COVER.LU_RIS",
+            "MCR.TAB_VALUE",
+            "MAO.TAB_VALUE",
+            "MASTA.TAB_VALUE",
+            "MABT.TAB_VALUE",
+            "MAGB.MTEXT",
+            "COVER.LU_ART_Text",
+            "COVER.LU_BASTAND",
+            "LUM.LU_STRASSE",
+            "LUM.LU_ORT",
+            "LUM.LU_PLZ",
+            "COVER.LU_SPAKZ",
+            "COVER.LU_VSN_MAKLER",
+            "COVER.LU_VSN_VR"
+    );
+
+
     public CoverRepository(DatabaseService databaseService,
                            CoverFormatter coverFormatter) {
         this.databaseService = databaseService;
@@ -316,6 +338,7 @@ public class CoverRepository {
         return sql.toString();
     }
 
+    /**
     private String buildCountSql(CoverFilter filter) {
         StringBuilder from = new StringBuilder();
         from.append("FROM LU_ALLE AS COVER\n");
@@ -325,6 +348,27 @@ public class CoverRepository {
         }
         return "SELECT COUNT(1) AS total\n" + from + "WHERE COVER.Sparte LIKE '%COVER' " + where;
     }
+     */
+
+    private String buildCountSql(CoverFilter filter) {
+        StringBuilder sql = new StringBuilder();
+
+        sql.append("SELECT COUNT(1) AS total\n");
+        sql.append("FROM LU_ALLE AS COVER\n");
+        sql.append("LEFT JOIN LU_MASKEP AS LUM ON COVER.PPointer = LUM.PPointer\n");
+        sql.append("LEFT JOIN VERMITTLER AS VMT ON COVER.LU_VMT = VMT.LU_VMT \n");
+        sql.append("LEFT JOIN MAP_ALLE_COVERRIS AS MCR ON COVER.LU_BAUST_RIS = MCR.TAB_ID\n");
+        sql.append("LEFT JOIN MAP_ALLE_BETSTAT AS MABT ON COVER.LU_BET_STAT = MABT.TAB_ID\n");
+        sql.append("LEFT JOIN MAP_ALLE_OPZ AS MAO ON COVER.LU_OPZ = MAO.TAB_ID\n");
+        sql.append("LEFT JOIN MAP_ALLE_STA AS MASTA ON COVER.LU_STA = MASTA.TAB_ID\n");
+        sql.append("LEFT JOIN MAP_ALLE_GBEREICH AS MAGB ON COVER.LU_GBEREICH = MAGB.TAB_ID\n");
+
+        String where = buildWhere(filter);
+        sql.append("WHERE COVER.Sparte LIKE '%COVER' ").append(where);
+
+        return sql.toString();
+    }
+
 
     // =====================================================
     // NEUE Version der buildWhere-Methode
@@ -332,6 +376,23 @@ public class CoverRepository {
     private String buildWhere(CoverFilter filter) {
         if (filter == null) return "";
         StringBuilder sb = new StringBuilder();
+
+        if (filter.getSearchTerm() != null) {
+            String term = escapeLike(filter.getSearchTerm()).toUpperCase(Locale.ROOT);
+            sb.append(" AND (");
+
+            boolean first = true;
+            for (String col : GLOBAL_SEARCH_COLUMNS) {
+                if (!first) sb.append(" OR ");
+                sb.append("UPPER(").append(col).append(") LIKE '%").append(term).append("%'");
+                first = false;
+            }
+
+            sb.append(")");
+        }
+
+
+
 
         // 1) Vertragsstand (LU_STA)
         if (filter.getContractStatusList() != null && !filter.getContractStatusList().isEmpty()) {
@@ -404,13 +465,17 @@ public class CoverRepository {
             }
         }
 
+        // 9) Version-Flag (KORRIGIERT: AND / OR)
         if (filter.getWithVersion() != null) {
-            if (filter.getWithVersion()) {
-                sb.append(" AND (COVER.HVPointer IS NOT NULL OR COVER.HVPointer <> 0) ");
+            if (Boolean.TRUE.equals(filter.getWithVersion())) {
+                sb.append("  AND (COVER.HVPointer IS NOT NULL OR COVER.HVPointer <> 0) ");
             } else {
+                // Ohne Version => keine Version (NULL ODER 0)
                 sb.append(" AND (COVER.HVPointer IS NULL OR COVER.HVPointer = 0) ");
             }
         }
+
+
         return sb.toString();
     }
 

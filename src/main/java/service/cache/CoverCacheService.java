@@ -246,13 +246,17 @@ public class CoverCacheService {
                 ? norm(String.join(",", filter.getGroupBy()))
                 : "";
 
+        // IMPORTANT: include isWithVersion so toggling triggers new cache keys
+        boolean withVersion = filter.isWithVersion();
+
         return String.valueOf(Objects.hash(
                 from, to, ab, bis,
                 status, broker, text,
                 contractStatus, contractStatusList,
                 bearbeitungsstaende,
                 mode, kuendigDat, kuendigInit,
-                stornoGrund, groupBy
+                stornoGrund, groupBy,
+                withVersion
         ));
     }
 

@@ -21,19 +21,16 @@
                 <Label fx:id="domainTitle" maxWidth="Infinity" style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: white;" textOverrun="CLIP" wrapText="true" />
             </HBox>
 
-            <!-- ... ToolBar existante ... -->
             <ToolBar style="-fx-background-insets: 0 0 1 0; -fx-padding: 6 12 6 12;">
                 <Button fx:id="ausfuehrenButton" disable="true" onAction="#runKernfrage" style="-fx-background-color: #15a66b; -fx-text-fill: white; -fx-background-radius: 8; -fx-padding: 8 14; -fx-font-weight: bold;" text="🔍 Ausführen" />
                 <Region prefHeight="31.0" prefWidth="400.0" HBox.hgrow="ALWAYS" />
-            <ToggleButton  fx:id="toggleVersionView" mnemonicParsing="false" style="-fx-background-radius: 30;" >
-               <effect>
-                  <InnerShadow />
-               </effect></ToggleButton>
-            <Region layoutX="116.0" layoutY="10.0" prefHeight="31.0" prefWidth="20.0" />
+                <ToggleButton fx:id="toggleVersionView" mnemonicParsing="false" style="-fx-background-radius: 30;">
+                    <effect><InnerShadow/></effect>
+                </ToggleButton>
+                <Region prefHeight="31.0" prefWidth="20.0" />
                 <ToggleButton fx:id="toggleTreeView" style="-fx-background-radius: 30;" text="Baumansicht">
-               <effect>
-                  <InnerShadow />
-               </effect></ToggleButton>
+                    <effect><InnerShadow/></effect>
+                </ToggleButton>
 
                 <Separator orientation="VERTICAL" />
                 <Label style="-fx-font-weight: bold;" text="Kernfrage:" />
@@ -43,7 +40,7 @@
         </VBox>
     </top>
 
-    <!-- ====== CONTENU (sans ScrollPane pour que la table s’étire quand Filter est replié) ====== -->
+    <!-- ====== CONTENU ====== -->
     <center>
         <VBox spacing="14" VBox.vgrow="ALWAYS">
             <padding>
@@ -101,7 +98,6 @@
                 </content>
             </TitledPane>
 
-            <!-- Messages + Table (le conteneur s'étire pour remplir la fenêtre) -->
             <Label fx:id="messageLabel" maxWidth="Infinity" style="-fx-text-fill: gray;" textOverrun="CLIP" wrapText="true" />
 
             <StackPane fx:id="resultsStack" VBox.vgrow="ALWAYS">

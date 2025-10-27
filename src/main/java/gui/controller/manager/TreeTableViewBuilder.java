@@ -173,6 +173,10 @@ public class TreeTableViewBuilder {
         return this;
     }
 
+    public Button getCleanButton() {
+        return this.cleanColumnsButton;
+    }
+
     /** Export-Label überschreiben. */
     public TreeTableViewBuilder withExportLabel(String labelText) {
         Label exportLabel = (Label) treeContainer.lookup("#exportLabel");
