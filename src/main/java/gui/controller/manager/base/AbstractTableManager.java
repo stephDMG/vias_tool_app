@@ -95,6 +95,11 @@ public abstract class AbstractTableManager {
         stateModel.rowsPerPageProperty().addListener((obs, oldV, newV) -> setRowsPerPage(newV.intValue()));
         columnModel.cleanedProperty().addListener((obs, oldV, newV) -> refreshView()); // Neubau der Spalten
 
+        columnModel.getHiddenKeys().addListener((javafx.collections.SetChangeListener<String>) change -> {
+            // Toute modif de colonnes cachées -> rebuild colonnes + refresh
+            refreshView();
+        });
+
         if (searchField != null) {
             // Synchronisiert SearchText zwischen den Views (1-e)
             searchField.textProperty().bindBidirectional(stateModel.searchTextProperty());
@@ -165,27 +170,54 @@ public abstract class AbstractTableManager {
 
         if (totalCount <= 0) {
             stateModel.setTotalCount(0);
+            resultModel.setPageLoader(null);
             clearView();
             hasData.set(false);
+            if (pagination != null) {
+                pagination.setPageCount(1);
+                pagination.setCurrentPageIndex(0);
+                pagination.setVisible(false);
+                pagination.setPageFactory(null);
+            }
+            updateResultsCount();
             return;
         }
 
         stateModel.setTotalCount(totalCount);
-        resultModel.setPageLoader(dataLoader); // Wichtig für den Export (2-b)
+        resultModel.setPageLoader(dataLoader);
         hasData.set(true);
 
+        int targetIndex = 0;
         if (pagination != null) {
-            int rowsPerPage = stateModel.getRowsPerPage();
-            pagination.setPageCount(Math.max(1, (int) Math.ceil((double) totalCount / rowsPerPage)));
-            // setCurrentPageIndex(0) löst event aus, was loadServerPageData(0) aufruft
-            pagination.setCurrentPageIndex(0);
+            int rowsPerPage = Math.max(1, stateModel.getRowsPerPage());
+            int pageCount   = Math.max(1, (int) Math.ceil((double) totalCount / rowsPerPage));
+
+            // ✅ reprendre l’index stocké dans le modèle
+            targetIndex = Math.min(Math.max(0, stateModel.getCurrentPageIndex()), pageCount - 1);
+
+            // reset/rebind propre
+            pagination.setPageFactory(null);
+            pagination.setPageCount(pageCount);
+            pagination.setCurrentPageIndex(targetIndex);
             pagination.setVisible(true);
             pagination.setPageFactory(this::createServerPage);
         }
 
         updateResultsCount();
-        loadServerPageData(0);
+        loadServerPageData(targetIndex); // ✅ pas 0
     }
+
+    // AbstractTableManager
+    public void syncToModelPage() {
+        if (!serverPaginationEnabled || pagination == null) return;
+        int idx = Math.min(Math.max(0, stateModel.getCurrentPageIndex()),
+                Math.max(0, pagination.getPageCount() - 1));
+        if (pagination.getCurrentPageIndex() != idx) {
+            pagination.setCurrentPageIndex(idx);
+        }
+        loadServerPageData(idx);
+    }
+
 
     public AbstractTableManager setOnServerSearch(Consumer<String> handler) {
         this.onServerSearch = handler;
@@ -277,14 +309,16 @@ public abstract class AbstractTableManager {
                 // 4. Update des globalen Zustands
                 Platform.runLater(() -> {
                     if (keysToRemove.isEmpty()) {
-                        Dialog.showInfoDialog("Bereinigen", "Es gibt keine vollständig leeren Spalten im gesamten Ergebnis.");
+                        Dialog.showInfoDialog("Bereinigen",
+                                "Es gibt keine vollständig leeren Spalten im gesamten Ergebnis.");
                     } else {
-                        // Wichtig: ColumnStateModel aktualisieren
-                        columnModel.replaceHiddenKeys(keysToRemove);
-                        stateModel.setCleaningApplied(true); // Status setzen (4-a)
-                        Dialog.showInfoDialog("Bereinigen", keysToRemove.size() + " Spalte(n) wurden global ausgeblendet.");
+                        columnModel.replaceHiddenKeys(keysToRemove); // ⟵ déclenche le listener SetChange → refreshView()
+                        stateModel.setCleaningApplied(true);
+                        Dialog.showInfoDialog("Bereinigen",
+                                keysToRemove.size() + " Spalte(n) wurden global ausgeblendet.");
                     }
                 });
+
 
             } catch (Exception ex) {
                 log.error("Global Bereinigen fehlgeschlagen", ex);
@@ -369,6 +403,7 @@ public abstract class AbstractTableManager {
                 List<RowData> page = loader.loadPage(pageIndex, stateModel.getRowsPerPage());
                 final List<RowData> finalPage = (page == null) ? Collections.emptyList() : page;
                 Platform.runLater(() -> {
+                    stateModel.setCurrentPageIndex(pageIndex);
                     filteredData = finalPage;
                     refreshView();
                 });

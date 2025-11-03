@@ -212,9 +212,13 @@ public class CoverDomainController {
 
             // 3-a: Mettre à jour le statut dans le ResultContextModel
             resultContextModel.setTreeViewActive(isTree);
-            // S'assurer que les deux tables affichent la dernière version des colonnes masquées
-            if (isTree) tableManager.refreshView();
-            else treeManager.refreshView();
+
+            // ✅ reprendre la page mémorisée (ex: 5/70) sur la vue affichée
+            if (isTree) {
+                treeManager.syncToModelPage();
+            } else {
+                tableManager.syncToModelPage();
+            }
         });
 
 
@@ -286,9 +290,9 @@ public class CoverDomainController {
         if (dictionariesLoaded) {
             if (kf != null) {
                 applyKernfrageDefaults(kf);
-                // NOUVEAU: Réinitialiser l'état global au chargement du domaine
                 columnStateModel.clear();
                 tableStateModel.reset();
+                tableStateModel.clearExpansion();
                 Platform.runLater(this::runKernfrage);
             }
         } else {
@@ -727,6 +731,10 @@ public class CoverDomainController {
                             }
                         }
                         if (path.isEmpty()) path.add("Alle");
+                        // 🔒 Sécurité extra: pas de null dans path
+                        for (int i = 0; i < path.size(); i++) {
+                            if (path.get(i) == null || path.get(i).isBlank()) path.set(i, "—");
+                        }
                         return path;
                     };
 

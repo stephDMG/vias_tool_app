@@ -13,6 +13,7 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.scene.Node;
 import javafx.scene.control.*;
+import javafx.scene.layout.Region;
 import model.RowData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -82,9 +83,16 @@ public class TreeTableManager extends AbstractTableManager {
         this.deleteColumnsButton = deleteColumnsButton;
 
         treeTableView.setShowRoot(false);
-        treeTableView.setFixedCellSize(24);
 
-        installRowStyling();
+        // ⚠️ Fix: éviter le bug d’expansion à la 1ère peinture avec fixedCellSize.
+        // On laisse JavaFX faire une première mise en page, puis on fige la hauteur.
+        treeTableView.setFixedCellSize(Region.USE_COMPUTED_SIZE);
+        Platform.runLater(() -> treeTableView.setFixedCellSize(24));
+
+        treeTableView.getSelectionModel().setCellSelectionEnabled(false);
+        treeTableView.getSelectionModel().setSelectionMode(SelectionMode.SINGLE);
+
+        //installRowStyling(); // facultatif
         installGroupRowFactory();
     }
 
@@ -176,7 +184,7 @@ public class TreeTableManager extends AbstractTableManager {
         TreeItem<ObservableList<String>> root = treeTableView.getRoot();
         if (root == null) return;
 
-        // ✅ Ouvrir tout de suite ce qui est visible (feedback instantané)
+        // Ouvrir immédiatement ce qui est déjà visible
         setExpandedRecursively(root, true);
 
         var loader = resultModel.getPageLoader();
@@ -184,14 +192,22 @@ public class TreeTableManager extends AbstractTableManager {
         int pageSize = stateModel.getRowsPerPage();
 
         if (!(serverPaginationEnabled && loader != null && total > pageSize)) {
-            return; // rien d'autre à faire en client ou si une seule page
+            // pas de pagination serveur → on est bon
+            Platform.runLater(() -> {
+                TreeItem<ObservableList<String>> rt = treeTableView.getRoot();
+                if (rt != null) {
+                    setExpandedRecursively(rt, true);
+                    treeTableView.requestLayout();
+                    treeTableView.refresh();
+                }
+            });
+            return;
         }
 
-        // ⛔ éviter double-clics
+        // éviter double-clics
         if (expandTaskRunning) return;
         expandTaskRunning = true;
 
-        // désactiver boutons explicitement pendant la tâche
         setExpandButtonsDisabled(true);
         resultModel.setLoading(true);
 
@@ -200,7 +216,7 @@ public class TreeTableManager extends AbstractTableManager {
                 List<RowData> allRows = new ArrayList<>();
                 int pages = (int) Math.ceil(total / (double) pageSize);
 
-                // 👉 on commence par la page courante, puis on complète
+                // commence par la page courante
                 int current = stateModel.getCurrentPageIndex();
                 IntStream.range(0, pages)
                         .boxed()
@@ -219,7 +235,15 @@ public class TreeTableManager extends AbstractTableManager {
                 Platform.runLater(() -> {
                     TreeItem<ObservableList<String>> newRoot = buildTreeUsingPathProvider(allRows);
                     applyRoot(newRoot);
-                    setExpandedRecursively(newRoot, true); // 🌳 tout ouvert
+                    // Restaurer après attache de la root (skin-ready)
+                    Platform.runLater(() -> {
+                        TreeItem<ObservableList<String>> rt = treeTableView.getRoot();
+                        if (rt != null) {
+                            setExpandedRecursively(rt, true);
+                            treeTableView.requestLayout();
+                            treeTableView.refresh();
+                        }
+                    });
                 });
             } finally {
                 Platform.runLater(() -> {
@@ -253,6 +277,7 @@ public class TreeTableManager extends AbstractTableManager {
     }
 
     private void setExpandedRecursively(TreeItem<?> item, boolean expanded) {
+        if (item == null) return;
         item.setExpanded(expanded);
         for (TreeItem<?> c : item.getChildren()) setExpandedRecursively(c, expanded);
     }
@@ -263,26 +288,30 @@ public class TreeTableManager extends AbstractTableManager {
         final Boolean ge = this.globalExpand; // capture pour éviter races
 
         if (Boolean.TRUE.equals(ge)) {
-            // Mode "tout ouvert"
             setExpandedRecursively(root, true);
             return;
         }
         if (Boolean.FALSE.equals(ge)) {
-            // Mode "tout fermé" (sauf racine)
             setExpandedRecursively(root, false);
             root.setExpanded(true);
             return;
         }
 
-        // Mode granulaire (par groupe)
         for (TreeItem<ObservableList<String>> item : root.getChildren()) {
             if (!item.isLeaf()) {
-                String key = item.getValue().get(0);
+                String key = expansionKeyFor(item); // 🔁 même clé que rememberExpansion()
                 boolean expanded = stateModel.getExpansionState()
-                        .getOrDefault(key, false); // mets false par défaut pour éviter réouverture
+                        .getOrDefault(key, false);
                 setExpandedRecursively(item, expanded);
             }
         }
+
+
+        // sécurité layout
+        Platform.runLater(() -> {
+            treeTableView.requestLayout();
+            treeTableView.refresh();
+        });
     }
 
     private TreeItem<ObservableList<String>> buildTreeAndColumns(List<RowData> rows, Set<String> hiddenKeys) {
@@ -318,7 +347,7 @@ public class TreeTableManager extends AbstractTableManager {
                 treeTableView.getColumns().add(col);
             }
 
-            // Important: activer le disclosure node sur la 1ère colonne
+            // activer le disclosure node sur la 1ère colonne
             if (!treeTableView.getColumns().isEmpty()) {
                 @SuppressWarnings("unchecked")
                 TreeTableColumn<ObservableList<String>, ?> treeCol =
@@ -375,14 +404,15 @@ public class TreeTableManager extends AbstractTableManager {
     }
 
     private TreeItem<ObservableList<String>> makeGroupItem(String label) {
+        if (label == null || label.isBlank()) label = "(leer)";
         ObservableList<String> row = emptyRow();
         if (!row.isEmpty()) row.set(0, label);
         TreeItem<ObservableList<String>> item = new TreeItem<>(row);
 
         item.expandedProperty().addListener((obs, ov, nv) -> {
-            // Lors d’un toggle manuel, on mémorise l’état et on sort du mode global
-            stateModel.putExpansion(label, nv);
+            stateModel.putExpansion(expansionKeyFor(item), nv);
             globalExpand = null;
+            // on laisse la passe de layout aux helpers différés
         });
         return item;
     }
@@ -397,6 +427,7 @@ public class TreeTableManager extends AbstractTableManager {
         treeTableView.setRoot(root);
         treeTableView.setShowRoot(false);
         updateResultsCount();
+        // pas de restore ici — on le fait via deferRestoreExpansion()
     }
 
     private void addContextMenuToColumn(TreeTableColumn<ObservableList<String>, String> column) {
@@ -508,25 +539,52 @@ public class TreeTableManager extends AbstractTableManager {
             }
         });
 
-        // Clic: toggle groupe + mémorisation + sortie du mode global
+        // 1) Sélectionner la row sous la souris AVANT le clic
+        treeTableView.addEventFilter(javafx.scene.input.MouseEvent.MOUSE_PRESSED, e -> {
+            Node tgt = (e.getPickResult() == null) ? null : e.getPickResult().getIntersectedNode();
+            for (Node n = tgt; n != null; n = n.getParent()) {
+                if (n instanceof TreeTableRow<?> row) {
+                    int idx = ((TreeTableRow<?>) row).getIndex();
+                    if (idx >= 0) {
+                        treeTableView.requestFocus();
+                        treeTableView.getSelectionModel().clearAndSelect(idx);
+                    }
+                    break;
+                }
+            }
+        });
+
+        // 2) Toggle basé sur la row cliquée (pas l’index sélectionné)
         treeTableView.setOnMouseClicked(e -> {
-            if (e.getTarget() == null || e.getClickCount() != 1) return;
-            TreeTableRow<ObservableList<String>> row = getRowFromEvent(e);
+            if (e.getClickCount() != 1) return;
+
+            Node tgt = (e.getPickResult() == null) ? null : e.getPickResult().getIntersectedNode();
+
+            // remonte jusqu’à la TreeTableRow cliquée
+            TreeTableRow<ObservableList<String>> row = null;
+            for (Node n = tgt; n != null; n = n.getParent()) {
+                if (n instanceof TreeTableRow<?> r) {
+                    @SuppressWarnings("unchecked")
+                    TreeTableRow<ObservableList<String>> rr = (TreeTableRow<ObservableList<String>>) r;
+                    row = rr; break;
+                }
+            }
             if (row == null || row.isEmpty()) return;
 
-            if (isDisclosureHit(e.getPickResult() == null ? null : e.getPickResult().getIntersectedNode(), row)) return;
+            // si clic sur le disclosure → laisser JavaFX gérer icône + enfants
+            if (isDisclosureHit(tgt, row)) return;
 
             TreeItem<ObservableList<String>> ti = row.getTreeItem();
             if (ti == null || ti.isLeaf()) return;
-            boolean exp = !ti.isExpanded();
-            ti.setExpanded(exp);
-            ObservableList<String> v = ti.getValue();
-            if (v != null && !v.isEmpty()) stateModel.putExpansion(String.valueOf(v.get(0)), exp);
+
+            ti.setExpanded(!ti.isExpanded());
+            rememberExpansion(ti);
             globalExpand = null;
+            // le relayout sera fait par le pipeline différé si nécessaire
             e.consume();
         });
 
-        // Clavier: idem
+        // 3) Raccourcis clavier
         treeTableView.setOnKeyPressed(e -> {
             TreeItem<ObservableList<String>> ti = treeTableView.getSelectionModel().getSelectedItem();
             if (ti == null || ti.isLeaf()) return;
@@ -562,6 +620,18 @@ public class TreeTableManager extends AbstractTableManager {
         });
     }
 
+    private String expansionKeyFor(TreeItem<ObservableList<String>> item) {
+        // remonte jusqu’à root et reconstruit le chemin des segments de groupe (col 0)
+        Deque<String> stack = new ArrayDeque<>();
+        for (TreeItem<ObservableList<String>> it = item; it != null && it.getParent() != null; it = it.getParent()) {
+            ObservableList<String> v = it.getValue();
+            String seg = (v != null && !v.isEmpty()) ? v.get(0) : "";
+            if (seg == null || seg.isBlank()) seg = "(leer)";
+            stack.push(seg);
+        }
+        return String.join("⟂", stack); // séparateur improbable
+    }
+
     private TreeTableRow<ObservableList<String>> getRowFromEvent(javafx.scene.input.MouseEvent e) {
         Node n = e.getPickResult() == null ? null : e.getPickResult().getIntersectedNode();
         while (n != null && !(n instanceof TreeTableRow)) n = n.getParent();
@@ -573,14 +643,14 @@ public class TreeTableManager extends AbstractTableManager {
     private boolean isDisclosureHit(Node target, TreeTableRow<?> row) {
         for (Node n = target; n != null && n != row; n = n.getParent()) {
             var sc = n.getStyleClass();
-            if (sc != null && sc.contains("tree-disclosure-node")) return true;
+            if (sc == null) continue;
+            if (sc.contains("tree-disclosure-node") || sc.contains("arrow") || sc.contains("arrow-button")) return true;
         }
         return false;
     }
 
     private void rememberExpansion(TreeItem<ObservableList<String>> ti) {
-        ObservableList<String> v = ti.getValue();
-        if (v != null && !v.isEmpty()) stateModel.putExpansion(String.valueOf(v.get(0)), ti.isExpanded());
+        stateModel.putExpansion(expansionKeyFor(ti), ti.isExpanded());
     }
 
     @Override
@@ -590,8 +660,8 @@ public class TreeTableManager extends AbstractTableManager {
         TreeItem<ObservableList<String>> root = buildTreeAndColumns(filteredData, hiddenKeys);
         applyRoot(root);
 
-        // 2) Appliquer expansion (globale ou granulaire)
-        restoreExpansion(root);
+        // 2) Restaurer l’expansion quand la skin/VirtualFlow est prête
+        deferRestoreExpansion();
 
         // 3) Pagination client (si activée ici)
         if (!serverPaginationEnabled && paginationEnabled && pagination != null) {
@@ -606,7 +676,30 @@ public class TreeTableManager extends AbstractTableManager {
         updateResultsCount();
     }
 
+    /**
+     * Diffère la restauration d’expansion d’un ou deux pulses pour garantir que la Skin/VirtualFlow est prête.
+     */
+    private void deferRestoreExpansion() {
+        Runnable r = () -> {
+            TreeItem<ObservableList<String>> rt = treeTableView.getRoot();
+            if (rt != null) {
+                restoreExpansion(rt);
+                treeTableView.requestLayout();
+                treeTableView.refresh();
+            }
+        };
+        if (treeTableView.getSkin() == null) {
+            Platform.runLater(() -> Platform.runLater(r)); // 2 pulses → skin + relayout garantis
+        } else {
+            Platform.runLater(r);
+        }
+    }
+
     private Node createClientPage(int pageIndex) {
+        // 🧹 reset expansion pour éviter la “contamination” inter-pages
+        stateModel.clearExpansion();      // ← assure “tout fermé” par défaut
+        globalExpand = null;              // ← rester en mode granulaire
+
         int rowsPerPage = stateModel.getRowsPerPage();
         int from = pageIndex * rowsPerPage;
         int to = Math.min(from + rowsPerPage, filteredData.size());
@@ -616,10 +709,11 @@ public class TreeTableManager extends AbstractTableManager {
         TreeItem<ObservableList<String>> root = buildTreeAndColumns(slice, hiddenKeys);
         applyRoot(root);
 
-        restoreExpansion(root);
+        restoreExpansion(root); // toutes les clés sont vides → tout fermé
         recomputeGroupStripes();
         return new Label();
     }
+
 
     @Override
     protected void updateResultsCount() {
