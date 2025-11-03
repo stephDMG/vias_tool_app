@@ -14,9 +14,8 @@ import model.RowData;
 import model.enums.ExportFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import service.ServiceFactory;
-import service.interfaces.AiService;
-import service.interfaces.DatabaseService;
+
+
 
 import java.io.File;
 import java.net.URL;
@@ -96,8 +95,8 @@ public class AiAssistantViewController implements Initializable {
     private FlowPane helpChipsPane;
 
     // === Services ===
-    private AiService aiService;
-    private DatabaseService databaseService;
+    private service.interfaces.AiService aiService;
+    private service.interfaces.DatabaseService databaseService;
     private List<RowData> fullResults = new ArrayList<>();
 
     // === Neue Tabellenverwaltung ===
@@ -124,8 +123,8 @@ public class AiAssistantViewController implements Initializable {
         logger.info("Initialisiere AiAssistantViewController mit verbesserter Tabellenverwaltung");
 
         // Service-Injection
-        this.aiService = ServiceFactory.getAiService();
-        this.databaseService = ServiceFactory.getDatabaseService();
+        this.aiService =  service.ServiceFactory.getAiService();
+        this.databaseService = service.ServiceFactory.getDatabaseService();
 
         // === Erweiterte Tabellenverwaltung Setup ===
         setupAdvancedTableManagement();

@@ -90,7 +90,7 @@ public class MainController implements Initializable {
         // RBAC für Menüs
         LoginService loginService = new LoginService();
         String username = loginService.getCurrentWindowsUsername();
-        AccessControlService accessControl = new AccessControlService();
+        //AccessControlService accessControl = new AccessControlService();
         //statusItem.setVisible(accessControl.hasPermission(username, "op-list") || accessControl.hasPermission(username, "all"));
        // coverDashboardItem.setVisible(accessControl.hasPermission(username, "view") || accessControl.hasPermission(username, "all"));
 

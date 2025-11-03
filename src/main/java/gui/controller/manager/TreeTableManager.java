@@ -2,438 +2,338 @@ package gui.controller.manager;
 
 import formatter.ColumnValueFormatter;
 import gui.controller.dialog.Dialog;
+import gui.controller.manager.base.AbstractTableManager;
+import gui.controller.model.ColumnStateModel;
+import gui.controller.model.ResultContextModel;
+import gui.controller.model.TableStateModel;
 import javafx.application.Platform;
+import javafx.beans.property.ReadOnlyBooleanProperty;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.scene.Node;
 import javafx.scene.control.*;
-import javafx.scene.layout.Region;
 import model.RowData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
- * Universeller Manager für TreeTableView&lt;ObservableList&lt;String&gt;&gt;.
+ * Universeller Manager für TreeTableView<ObservableList<String>>.
  *
- * <p><b>Funktionen:</b></p>
- * <ul>
- *   <li>Suche (clientseitig)</li>
- *   <li>Gruppierung via Pfad-Provider ({@code Function<RowData, List<String>>})</li>
- *   <li>Pagination (Client/Server) + automatische Zeilenanzahl je nach Höhe</li>
- *   <li>Expand/Collapse</li>
- *   <li>Bereinigung leerer Spalten (sichtbare Seite)</li>
- *   <li>Kontextmenü pro Spalte: Spalte umbenennen / Spalte löschen</li>
- *   <li>Export-Hooks (CSV/XLSX)</li>
- * </ul>
- *
- * <p>Kompatibel zur Logik von {@link EnhancedTableManager} (Suche, Auswahl/Löschen,
- * Clean, Pagination). Bewusst stabil gehalten, um bestehende Controller nicht zu brechen.</p>
+ * Behält die öffentliche API (Rückwärtskompatibilität) und implementiert
+ * Tree-spezifische Darstellung/Gruppierung.
  */
-public class TreeTableManager {
+public class TreeTableManager extends AbstractTableManager {
 
     private static final Logger log = LoggerFactory.getLogger(TreeTableManager.class);
-    private static final ExecutorService EXECUTOR = Executors.newFixedThreadPool(4);
-    private static final int DEFAULT_ROWS_PER_PAGE = 100;
 
     // UI
     private final TreeTableView<ObservableList<String>> treeTableView;
-    private final TextField searchField;
     private final Button deleteColumnsButton;
-    private final Pagination pagination;
-    private final Label resultsCountLabel;
+    private volatile boolean expandTaskRunning = false;
 
     private Button cleanColumnsButton;
     private Button expandAllButton;
     private Button collapseAllButton;
-    private Button exportCsvButton;
-    private Button exportXlsxButton;
 
+    // Export Hooks
     private Runnable onExportCsv;
     private Runnable onExportXlsx;
 
-    // State & Daten
-    private boolean showRoot = false;
-    private boolean autoExpandRoot = true;
-
-    private boolean searchEnabled = false;
-    private boolean selectionEnabled = false;
-    private boolean paginationEnabled = false;
-    private boolean serverPaginationEnabled = false;
-
-    private int rowsPerPage = DEFAULT_ROWS_PER_PAGE;
-    private Integer lastRowsPerPage = null;
-
-    private List<RowData> originalData = new ArrayList<>();
-    private List<RowData> filteredData = new ArrayList<>();
-    private List<String> currentHeaders = new ArrayList<>();
-    // Spalten, die der Benutzer dauerhaft entfernt hat (bis zum nächsten Reset)
-    private final Set<String> globallyRemovedColumns = new HashSet<>();
-
-
-    // Server-Pagination
-    private int totalCount = 0;
-    private DataLoader dataLoader = null;
-
-    // Gruppierung per Pfad-Provider
+    // Gruppierung
     private Function<RowData, List<String>> groupingPathProvider = r -> List.of("Alle");
+    private final AtomicLong expandOpSeq = new AtomicLong(0);
 
-    private boolean cleanRanForThisPage = false;
-    private boolean serverPagerInitialized = false;
-    private Consumer<String> onServerSearch;
+    // Auswahl
+    private boolean selectionEnabled = false;
 
-    /** Konstruktor. */
+    // Expansion: null = granular (per Gruppe), TRUE = alles offen, FALSE = alles zu
+    private Boolean globalExpand = null;
+
+    // ----- Konstruktoren -----
+
     public TreeTableManager(TreeTableView<ObservableList<String>> treeTableView,
                             TextField searchField,
                             Button deleteColumnsButton,
                             Pagination pagination,
                             Label resultsCountLabel) {
+        this(treeTableView, searchField, deleteColumnsButton, pagination, resultsCountLabel,
+                new ColumnStateModel(), new ResultContextModel(), new TableStateModel());
+        log.warn("TreeTableManager instanziiert ohne Models. Lokale Modelle erstellt. Nur für Tests/Legacy-Kontext verwenden!");
+    }
+
+    public TreeTableManager(TreeTableView<ObservableList<String>> treeTableView,
+                            TextField searchField,
+                            Button deleteColumnsButton,
+                            Pagination pagination,
+                            Label resultsCountLabel,
+                            ColumnStateModel columnStateModel,
+                            ResultContextModel resultContextModel,
+                            TableStateModel tableStateModel) {
+        super(searchField, pagination, resultsCountLabel, tableStateModel, columnStateModel, resultContextModel);
         this.treeTableView = Objects.requireNonNull(treeTableView, "treeTableView");
-        this.searchField = searchField;
         this.deleteColumnsButton = deleteColumnsButton;
-        this.pagination = pagination;
-        this.resultsCountLabel = resultsCountLabel;
 
-        // Basis
-        this.treeTableView.setShowRoot(showRoot);
-        this.treeTableView.setFixedCellSize(24);
+        treeTableView.setShowRoot(false);
+        treeTableView.setFixedCellSize(24);
+
         installRowStyling();
-
-        // Auto-Zeilenanzahl an Table-Höhe binden
-        bindAutoRowsPerPage(this.treeTableView);
-
-        if (deleteColumnsButton != null) {
-            deleteColumnsButton.setDisable(true);
-        }
+        installGroupRowFactory();
     }
 
-    // ---------------------------------------------------------
-    // Öffentliche Konfiguration
-    // ---------------------------------------------------------
+    // ----- Öffentliche API (kompatibel) -----
 
-    /** Aktiviert die clientseitige Suche. */
-    public TreeTableManager enableSearch() {
-        if (searchField == null) return this;
-        searchEnabled = true;
-        searchField.textProperty().addListener((obs, ov, nv) -> {
-            if (serverPaginationEnabled) {
-                if (onServerSearch != null) {
-                    onServerSearch.accept(nv == null ? "" : nv.trim());
-                } else {
-                    log.warn("Serversuche aktiviert, aber kein Handler gesetzt – bitte setOnServerSearch() verwenden.");
-                }
-            } else {
-                filterClientData(nv);
-            }
-        });
-        return this;
+    public void loadDataFromServer(int totalCount, DataLoader dataLoader, Function<RowData, List<String>> provider) {
+        this.groupingPathProvider = (provider != null) ? provider : (r -> List.of("Alle"));
+        super.loadDataFromServer(totalCount, dataLoader);
     }
 
+    public ReadOnlyBooleanProperty hasDataProperty() { return super.hasDataProperty(); }
+    public boolean hasData() { return super.hasData(); }
 
-    /** Aktiviert Spaltenauswahl/Löschen. */
+    public TreeTableManager enableSearch() { return (TreeTableManager) super.enableSearch(); }
+    public TreeTableManager enablePagination(int rowsPerPage) { return (TreeTableManager) super.enablePagination(rowsPerPage); }
+    public TreeTableManager setOnServerSearch(Consumer<String> handler) { return (TreeTableManager) super.setOnServerSearch(handler); }
+
+    public void enableCleanTable() { /* Rétrocompatibilité (géré via setCleanButton) */ }
+
     public TreeTableManager enableSelection() {
         if (deleteColumnsButton == null) return this;
         selectionEnabled = true;
-        treeTableView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
         deleteColumnsButton.setDisable(false);
         deleteColumnsButton.setOnAction(e -> handleDeleteSelectedColumns());
         return this;
     }
 
-    /** Aktiviert Client-Pagination. */
-    public TreeTableManager enablePagination(int rowsPerPage) {
-        if (pagination == null) return this;
-        this.paginationEnabled = true;
-        this.rowsPerPage = Math.max(1, rowsPerPage);
-        paginationVisible(false);
-        return this;
+    public void setGroupingPathProvider(Function<RowData, List<String>> provider) {
+        this.groupingPathProvider = (provider != null) ? provider : (r -> List.of("Alle"));
     }
 
-    public Button getCleanColumnsButton() {
-        return cleanColumnsButton;
-    }
-
-    /** Aktiviert „Bereinigen“-Button (Parität zu Table-Manager). */
-    public TreeTableManager enableCleanTable() {
-        if (this.cleanColumnsButton != null) {
-            this.cleanColumnsButton.setDisable(false);
-            this.cleanColumnsButton.setOnAction(e -> cleanColumnsOnCurrentPage());
-        }
-        return this;
-    }
-
-
-
-    public void setAutoExpandRoot(boolean autoExpandRoot) { this.autoExpandRoot = autoExpandRoot; }
-    public void setShowRoot(boolean showRoot) { this.showRoot = showRoot; this.treeTableView.setShowRoot(showRoot); }
-
+    // Buttons
     public void setCleanButton(Button cleanButton) {
         this.cleanColumnsButton = cleanButton;
-        if (cleanButton != null) cleanButton.setOnAction(e -> cleanColumnsAllPages());
+        if (cleanButton != null) {
+            cleanButton.setOnAction(e -> cleanColumnsAllPages());
+            columnModel.cleanedProperty().addListener((obs, ov, nv) ->
+                    cleanColumnsButton.setDisable(nv || !hasData()));
+            hasDataProperty().addListener((obs, ov, nv) ->
+                    cleanColumnsButton.setDisable(columnModel.isCleaned() || !nv));
+            cleanColumnsButton.setDisable(!hasData() || columnModel.isCleaned());
+        }
     }
 
     public void setExpandAllButton(Button btn) {
         this.expandAllButton = btn;
         if (btn != null) btn.setOnAction(e -> expandAll());
     }
-
     public void setCollapseAllButton(Button btn) {
         this.collapseAllButton = btn;
         if (btn != null) btn.setOnAction(e -> collapseAll());
     }
 
     public void setExportCsvButton(Button btn) {
-        this.exportCsvButton = btn;
-        if (btn != null) btn.setOnAction(e -> {
-            if (onExportCsv != null) onExportCsv.run();
-            else Dialog.showInfoDialog("Export CSV", "Kein CSV-Handler gesetzt (später implementieren).");
-        });
+        if (btn != null) {
+            btn.disableProperty().bind(hasDataProperty().not());
+            btn.setOnAction(e -> { if (onExportCsv != null) onExportCsv.run(); });
+        }
     }
-
     public void setExportXlsxButton(Button btn) {
-        this.exportXlsxButton = btn;
-        if (btn != null) btn.setOnAction(e -> {
-            if (onExportXlsx != null) onExportXlsx.run();
-            else Dialog.showInfoDialog("Export XLSX", "Kein XLSX-Handler gesetzt (später implementieren).");
-        });
+        if (btn != null) {
+            btn.disableProperty().bind(hasDataProperty().not());
+            btn.setOnAction(e -> { if (onExportXlsx != null) onExportXlsx.run(); });
+        }
     }
-
     public void setOnExportCsv(Runnable handler) { this.onExportCsv = handler; }
     public void setOnExportXlsx(Runnable handler) { this.onExportXlsx = handler; }
 
-    /** Region für Auto-Row-Berechnung binden. */
-    public void bindAutoRowsPerPage(Region observedRegion) {
-        final double chrome = 90.0;
-        final double defaultRowH = 24.0;
-        final int minRows = 10;
+    // ----- Tree-spezifische Logik -----
 
-        observedRegion.heightProperty().addListener((obs, oldH, newH) -> {
-            double h = (newH == null) ? 0 : newH.doubleValue();
-            double rowH = (treeTableView.getFixedCellSize() > 0) ? treeTableView.getFixedCellSize() : defaultRowH;
-            int rows = (int) Math.max(minRows, Math.floor((h - chrome) / rowH));
-            if (lastRowsPerPage == null || Math.abs(rows - lastRowsPerPage) >= 2) {
-                lastRowsPerPage = rows;
-                setRowsPerPage(rows);
+    private void installRowStyling() {
+        treeTableView.setRowFactory(tv -> new TreeTableRow<>() {
+            @Override
+            protected void updateItem(ObservableList<String> item, boolean empty) {
+                super.updateItem(item, empty);
+                setStyle("");
+                if (empty) return;
+                TreeItem<ObservableList<String>> ti = getTreeItem();
+                if (ti != null && !ti.isLeaf()) {
+                    setStyle("-fx-font-weight: bold; -fx-background-color: rgba(0,0,0,0.04);");
+                }
             }
         });
     }
 
-    public void setRowsPerPage(int rowsPerPage) {
-        rowsPerPage = Math.max(1, rowsPerPage);
-        if (this.rowsPerPage == rowsPerPage) return; // rien à faire → pas de blink
-        this.rowsPerPage = rowsPerPage;
-        if (serverPaginationEnabled) setupServerPagination();
-        else refreshClient();
-    }
+    public void expandAll() {
+        globalExpand = Boolean.TRUE;
 
+        TreeItem<ObservableList<String>> root = treeTableView.getRoot();
+        if (root == null) return;
 
-    // ---------------------------------------------------------
-    // Datenversorgung
-    // ---------------------------------------------------------
+        // ✅ Ouvrir tout de suite ce qui est visible (feedback instantané)
+        setExpandedRecursively(root, true);
 
-    /** Gruppierung per Pfad-Provider setzen. */
-    public void setGroupingPathProvider(Function<RowData, List<String>> provider) {
-        this.groupingPathProvider = (provider != null) ? provider : (r -> List.of("Alle"));
-    }
+        var loader = resultModel.getPageLoader();
+        int total = resultModel.getTotalCount();
+        int pageSize = stateModel.getRowsPerPage();
 
-    /** 2-Arg-Variante (nutzt aktuellen Provider). */
-    public void loadDataFromServer(int totalCount, DataLoader dataLoader) {
-        loadDataFromServer(totalCount, dataLoader, this.groupingPathProvider);
-    }
-
-    /** 3-Arg-Variante (Provider direkt angeben). */
-    public void loadDataFromServer(int totalCount,
-                                   DataLoader dataLoader,
-                                   Function<RowData, List<String>> provider) {
-        this.groupingPathProvider = (provider != null) ? provider : this.groupingPathProvider;
-        this.serverPaginationEnabled = true;
-        this.dataLoader = dataLoader;
-        this.totalCount = totalCount;
-        if (pagination != null) pagination.setCurrentPageIndex(0); // 🆕 reset page
-
-
-        setupServerPagination();
-        updateResultsCount();
-    }
-
-    // ---------------------------------------------------------
-    // Client-Ansicht
-    // ---------------------------------------------------------
-    private void refreshClient() {
-        updateResultsCountClient();
-        List<RowData> toDisplay = filteredData;
-
-        if (paginationEnabled && pagination != null) {
-            int pageCount = (int) Math.ceil((double) toDisplay.size() / rowsPerPage);
-            pagination.setPageCount(Math.max(pageCount, 1));
-            pagination.setCurrentPageIndex(0);
-            paginationVisible(toDisplay.size() > 0);
-            pagination.setPageFactory(this::createClientPage);
-        } else {
-            buildColumnsFromRows(toDisplay);
-            TreeItem<ObservableList<String>> root = buildTreeUsingPathProvider(toDisplay);
-            applyRoot(root);
+        if (!(serverPaginationEnabled && loader != null && total > pageSize)) {
+            return; // rien d'autre à faire en client ou si une seule page
         }
+
+        // ⛔ éviter double-clics
+        if (expandTaskRunning) return;
+        expandTaskRunning = true;
+
+        // désactiver boutons explicitement pendant la tâche
+        setExpandButtonsDisabled(true);
+        resultModel.setLoading(true);
+
+        EXECUTOR.submit(() -> {
+            try {
+                List<RowData> allRows = new ArrayList<>();
+                int pages = (int) Math.ceil(total / (double) pageSize);
+
+                // 👉 on commence par la page courante, puis on complète
+                int current = stateModel.getCurrentPageIndex();
+                IntStream.range(0, pages)
+                        .boxed()
+                        .sorted(Comparator.comparingInt(p -> p == current ? -1 : 1))
+                        .forEach(p -> {
+                            try {
+                                List<RowData> part = loader.loadPage(p, pageSize);
+                                if (part != null && !part.isEmpty()) {
+                                    synchronized (allRows) { allRows.addAll(part); }
+                                }
+                            } catch (Exception ex) {
+                                log.error("expandAll(): Fehler beim Nachladen Seite {}", p, ex);
+                            }
+                        });
+
+                Platform.runLater(() -> {
+                    TreeItem<ObservableList<String>> newRoot = buildTreeUsingPathProvider(allRows);
+                    applyRoot(newRoot);
+                    setExpandedRecursively(newRoot, true); // 🌳 tout ouvert
+                });
+            } finally {
+                Platform.runLater(() -> {
+                    resultModel.setLoading(false);
+                    setExpandButtonsDisabled(false);
+                    expandTaskRunning = false;
+                });
+            }
+        });
     }
 
-    private Node createClientPage(int pageIndex) {
-        int from = pageIndex * rowsPerPage;
-        int to = Math.min(from + rowsPerPage, filteredData.size());
-        List<RowData> slice = (from < to) ? filteredData.subList(from, to) : List.of();
-
-        buildColumnsFromRows(slice);
-        TreeItem<ObservableList<String>> root = buildTreeUsingPathProvider(slice);
-        applyRoot(root);
-        return new Label();
+    private void setExpandButtonsDisabled(boolean disabled) {
+        if (expandAllButton != null) expandAllButton.setDisable(disabled);
+        if (collapseAllButton != null) collapseAllButton.setDisable(disabled);
     }
 
-    private void filterClientData(String text) {
-        String q = (text == null) ? "" : text.trim().toLowerCase(Locale.ROOT);
-        if (q.isEmpty()) {
-            filteredData = new ArrayList<>(originalData);
-        } else {
-            filteredData = originalData.stream()
-                    .filter(r -> r.getValues().values().stream()
-                            .filter(Objects::nonNull)
-                            .anyMatch(v -> v.toLowerCase(Locale.ROOT).contains(q)))
-                    .collect(Collectors.toList());
+    public void collapseAll() {
+        globalExpand = Boolean.FALSE;
+        if (expandAllButton != null) expandAllButton.setDisable(true);
+        if (collapseAllButton != null) collapseAllButton.setDisable(true);
+
+        expandOpSeq.incrementAndGet(); // annule un éventuel expand en cours
+
+        TreeItem<ObservableList<String>> root = treeTableView.getRoot();
+        if (root != null) {
+            setExpandedRecursively(root, false);
+            root.setExpanded(true);
         }
-        refreshClient();
+        if (expandAllButton != null) expandAllButton.setDisable(false);
+        if (collapseAllButton != null) collapseAllButton.setDisable(false);
     }
 
-    // ---------------------------------------------------------
-    // Server-Ansicht
-    // ---------------------------------------------------------
-    private void setupServerPagination() {
-        if (pagination == null) {
-            loadServerPage(0);
+    private void setExpandedRecursively(TreeItem<?> item, boolean expanded) {
+        item.setExpanded(expanded);
+        for (TreeItem<?> c : item.getChildren()) setExpandedRecursively(c, expanded);
+    }
+
+    private void restoreExpansion(TreeItem<ObservableList<String>> root) {
+        if (root == null) return;
+
+        final Boolean ge = this.globalExpand; // capture pour éviter races
+
+        if (Boolean.TRUE.equals(ge)) {
+            // Mode "tout ouvert"
+            setExpandedRecursively(root, true);
+            return;
+        }
+        if (Boolean.FALSE.equals(ge)) {
+            // Mode "tout fermé" (sauf racine)
+            setExpandedRecursively(root, false);
+            root.setExpanded(true);
             return;
         }
 
-        // Garder la page actuelle, ne pas remettre à 0
-        int current = Math.max(0, pagination.getCurrentPageIndex());
-        int pageCount = Math.max(1, (int) Math.ceil((double) totalCount / rowsPerPage));
-
-        // Mettre à jour le pageCount sans recréer la factory
-        pagination.setPageCount(pageCount);
-
-        // N'initialiser la pageFactory qu'une seule fois → pas de "blink"
-        if (!serverPagerInitialized) {
-            pagination.setPageFactory(pageIndex -> {
-                loadServerPage(pageIndex);
-                return new Label();
-            });
-            serverPagerInitialized = true;
-        }
-
-        // Ne pas enlever le noeud du layout: visible oui, managed reste true (voir §3)
-        pagination.setVisible(totalCount > 0);
-
-        // Rester sur la page courante, en la bornant
-        if (current >= pageCount) current = pageCount - 1;
-        if (current < 0) current = 0;
-
-        // Si l'index n'a pas changé, on recharge simplement la page courante
-        if (pagination.getCurrentPageIndex() != current) {
-            pagination.setCurrentPageIndex(current);
-        } else {
-            loadServerPage(current);
-        }
-
-        updateResultsCount();
-    }
-
-
-    private void loadServerPage(int pageIndex) {
-        EXECUTOR.submit(() -> {
-            try {
-                List<RowData> pageRows = dataLoader.loadPage(pageIndex, rowsPerPage);
-                Platform.runLater(() -> {
-                    buildColumnsFromRows(pageRows);
-                    TreeItem<ObservableList<String>> root = buildTreeUsingPathProvider(pageRows);
-                    applyRoot(root);
-                });
-            } catch (Exception ex) {
-                Platform.runLater(() ->
-                        Dialog.showErrorDialog("Ladefehler", "Seite konnte nicht geladen werden:\n" + ex.getMessage()));
+        // Mode granulaire (par groupe)
+        for (TreeItem<ObservableList<String>> item : root.getChildren()) {
+            if (!item.isLeaf()) {
+                String key = item.getValue().get(0);
+                boolean expanded = stateModel.getExpansionState()
+                        .getOrDefault(key, false); // mets false par défaut pour éviter réouverture
+                setExpandedRecursively(item, expanded);
             }
-        });
-    }
-
-    // ---------------------------------------------------------
-    // Spaltenaufbau
-    // ---------------------------------------------------------
-    private void buildColumnsFromRows(List<RowData> data) {
-        treeTableView.getColumns().clear();
-
-        currentHeaders = (data == null || data.isEmpty())
-                ? new ArrayList<>()
-                : new ArrayList<>(data.get(0).getValues().keySet());
-
-        // 🚫 Appliquer la suppression globale persistante
-        currentHeaders.removeIf(globallyRemovedColumns::contains);
-
-        for (int i = 0; i < currentHeaders.size(); i++) {
-            final int idx = i;
-            final String originalKey = currentHeaders.get(i);
-            TreeTableColumn<ObservableList<String>, String> col = new TreeTableColumn<>(originalKey);
-            col.setUserData(originalKey);
-            col.setCellValueFactory(param -> {
-                ObservableList<String> row = (param.getValue() == null) ? null : param.getValue().getValue();
-                String value = (row != null && idx < row.size()) ? row.get(idx) : "";
-                return new ReadOnlyStringWrapper(value);
-            });
-            addContextMenuToColumn(col);
-            treeTableView.getColumns().add(col);
         }
-        markDataChanged();
     }
 
+    private TreeItem<ObservableList<String>> buildTreeAndColumns(List<RowData> rows, Set<String> hiddenKeys) {
+        if (rows == null || rows.isEmpty()) {
+            treeTableView.getColumns().clear();
+            currentHeaders = List.of();
+            return new TreeItem<>(emptyRow());
+        }
 
-    private void addContextMenuToColumn(TreeTableColumn<ObservableList<String>, String> column) {
-        MenuItem renameItem = new MenuItem("Spalte umbenennen");
-        MenuItem deleteItem = new MenuItem("Spalte löschen");
+        // 1) Visible headers
+        List<String> allHeaders = new ArrayList<>(rows.get(0).getValues().keySet());
+        List<String> visibleHeaders = allHeaders.stream()
+                .filter(h -> !hiddenKeys.contains(h))
+                .toList();
 
-        renameItem.setOnAction(e -> {
-            TextInputDialog dialog = new TextInputDialog(column.getText());
-            dialog.setTitle("Spalte umbenennen");
-            dialog.setHeaderText("Neuer Name für '" + column.getText() + "':");
-            dialog.setContentText("Name:");
-            dialog.showAndWait().ifPresent(newName -> {
-                if (newName != null && !newName.isBlank()) {
-                    column.setText(newName);
-                    treeTableView.refresh();
-                }
-            });
-        });
+        // 2) Build columns if needed
+        if (!visibleHeaders.equals(currentHeaders) || treeTableView.getColumns().isEmpty()) {
+            treeTableView.getColumns().clear();
+            currentHeaders = visibleHeaders;
 
-        deleteItem.setOnAction(e -> deleteColumn(column));
+            for (int i = 0; i < visibleHeaders.size(); i++) {
+                final int idx = i;
+                final String originalKey = visibleHeaders.get(i);
 
-        ContextMenu cm = new ContextMenu(renameItem, new SeparatorMenuItem(), deleteItem);
-        column.setContextMenu(cm);
+                TreeTableColumn<ObservableList<String>, String> col = new TreeTableColumn<>(originalKey);
+                col.setUserData(originalKey);
+                col.setCellValueFactory(param -> {
+                    ObservableList<String> row = (param.getValue() == null) ? null : param.getValue().getValue();
+                    String value = (row != null && idx < row.size()) ? row.get(idx) : "";
+                    return new ReadOnlyStringWrapper(value);
+                });
+                addContextMenuToColumn(col);
+                treeTableView.getColumns().add(col);
+            }
+
+            // Important: activer le disclosure node sur la 1ère colonne
+            if (!treeTableView.getColumns().isEmpty()) {
+                @SuppressWarnings("unchecked")
+                TreeTableColumn<ObservableList<String>, ?> treeCol =
+                        (TreeTableColumn<ObservableList<String>, ?>) treeTableView.getColumns().get(0);
+                treeTableView.setTreeColumn(treeCol);
+            }
+        }
+
+        // 3) Build tree
+        return buildTreeUsingPathProvider(rows);
     }
 
-    private void deleteColumn(TreeTableColumn<ObservableList<String>, String> column) {
-        if (column == null) return;
-        if (!Dialog.showWarningDialog("Spalte löschen",
-                "Möchten Sie die Spalte '" + column.getText() + "' wirklich löschen?")) return;
-
-        deleteColumns(List.of(column));
-    }
-
-    // ---------------------------------------------------------
-    // Baumaufbau (Pfad-Provider)
-    // ---------------------------------------------------------
     private TreeItem<ObservableList<String>> buildTreeUsingPathProvider(List<RowData> rows) {
         TreeItem<ObservableList<String>> root = new TreeItem<>(emptyRow());
-        root.setExpanded(autoExpandRoot);
+        root.setExpanded(true);
 
         if (rows == null || rows.isEmpty()) return root;
 
@@ -476,8 +376,15 @@ public class TreeTableManager {
 
     private TreeItem<ObservableList<String>> makeGroupItem(String label) {
         ObservableList<String> row = emptyRow();
-        if (!row.isEmpty()) row.set(0, safe(label));
-        return new TreeItem<>(row);
+        if (!row.isEmpty()) row.set(0, label);
+        TreeItem<ObservableList<String>> item = new TreeItem<>(row);
+
+        item.expandedProperty().addListener((obs, ov, nv) -> {
+            // Lors d’un toggle manuel, on mémorise l’état et on sort du mode global
+            stateModel.putExpansion(label, nv);
+            globalExpand = null;
+        });
+        return item;
     }
 
     private ObservableList<String> emptyRow() {
@@ -488,35 +395,42 @@ public class TreeTableManager {
 
     private void applyRoot(TreeItem<ObservableList<String>> root) {
         treeTableView.setRoot(root);
-        treeTableView.setShowRoot(showRoot);
-        if (autoExpandRoot) expandLevel(root, 1);
+        treeTableView.setShowRoot(false);
         updateResultsCount();
-        cleanRanForThisPage = false;
-        if (cleanColumnsButton != null) cleanColumnsButton.setDisable(false);
     }
 
-    // ---------------------------------------------------------
-    // Styling
-    // ---------------------------------------------------------
-    private void installRowStyling() {
-        treeTableView.setRowFactory(tv -> new TreeTableRow<>() {
-            @Override
-            protected void updateItem(ObservableList<String> item, boolean empty) {
-                super.updateItem(item, empty);
-                setStyle("");
-                if (empty) return;
-                TreeItem<ObservableList<String>> ti = getTreeItem();
-                if (ti != null && !ti.isLeaf()) {
-                    setStyle("-fx-font-weight: bold; -fx-background-color: rgba(0,0,0,0.04);");
+    private void addContextMenuToColumn(TreeTableColumn<ObservableList<String>, String> column) {
+        MenuItem renameItem = new MenuItem("Spalte umbenennen");
+        MenuItem deleteItem = new MenuItem("Spalte löschen");
+
+        renameItem.setOnAction(e -> {
+            TextInputDialog dialog = new TextInputDialog(column.getText());
+            dialog.setTitle("Spalte umbenennen");
+            dialog.setHeaderText("Neuer Name für '" + column.getText() + "':");
+            dialog.setContentText("Name:");
+            dialog.showAndWait().ifPresent(newName -> {
+                if (newName != null && !newName.isBlank()) {
+                    column.setText(newName);
+                    treeTableView.refresh();
                 }
-            }
+            });
         });
+
+        deleteItem.setOnAction(e -> deleteColumn(column));
+
+        ContextMenu cm = new ContextMenu(renameItem, new SeparatorMenuItem(), deleteItem);
+        column.setContextMenu(cm);
     }
 
+    private void deleteColumn(TreeTableColumn<ObservableList<String>, String> column) {
+        if (column == null) return;
+        if (!Dialog.showWarningDialog("Spalte löschen",
+                "Möchten Sie die Spalte '" + column.getText() + "' wirklich löschen?")) return;
 
-    // ---------------------------------------------------------
-    // Spalten-Operationen
-    // ---------------------------------------------------------
+        Platform.runLater(() -> columnModel.addHiddenKey(String.valueOf(column.getUserData())));
+        // refreshView() se déclenchera via le listener du ColumnStateModel
+    }
+
     private void handleDeleteSelectedColumns() {
         if (!selectionEnabled) return;
         var sel = treeTableView.getSelectionModel().getSelectedCells();
@@ -532,83 +446,31 @@ public class TreeTableManager {
         if (cols.isEmpty()) return;
 
         if (Dialog.showWarningDialog("Spalten löschen", cols.size() + " Spalte(n) löschen?")) {
-            deleteColumns(new ArrayList<>(cols));
+            cols.stream()
+                    .map(c -> String.valueOf(c.getUserData()))
+                    .forEach(columnModel::addHiddenKey);
         }
     }
 
-    /**
-     * Löscht Spalten aus der TreeTableView UND merkt sich global, dass sie entfernt wurden,
-     * sodass sie auch auf nachfolgenden Seiten ausgeblendet bleiben.
-     *
-     * @param toRemove die zu löschenden Spalten
-     */
-    private void deleteColumns(List<TreeTableColumn<ObservableList<String>, ?>> toRemove) {
-        if (toRemove == null || toRemove.isEmpty()) return;
+    // ----- Abstrakte Hooks -----
 
-        // 1️⃣ Récupère les clés (identifiants de colonnes)
-        Set<String> keys = toRemove.stream()
-                .map(c -> String.valueOf(c.getUserData()))
-                .collect(Collectors.toSet());
-
-        // 2️⃣ Sauvegarde globale (pour persistance inter-pages)
-        globallyRemovedColumns.addAll(keys);
-
-        // 3️⃣ Supprime les colonnes de la vue actuelle
-        treeTableView.getColumns().removeAll(toRemove);
-
-        // 4️⃣ Supprime les données correspondantes dans la page actuelle
-        for (RowData row : originalData) {
-            row.getValues().keySet().removeAll(keys);
-        }
-        for (RowData row : filteredData) {
-            row.getValues().keySet().removeAll(keys);
-        }
-
-        // 5️⃣ Supprime des en-têtes courants
-        currentHeaders.removeIf(keys::contains);
-
-        // 6️⃣ Rafraîchit la vue ou recharge la page selon le mode
-        if (serverPaginationEnabled) {
-            if (pagination != null)
-                pagination.setCurrentPageIndex(pagination.getCurrentPageIndex());
-            else
-                loadServerPage(0);
-        } else {
-            refreshClient();
-        }
-
-        log.info("Spalten gelöscht: {} (persistiert für zukünftige Seiten)", keys);
+    @Override
+    protected List<RowData> getOriginalDataForClientFilter() {
+        return filteredData; // Client-Modus: alles gespiegelt
     }
 
+    @Override
+    protected void configureSearchSection(boolean visible) {
+        // Sichtbarkeit vom FXML/Builder gesteuert
+    }
 
-    /** Entfernt Spalten, die auf der sichtbaren Seite vollständig leer sind. */
-    private void cleanColumnsOnCurrentPage() {
-        if (cleanRanForThisPage || treeTableView.getRoot() == null) {
-            if (cleanColumnsButton != null) cleanColumnsButton.setDisable(true);
-            return;
-        }
+    @Override
+    protected List<String> currentHeaders() { return currentHeaders; }
 
-        List<TreeTableColumn<ObservableList<String>, ?>> columns = new ArrayList<>(treeTableView.getColumns());
-        List<TreeItem<ObservableList<String>>> leaves = collectLeaves(treeTableView.getRoot());
-
-        List<TreeTableColumn<ObservableList<String>, ?>> toDelete = new ArrayList<>();
-        for (int c = 0; c < columns.size(); c++) {
-            boolean allEmpty = true;
-            for (TreeItem<ObservableList<String>> leaf : leaves) {
-                ObservableList<String> row = leaf.getValue();
-                String v = (row != null && c < row.size()) ? row.get(c) : null;
-                if (v != null && !v.trim().isEmpty()) { allEmpty = false; break; }
-            }
-            if (allEmpty) toDelete.add(columns.get(c));
-        }
-
-        if (toDelete.isEmpty()) {
-            Dialog.showInfoDialog("Bereinigen", "Keine vollständig leeren Spalten auf dieser Seite.");
-        } else {
-            deleteColumns(toDelete);
-        }
-        cleanRanForThisPage = true;
-        if (cleanColumnsButton != null) cleanColumnsButton.setDisable(true);
+    @Override
+    protected int getVisibleRowCount() {
+        TreeItem<ObservableList<String>> root = treeTableView.getRoot();
+        return (root == null) ? 0 : collectLeaves(root).size();
     }
 
     private List<TreeItem<ObservableList<String>>> collectLeaves(TreeItem<ObservableList<String>> root) {
@@ -621,194 +483,183 @@ public class TreeTableManager {
         return out;
     }
 
-    // ---------------------------------------------------------
-    // Expand/Collapse
-    // ---------------------------------------------------------
-    public void expandAll() {
+    @Override
+    protected String getVisibleCellValue(int rowIndex, int columnIndex) {
         TreeItem<ObservableList<String>> root = treeTableView.getRoot();
-        if (root != null) {
-            if (serverPaginationEnabled && dataLoader != null && totalCount > rowsPerPage) {
-                log.info("expandAll(): alle Seiten werden vorübergehend geladen …");
-                EXECUTOR.submit(() -> {
-                    List<RowData> allRows = new ArrayList<>();
-                    int pages = (int) Math.ceil(totalCount / (double) rowsPerPage);
-                    for (int p = 0; p < pages; p++) {
-                        try {
-                            List<RowData> part = dataLoader.loadPage(p, rowsPerPage);
-                            if (part != null) allRows.addAll(part);
-                        } catch (Exception ex) {
-                            log.error("Fehler beim Nachladen Seite {}", p, ex);
-                        }
-                    }
-                    Platform.runLater(() -> {
-                        TreeItem<ObservableList<String>> newRoot = buildTreeUsingPathProvider(allRows);
-                        applyRoot(newRoot);
-                        setExpandedRecursively(newRoot, true);
-                    });
-                });
-            } else {
-                setExpandedRecursively(root, true);
-            }
-        }
-
+        if (root == null || rowIndex < 0 || columnIndex < 0) return null;
+        List<TreeItem<ObservableList<String>>> leaves = collectLeaves(root);
+        if (rowIndex >= leaves.size()) return null;
+        ObservableList<String> row = leaves.get(rowIndex).getValue();
+        return (row != null && columnIndex < row.size()) ? row.get(columnIndex) : null;
     }
 
-    public void collapseAll() {
-        TreeItem<ObservableList<String>> root = treeTableView.getRoot();
-        if (root != null) {
-            setExpandedRecursively(root, false);
-            root.setExpanded(true);
-        }
-
-    }
-
-    private void expandLevel(TreeItem<?> item, int levels) {
-        if (item == null || levels <= 0) return;
-        item.setExpanded(true);
-        for (TreeItem<?> c : item.getChildren()) expandLevel(c, levels - 1);
-    }
-
-    private void setExpandedRecursively(TreeItem<?> item, boolean expanded) {
-        item.setExpanded(expanded);
-        for (TreeItem<?> c : item.getChildren()) setExpandedRecursively(c, expanded);
-    }
-
-    // ---------------------------------------------------------
-    // Ergebniszähler
-    // ---------------------------------------------------------
-    private void updateResultsCount() {
-        if (resultsCountLabel == null) return;
-        if (serverPaginationEnabled) updateResultsCountServer();
-        else updateResultsCountClient();
-    }
-
-    private void updateResultsCountClient() {
-        if (resultsCountLabel == null) return;
-        int leafCount = (treeTableView.getRoot() == null) ? 0 : collectLeaves(treeTableView.getRoot()).size();
-        resultsCountLabel.setText("(" + leafCount + " Ergebnis" + (leafCount == 1 ? "" : "se") + ")");
-    }
-
-    private void updateResultsCountServer() {
-        if (resultsCountLabel == null) return;
-        resultsCountLabel.setText("(" + totalCount + " Ergebnis" + (totalCount == 1 ? "" : "se") + ")");
-    }
-
-    private void paginationVisible(boolean visible) {
-        if (pagination != null) {
-            pagination.setVisible(visible);
-            //pagination.setManaged(visible);
-        }
-    }
-
-    // ---------------------------------------------------------
-// Bereinigen – Entfernt leere Spalten in TreeTable (analog zu EnhancedTableManager)
-// ---------------------------------------------------------
-
-    public void cleanColumns() {
-        if (treeTableView.getRoot() == null) {
-            Dialog.showInfoDialog("Bereinigen", "Keine Daten vorhanden.");
-            return;
-        }
-
-        List<TreeTableColumn<ObservableList<String>, ?>> columns = new ArrayList<>(treeTableView.getColumns());
-        List<TreeItem<ObservableList<String>>> leaves = collectLeaves(treeTableView.getRoot());
-
-        if (columns.isEmpty() || leaves.isEmpty()) {
-            Dialog.showInfoDialog("Bereinigen", "Keine sichtbaren Daten zum Prüfen.");
-            return;
-        }
-
-        List<TreeTableColumn<ObservableList<String>, ?>> toRemove = new ArrayList<>();
-
-        for (int c = 0; c < columns.size(); c++) {
-            boolean allEmpty = true;
-            for (TreeItem<ObservableList<String>> leaf : leaves) {
-                ObservableList<String> row = leaf.getValue();
-                if (row != null && c < row.size()) {
-                    String val = row.get(c);
-                    if (val != null && !val.trim().isEmpty()) {
-                        allEmpty = false;
-                        break;
-                    }
+    @Override
+    protected void installGroupRowFactory() {
+        treeTableView.setRowFactory(tv -> new TreeTableRow<>() {
+            @Override
+            protected void updateItem(ObservableList<String> item, boolean empty) {
+                super.updateItem(item, empty);
+                setStyle("");
+                if (empty) return;
+                TreeItem<ObservableList<String>> ti = getTreeItem();
+                if (ti != null && !ti.isLeaf()) {
+                    setStyle("-fx-font-weight: bold; -fx-background-color: rgba(0,0,0,0.04);");
                 }
             }
-            if (allEmpty) toRemove.add(columns.get(c));
-        }
+        });
 
-        if (toRemove.isEmpty()) {
-            Dialog.showInfoDialog("Bereinigen", "Keine vollständig leeren Spalten gefunden.");
-        } else {
-            if (Dialog.showWarningDialog("Bereinigen",
-                    toRemove.size() + " leere Spalte(n) werden entfernt. Fortfahren?")) {
-                deleteColumns(toRemove);
+        // Clic: toggle groupe + mémorisation + sortie du mode global
+        treeTableView.setOnMouseClicked(e -> {
+            if (e.getTarget() == null || e.getClickCount() != 1) return;
+            TreeTableRow<ObservableList<String>> row = getRowFromEvent(e);
+            if (row == null || row.isEmpty()) return;
+
+            if (isDisclosureHit(e.getPickResult() == null ? null : e.getPickResult().getIntersectedNode(), row)) return;
+
+            TreeItem<ObservableList<String>> ti = row.getTreeItem();
+            if (ti == null || ti.isLeaf()) return;
+            boolean exp = !ti.isExpanded();
+            ti.setExpanded(exp);
+            ObservableList<String> v = ti.getValue();
+            if (v != null && !v.isEmpty()) stateModel.putExpansion(String.valueOf(v.get(0)), exp);
+            globalExpand = null;
+            e.consume();
+        });
+
+        // Clavier: idem
+        treeTableView.setOnKeyPressed(e -> {
+            TreeItem<ObservableList<String>> ti = treeTableView.getSelectionModel().getSelectedItem();
+            if (ti == null || ti.isLeaf()) return;
+            switch (e.getCode()) {
+                case ENTER:
+                case SPACE:
+                    ti.setExpanded(!ti.isExpanded());
+                    rememberExpansion(ti);
+                    globalExpand = null;
+                    e.consume();
+                    break;
+                case RIGHT:
+                case ADD:
+                    if (!ti.isExpanded()) {
+                        ti.setExpanded(true);
+                        rememberExpansion(ti);
+                        globalExpand = null;
+                        e.consume();
+                    }
+                    break;
+                case LEFT:
+                case SUBTRACT:
+                    if (ti.isExpanded()) {
+                        ti.setExpanded(false);
+                        rememberExpansion(ti);
+                        globalExpand = null;
+                        e.consume();
+                    }
+                    break;
+                default:
+                    break;
             }
-        }
-    }
-
-
-    private void clearTree() {
-        treeTableView.getColumns().clear();
-        treeTableView.setRoot(null);
-        paginationVisible(false);
-        updateResultsCount();
-    }
-
-    private void markDataChanged() {
-        cleanRanForThisPage = false;
-        if (cleanColumnsButton != null) cleanColumnsButton.setDisable(false);
-    }
-
-    private static String safe(String s) { return (s == null) ? "" : s; }
-
-    // ---------------------------------------------------------
-    // Getter (Export)
-    // ---------------------------------------------------------
-    public List<String> getDisplayHeaders() {
-        return treeTableView.getColumns().stream().map(TreeTableColumn::getText).collect(Collectors.toList());
-    }
-
-    public List<String> getOriginalKeys() {
-        return treeTableView.getColumns().stream().map(c -> String.valueOf(c.getUserData())).collect(Collectors.toList());
-    }
-
-    public TreeTableView<ObservableList<String>> getTreeTableView() { return treeTableView; }
-    public void setOnServerSearch(java.util.function.Consumer<String> handler) {
-        this.onServerSearch = handler;
-    }
-
-    public TextField getSearchField() {
-        return searchField;
-    }
-
-    /** Entfernt leere Spalten nach dem Laden aller Seiten (Server-Modus). */
-    public void cleanColumnsAllPages() {
-        if (!serverPaginationEnabled || dataLoader == null) {
-            cleanColumns(); // fallback normal
-            return;
-        }
-
-        Dialog.showInfoDialog("Bereinigen", "Alle Seiten werden geladen – bitte warten...");
-
-        EXECUTOR.submit(() -> {
-            List<RowData> allRows = new ArrayList<>();
-            int pages = (int) Math.ceil(totalCount / (double) rowsPerPage);
-            for (int p = 0; p < pages; p++) {
-                try {
-                    List<RowData> part = dataLoader.loadPage(p, rowsPerPage);
-                    if (part != null) allRows.addAll(part);
-                } catch (Exception ex) {
-                    log.error("Fehler beim Laden Seite {}", p, ex);
-                }
-            }
-
-            Platform.runLater(() -> {
-                buildColumnsFromRows(allRows);
-                TreeItem<ObservableList<String>> root = buildTreeUsingPathProvider(allRows);
-                applyRoot(root);
-                cleanColumns(); // jetzt globale Bereinigung
-            });
         });
     }
 
+    private TreeTableRow<ObservableList<String>> getRowFromEvent(javafx.scene.input.MouseEvent e) {
+        Node n = e.getPickResult() == null ? null : e.getPickResult().getIntersectedNode();
+        while (n != null && !(n instanceof TreeTableRow)) n = n.getParent();
+        @SuppressWarnings("unchecked")
+        TreeTableRow<ObservableList<String>> row = (TreeTableRow<ObservableList<String>>) n;
+        return row;
+    }
 
+    private boolean isDisclosureHit(Node target, TreeTableRow<?> row) {
+        for (Node n = target; n != null && n != row; n = n.getParent()) {
+            var sc = n.getStyleClass();
+            if (sc != null && sc.contains("tree-disclosure-node")) return true;
+        }
+        return false;
+    }
+
+    private void rememberExpansion(TreeItem<ObservableList<String>> ti) {
+        ObservableList<String> v = ti.getValue();
+        if (v != null && !v.isEmpty()) stateModel.putExpansion(String.valueOf(v.get(0)), ti.isExpanded());
+    }
+
+    @Override
+    public void refreshView() {
+        // 1) Construire colonnes + arbre sur données filtrées visibles
+        Set<String> hiddenKeys = columnModel.getHiddenKeys();
+        TreeItem<ObservableList<String>> root = buildTreeAndColumns(filteredData, hiddenKeys);
+        applyRoot(root);
+
+        // 2) Appliquer expansion (globale ou granulaire)
+        restoreExpansion(root);
+
+        // 3) Pagination client (si activée ici)
+        if (!serverPaginationEnabled && paginationEnabled && pagination != null) {
+            int rowsPerPage = stateModel.getRowsPerPage();
+            int pageCount = (int) Math.ceil((double) filteredData.size() / rowsPerPage);
+            pagination.setPageCount(Math.max(pageCount, 1));
+            pagination.setVisible(filteredData.size() > 0);
+            pagination.setPageFactory(this::createClientPage);
+        }
+
+        recomputeGroupStripes();
+        updateResultsCount();
+    }
+
+    private Node createClientPage(int pageIndex) {
+        int rowsPerPage = stateModel.getRowsPerPage();
+        int from = pageIndex * rowsPerPage;
+        int to = Math.min(from + rowsPerPage, filteredData.size());
+        List<RowData> slice = (from < to) ? filteredData.subList(from, to) : List.of();
+
+        Set<String> hiddenKeys = columnModel.getHiddenKeys();
+        TreeItem<ObservableList<String>> root = buildTreeAndColumns(slice, hiddenKeys);
+        applyRoot(root);
+
+        restoreExpansion(root);
+        recomputeGroupStripes();
+        return new Label();
+    }
+
+    @Override
+    protected void updateResultsCount() {
+        if (resultsCountLabel == null) return;
+
+        final int countToDisplay = serverPaginationEnabled
+                ? stateModel.getTotalCount()
+                : getVisibleRowCount();
+
+        resultsCountLabel.setText("(" + countToDisplay + " Ergebnis" + (countToDisplay == 1 ? "" : "se") + ")");
+    }
+
+    @Override
+    protected void clearView() {
+        treeTableView.getColumns().clear();
+        treeTableView.setRoot(null);
+        if (pagination != null) pagination.setVisible(false);
+    }
+
+    @Override
+    protected void requestRefresh() {
+        treeTableView.refresh();
+    }
+
+    @Override
+    public List<String> getDisplayHeaders() {
+        return treeTableView.getColumns().stream()
+                .map(TreeTableColumn::getText)
+                .toList();
+    }
+
+    @Override
+    public List<String> getOriginalKeys() {
+        return treeTableView.getColumns().stream()
+                .map(c -> String.valueOf(c.getUserData()))
+                .toList();
+    }
+
+    @Override
+    protected void disableCleanButtonOnCleaned(javafx.collections.SetChangeListener.Change<? extends String> c) {
+        // Géré dans setCleanButton()
+    }
 }

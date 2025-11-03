@@ -16,7 +16,7 @@ import javafx.scene.control.TextField;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import model.RowData;
-import service.ServiceFactory;
+
 import service.op.repository.OpRepository;
 
 import java.util.List;
@@ -64,7 +64,7 @@ public class OpListViewerController {
     private void initialize() {
 
         formatter = new OpListeFormatter();
-        opRepository = ServiceFactory.getOpRepository();
+        opRepository =  service.ServiceFactory.getOpRepository();
         //opRepository = new OpRepository(ServiceFactory.getDatabaseService(), formatter);
 
         TableViewBuilder builder = TableViewBuilder.create()

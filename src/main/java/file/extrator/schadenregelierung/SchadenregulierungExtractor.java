@@ -229,7 +229,7 @@ public class SchadenregulierungExtractor implements DataExtractor<Schadenregulie
 
             List<String> montants = Arrays.stream(parts, Math.min(afterVaSaIdx, parts.length), parts.length)
                     .filter(p -> p.matches("-?\\d{1,3}(?:\\.\\d{3})*,\\d{2}[^\\s]*"))
-                    .collect(Collectors.toList());
+                    .toList();
 
             String hundertRaw = null;
             String antRegulRaw = null;
@@ -682,7 +682,7 @@ public class SchadenregulierungExtractor implements DataExtractor<Schadenregulie
     @Override
     public boolean canExtract(File file) {
         String name = file.getName().toLowerCase(Locale.ROOT);
-        return name.matches("(januar|februar|märz|april|mai|juni|jul|august|september|oktober|november|dezember)20\\d{2}_.*\\.pdf");
+        return name.matches(".*(januar|februar|märz|april|mai|juni|juli|august|september|oktober|november|dezember).*\\.pdf");
     }
 
     @Override

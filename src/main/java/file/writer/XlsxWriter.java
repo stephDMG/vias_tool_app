@@ -144,7 +144,6 @@ public class XlsxWriter implements DataWriter {
                 cell.setCellStyle(dateStyle);
                 return;
             }
-            // si non parsable, on laisse en texte
             cell.setCellValue(value);
             return;
         }

@@ -126,6 +126,7 @@ public class ExtractionService {
 
     // --- NEUER WORKFLOW FÜR 'SCHADENREGULIERUNG' ---
     private void exportSchadenregulierungData(List<SchadenregulierungData> data, String outputPath, ExportFormat format) {
+        System.out.println(data);
         List<RowData> rows = data.stream().map(SchadenregulierungData::toRowData).collect(Collectors.toList());
         List<String> headers = SchadenregulierungData.getExportHeaders();
         fileService.writeFileWithHeaders(rows, headers, outputPath, format);

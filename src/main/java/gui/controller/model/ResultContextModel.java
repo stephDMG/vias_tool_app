@@ -13,20 +13,9 @@ import java.util.Objects;
  * ResultContextModel
  *
  * <p>Beschreibt den aktuell sichtbaren Ergebnis-Kontext – unabhängig davon,
- * ob er aus einer Kernfrage (Ausführen) oder einer freien Suche (Suchen) stammt.
- *
- * <h3>Verwendung</h3>
- * <ul>
- *   <li>Der Controller setzt {@code mode}, {@code filter}, {@code totalCount} und {@code pageLoader},
- *       sobald eine Abfrage (KF oder Suche) erfolgreich ausgeführt wurde.</li>
- *   <li>Export-Buttons (Table/Tree) lesen ausschließlich dieses Modell und
- *       iterieren über {@code pageLoader} → dadurch ist Export für <b>Suchen</b> identisch möglich.</li>
- * </ul>
- *
- * <h3>Threading</h3>
- * <p>Eigenschaften sind JavaFX Properties; set* Aufrufe auf dem FX-Thread vornehmen.</p>
+ * ob er aus einer Kernfrage (Ausführen) oder einer freien Suche (Suchen) stammt.</p>
  */
-public final class ResultContextModel {
+public class ResultContextModel {
 
     private static final Logger log = LoggerFactory.getLogger(ResultContextModel.class);
 
@@ -36,6 +25,10 @@ public final class ResultContextModel {
     private final ObjectProperty<Mode> mode = new SimpleObjectProperty<>(Mode.KF);
     private final ObjectProperty<CoverFilter> filter = new SimpleObjectProperty<>(null);
     private final IntegerProperty totalCount = new SimpleIntegerProperty(0);
+    private final BooleanProperty loading = new SimpleBooleanProperty(false);
+
+    // NOUVEAU: Eigenschaft pour le binding de l'export
+    private final ReadOnlyBooleanWrapper canExport = new ReadOnlyBooleanWrapper(false);
 
     /**
      * Loader, der <b>exakt</b> den gleichen Datenpfad nutzt wie die UI beim Paging.
@@ -46,7 +39,18 @@ public final class ResultContextModel {
     /** Optional: Speichert, ob der Baum (Tree) aktiv ist – hilfreich für Export-Entscheidungen. */
     private final BooleanProperty treeViewActive = new SimpleBooleanProperty(false);
 
-    public ResultContextModel() {}
+    public ResultContextModel() {
+        // Ajout de listeners pour mettre à jour canExportProperty
+        filter.addListener((obs, oldV, newV) -> updateCanExport());
+        totalCount.addListener((obs, oldV, newV) -> updateCanExport());
+        // pageLoader n'a pas de property, sa mise à jour est manuelle via setPageLoader
+        updateCanExport(); // Initial call
+    }
+
+    private void updateCanExport() {
+        boolean isExportPossible = pageLoader != null && getTotalCount() > 0 && getFilter() != null;
+        canExport.set(isExportPossible);
+    }
 
     // --- Mode ---
 
@@ -72,6 +76,7 @@ public final class ResultContextModel {
         this.filter.set(f);
         log.debug("ResultContextModel: filter gesetzt (withVersion={}, searchTerm={})",
                 f.getWithVersion(), f.getSearchTerm());
+        updateCanExport();
     }
 
     // --- Total Count ---
@@ -82,6 +87,7 @@ public final class ResultContextModel {
     public void setTotalCount(int count) {
         this.totalCount.set(Math.max(0, count));
         log.debug("ResultContextModel: totalCount={}", this.totalCount.get());
+        updateCanExport();
     }
 
     // --- Page Loader ---
@@ -95,6 +101,7 @@ public final class ResultContextModel {
     public void setPageLoader(DataLoader loader) {
         this.pageLoader = loader;
         log.debug("ResultContextModel: pageLoader gesetzt ({})", loader != null ? "OK" : "null");
+        updateCanExport();
     }
 
     // --- TreeView Status (optional) ---
@@ -112,7 +119,17 @@ public final class ResultContextModel {
     // --- Hilfsprüfungen ---
 
     /** Liefert true, wenn ein Export sinnvoll möglich ist (beliebiger Modus, aber mit Daten & Loader). */
+    // La méthode existante est conservée pour la rétrocompatibilité du getter direct
     public boolean canExport() {
-        return pageLoader != null && getTotalCount() > 0 && getFilter() != null;
+        return canExport.get();
     }
+
+    /** NEU: ReadOnlyProperty für UI-Binding (résout l'erreur). */
+    public ReadOnlyBooleanProperty canExportProperty() {
+        return canExport.getReadOnlyProperty();
+    }
+
+    public BooleanProperty loadingProperty() { return loading; }
+    public boolean isLoading() { return loading.get(); }
+    public void setLoading(boolean v) { loading.set(v); }
 }

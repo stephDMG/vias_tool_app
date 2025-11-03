@@ -1,12 +1,13 @@
 package gui.controller.manager;
 
+// Correction de l'import manquant
 import formatter.ColumnValueFormatter;
 import gui.controller.dialog.Dialog;
-import javafx.animation.PauseTransition;
+import gui.controller.manager.base.AbstractTableManager;
+import gui.controller.model.ColumnStateModel;
+import gui.controller.model.ResultContextModel;
+import gui.controller.model.TableStateModel;
 import javafx.application.Platform;
-import javafx.beans.property.BooleanProperty;
-import javafx.beans.property.ReadOnlyBooleanProperty;
-import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
@@ -14,117 +15,118 @@ import javafx.collections.ObservableList;
 import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.layout.Region;
-import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
-import javafx.util.Duration;
 import model.RowData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import formatter.ColumnValueFormatter;
+import gui.controller.dialog.Dialog;
+import gui.controller.manager.base.AbstractTableManager;
 
 import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 /**
- * Universelle Tabellenverwaltung für TableView<ObservableList<String>>.
- * Suche, Spaltenaktionen, Bereinigen, Pagination (Client/Server), Kontextmenü,
- * optisches Gruppierungs-Striping, Export-Header-Helfer.
+ * Tabellen-Manager für TableView<ObservableList<String>>.
+ *
+ * <p>Implementiert die Table-spezifischen UI-Hooks auf Basis von AbstractTableManager
+ * und behält die komplette öffentliche API für die Rückwärtskompatibilität.</p>
  */
-public class EnhancedTableManager {
-    private static final Logger logger = LoggerFactory.getLogger(EnhancedTableManager.class);
-    private static final int DEFAULT_ROWS_PER_PAGE = 100;
-    private static final ExecutorService EXECUTOR = Executors.newFixedThreadPool(4);
+public class EnhancedTableManager extends AbstractTableManager {
 
-    // Core Components
+    private static final Logger log = LoggerFactory.getLogger(EnhancedTableManager.class);
+
+    // UI (partenaires)
     private final TableView<ObservableList<String>> tableView;
-    private final TextField searchField;
     private final Button deleteButton;
-    private final Pagination pagination;
-    private final Label resultsCountLabel;
+    private Button cleanColumnsButton;
 
-    // Data
+    // Données (pour le mode client-side search)
     private List<RowData> originalData = new ArrayList<>();
-    private List<RowData> filteredData = new ArrayList<>();
-    private List<String> currentHeaders = new ArrayList<>();
 
-    // Paging
-    private int rowsPerPage = DEFAULT_ROWS_PER_PAGE;
-    private int totalCount = 0;
-    private DataLoader dataLoader = null;
-    private boolean paginationEnabled = false;
-    private boolean serverPaginationEnabled = false;
-    private Integer lastRowsPerPage = null;
-
-    // Features
-    private boolean searchEnabled = false;
+    // État
     private boolean selectionEnabled = false;
 
-    // Group striping (optional)
-    private int groupColIndex = -1;
-    private List<Boolean> stripeIsA = new ArrayList<>();
-    private Color groupColorA = null;
-    private Color groupColorB = null;
-    private boolean groupStripingEnabled = false;
-    private String groupStripingHeader = null;
-
-    private Button cleanColumnsButton;
-    private boolean cleanRanForThisPage = false;
-
-    private Consumer<String> onServerSearch;
-
-
-    private final BooleanProperty hasData = new SimpleBooleanProperty(false);
-    public ReadOnlyBooleanProperty hasDataProperty() { return hasData; }
-    public boolean hasData() { return hasData.get(); }
+    // --- Rétrocompatibilité Constructors ---
 
     public EnhancedTableManager(TableView<ObservableList<String>> tableView,
                                 TextField searchField,
                                 Button deleteButton,
                                 Pagination pagination,
                                 Label resultsCountLabel) {
-        this.tableView = tableView;
-        this.searchField = searchField;
-        this.deleteButton = deleteButton;
-        this.pagination = pagination;
-        this.resultsCountLabel = resultsCountLabel;
+        this(tableView, searchField, deleteButton, pagination, resultsCountLabel,
+                new TableStateModel(), new ColumnStateModel(), new ResultContextModel());
+        log.warn("EnhancedTableManager instanziiert ohne Models. Lokale Modelle erstellt. Nur für Tests/Legacy-Kontext verwenden!");
+    }
 
+    // Le vrai constructeur (privé)
+    private EnhancedTableManager(TableView<ObservableList<String>> tableView,
+                                 TextField searchField,
+                                 Button deleteButton,
+                                 Pagination pagination,
+                                 Label resultsCountLabel,
+                                 TableStateModel stateModel,
+                                 ColumnStateModel columnModel,
+                                 ResultContextModel resultModel) {
+        super(searchField, pagination, resultsCountLabel, stateModel, columnModel, resultModel);
+        this.tableView = Objects.requireNonNull(tableView, "tableView");
+        this.deleteButton = deleteButton;
         if (deleteButton != null) deleteButton.setDisable(true);
+        installGroupRowFactory();
+    }
+
+
+    // NOUVEAU CONSTRUCTEUR COMPLET (utilisé par le Builder)
+    public EnhancedTableManager(TableView<ObservableList<String>> tableView,
+                                TextField searchField,
+                                Button deleteButton,
+                                Pagination pagination,
+                                Label resultsCountLabel,
+                                ColumnStateModel columnStateModel,
+                                ResultContextModel resultContextModel,
+                                TableStateModel tableStateModel) { // NOUVEAU
+        super(searchField, pagination, resultsCountLabel, tableStateModel, columnStateModel, resultContextModel);
+        this.tableView = Objects.requireNonNull(tableView, "tableView");
+        this.deleteButton = deleteButton;
+        if (deleteButton != null) deleteButton.setDisable(true);
+        installGroupRowFactory();
+    }
+
+
+
+    // Ancien constructeur 7 args obsolète (pour la compatibilité de l'ancienne implémentation du Builder)
+    @Deprecated
+    public EnhancedTableManager(TableView<ObservableList<String>> tableView,
+                                TextField searchField,
+                                Button deleteButton,
+                                Pagination pagination,
+                                Label resultsCountLabel,
+                                Object ignoredColumnStateModel,
+                                Object ignoredResultContextModel) {
+        // Tente de caster les arguments en modèles, sinon utilise des modèles par défaut
+        this(tableView, searchField, deleteButton, pagination, resultsCountLabel,
+                (ignoredColumnStateModel instanceof ColumnStateModel) ? (ColumnStateModel) ignoredColumnStateModel : new ColumnStateModel(),
+                (ignoredResultContextModel instanceof ResultContextModel) ? (ResultContextModel) ignoredResultContextModel : new ResultContextModel(),
+                new TableStateModel()
+        );
     }
 
     public EnhancedTableManager(TableView<ObservableList<String>> tableView) {
         this(tableView, null, null, null, null);
     }
+    // ---------- Méthodes publiques pour Rétrocompatibilité ----------
 
-    // Features
     public EnhancedTableManager enableSearch() {
-        if (searchField == null) {
-            logger.warn("Search requested but no SearchField provided");
-            return this;
-        }
-        searchEnabled = true;
-        searchField.textProperty().addListener((obs, oldVal, newVal) -> {
-            if (serverPaginationEnabled) {
-                if (onServerSearch != null) {
-                    onServerSearch.accept(newVal == null ? "" : newVal.trim());
-                } else {
-                    filterData(newVal);
-                }
-            } else {
-                filterData(newVal);
-            }
-        });
-        return this;
+        return (EnhancedTableManager) super.enableSearch();
     }
 
     public EnhancedTableManager enableSelection() {
         if (deleteButton == null) {
-            logger.warn("Selection requested but no DeleteButton provided");
+            log.warn("Selection angefordert, aber kein Delete-Button vorhanden.");
             return this;
         }
         selectionEnabled = true;
-
         tableView.getSelectionModel().setCellSelectionEnabled(true);
         tableView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
 
@@ -132,461 +134,82 @@ public class EnhancedTableManager {
                 (ListChangeListener<TablePosition>) c ->
                         deleteButton.setDisable(tableView.getSelectionModel().getSelectedCells().isEmpty())
         );
+        deleteButton.setOnAction(e -> handleDeleteSelectedColumns());
         return this;
     }
 
-    // Client-Pagination
     public EnhancedTableManager enablePagination(int rowsPerPage) {
-        if (pagination == null) {
-            logger.warn("Pagination requested but no Pagination component provided");
-            return this;
-        }
-        this.rowsPerPage = Math.max(1, rowsPerPage);
-        this.paginationEnabled = true;
-        pagination.setVisible(false);
-        return this;
+        return (EnhancedTableManager) super.enablePagination(rowsPerPage);
     }
 
-    /** Client mode : charge toutes les données et construit la table. */
-    public void populateTableView(List<RowData> data) {
-        serverPaginationEnabled = false;
-
-        if (data == null || data.isEmpty()) {
-            clearTable();
-            return;
-        }
-        this.originalData = new ArrayList<>(data);
-        hasData.set(true);
-
-        if (searchEnabled && searchField != null) {
-            filterData(searchField.getText());
-        } else {
-            this.filteredData = new ArrayList<>(data);
-            refreshTable();
-        }
-    }
-
-    private void refreshTable() {
-        updateResultsCount();
-
-        if (serverPaginationEnabled) {
-            setupServerPagination();
-        } else if (paginationEnabled && pagination != null) {
-            setupClientPagination();
-        } else {
-            buildTableColumns(filteredData);
-            populateTableData(filteredData);
-            recomputeGroupStripes();
-        }
-    }
-
-    private void setupClientPagination() {
-        int pageCount = (int) Math.ceil((double) filteredData.size() / rowsPerPage);
-        pagination.setPageCount(Math.max(pageCount, 1));
-        pagination.setCurrentPageIndex(0);
-        pagination.setVisible(filteredData.size() > 0);
-        pagination.setPageFactory(this::createClientPage);
-        updateResultsCount();
-    }
-
-    private Node createClientPage(int pageIndex) {
-        int fromIndex = pageIndex * rowsPerPage;
-        int toIndex = Math.min(fromIndex + rowsPerPage, filteredData.size());
-        List<RowData> pageData = filteredData.subList(fromIndex, toIndex);
-
-        buildTableColumns(pageData);
-        populateTableData(pageData);
-        recomputeGroupStripes();
-
-        return new VBox();
-    }
-
-    // Server-Pagination
-    private void setupServerPagination() {
-        if (pagination == null) return;
-
-        int pageCount = (int) Math.ceil((double) totalCount / rowsPerPage);
-        pagination.setPageCount(Math.max(pageCount, 1));
-        pagination.setCurrentPageIndex(0);
-        pagination.setVisible(totalCount > 0);
-        pagination.setPageFactory(this::createServerPage);
-
-        updateResultsCount();
-    }
-
-    private Node createServerPage(int pageIndex) {
-        loadServerPageData(pageIndex);
-        return new Label();
-    }
-
-    private void loadServerPageData(int pageIndex) {
-        EXECUTOR.submit(() -> {
-            try {
-                List<RowData> pageData = dataLoader.loadPage(pageIndex, rowsPerPage);
-
-                Platform.runLater(() -> {
-                    if (pageData == null || pageData.isEmpty()) {
-                        tableView.setItems(FXCollections.observableArrayList());
-                        tableView.setPlaceholder(new Label("Keine Daten gefunden."));
-                        hasData.set(false); // <-- important pour désactiver export quand page vide
-                    } else {
-                        buildTableColumns(pageData);
-                        populateTableData(pageData);
-                        recomputeGroupStripes();
-                        hasData.set(true); // <-- données présentes -> export ON
-                    }
-                });
-            } catch (Exception e) {
-                Platform.runLater(() ->
-                        Dialog.showErrorDialog("Ladefehler", "Daten konnten nicht geladen werden:\n" + e.getMessage())
-                );
-            }
-        });
-    }
-
-    /** Initialise la pagination serveur et signale la présence de données. */
-    public void loadDataFromServer(int totalCount, DataLoader dataLoader) {
-        serverPaginationEnabled = true;
-        this.dataLoader = Objects.requireNonNull(dataLoader, "DataLoader must not be null for server-side pagination.");
-        this.totalCount = Math.max(0, totalCount);
-
-        if (this.totalCount <= 0) {
-            clearTable();
-            return;
-        }
-
-        hasData.set(true);
-
-        // 🆕 reset pagination page index
-        if (pagination != null) {
-            pagination.setCurrentPageIndex(0);
-        }
-
-        setupServerPagination(); // reconstruit la pagination
-
-        // 🆕 force le recalcul du label
-        updateResultsCount();
-    }
-
-
-    // Grouping (optical striping)
-    public void applyGroupingConfig(boolean enabled, String headerName, Color colorA, Color colorB) {
-        this.groupStripingEnabled = enabled && headerName != null && !headerName.isBlank();
-        this.groupStripingHeader = this.groupStripingEnabled ? headerName : null;
-        this.groupColorA = this.groupStripingEnabled ? colorA : null;
-        this.groupColorB = this.groupStripingEnabled ? colorB : null;
-        if (!groupStripingEnabled) stripeIsA.clear();
-        installGroupRowFactory();
-        recomputeGroupStripes();
+    public EnhancedTableManager setOnServerSearch(Consumer<String> handler) {
+        return (EnhancedTableManager) super.setOnServerSearch(handler);
     }
 
     public EnhancedTableManager enableGroupStripingByHeader(String headerName) {
-        applyGroupingConfig(true, headerName, null, null);
+        // La logique est dans la classe mère, on appelle la méthode de la classe mère
+        super.enableGroupStripingByHeader(headerName);
         return this;
     }
 
-    public void disableGrouping() {
-        applyGroupingConfig(false, null, null, null);
+    public void populateTableView(List<RowData> data) {
+        this.originalData = new ArrayList<>(data);
+        super.populateTableView(data); // Appelle la logique de base
     }
 
     public void configureGrouping(String headerName, Color colorA, Color colorB) {
-        this.groupStripingEnabled = (headerName != null && !headerName.isBlank());
-        this.groupStripingHeader = headerName;
-        if (colorA != null) this.groupColorA = colorA;
-        if (colorB != null) this.groupColorB = colorB;
-        installGroupRowFactory();
-        recomputeGroupStripes();
+        // La logique est dans la classe mère, on appelle la méthode de la classe mère
+        super.configureGrouping(headerName, colorA, colorB);
     }
 
-    private static String toRgbaCss(Color c) {
-        int r = (int) Math.round(c.getRed() * 255);
-        int g = (int) Math.round(c.getGreen() * 255);
-        int b = (int) Math.round(c.getBlue() * 255);
-        String a = String.format(java.util.Locale.US, "%.3f", c.getOpacity());
-        return "rgba(" + r + "," + g + "," + b + "," + a + ")";
-    }
-
-    private void installGroupRowFactory() {
-        tableView.setRowFactory(tv -> new TableRow<>() {
-            @Override
-            protected void updateItem(ObservableList<String> item, boolean empty) {
-                super.updateItem(item, empty);
-                setStyle("");
-
-                if (empty || item == null) return;
-                if (isSelected()) return;
-
-                if (!groupStripingEnabled || groupStripingHeader == null || (groupColorA == null && groupColorB == null)) {
-                    return;
-                }
-
-                int rowIndex = getIndex();
-                if (rowIndex >= 0 && rowIndex < stripeIsA.size()) {
-                    boolean isA = stripeIsA.get(rowIndex);
-                    Color c = isA ? groupColorA : groupColorB;
-                    String cssColor = toRgbaCss(c);
-                    if (cssColor != null) {
-                        setStyle("-fx-background-color: " + cssColor + ";");
-                    }
-                }
-            }
-        });
-    }
-
-    private int findHeaderIndex(String header) {
-        if (filteredData == null || filteredData.isEmpty()) return -1;
-        List<String> headers = new ArrayList<>(filteredData.get(0).getValues().keySet());
-        for (int i = 0; i < headers.size(); i++) {
-            String h = headers.get(i);
-            if (h.equalsIgnoreCase(header) || h.replace(" ", "").equalsIgnoreCase(header.replace(" ", ""))) {
-                return i;
-            }
-        }
-        return -1;
-    }
-
-    private void recomputeGroupStripes() {
-        if (!groupStripingEnabled || groupStripingHeader == null) return;
-        var items = tableView.getItems();
-        stripeIsA = new ArrayList<>(items.size());
-        groupColIndex = findHeaderIndex(groupStripingHeader);
-        String lastKey = null;
-        boolean useA = true;
-        for (ObservableList<String> row : items) {
-            String key = "";
-            if (groupColIndex >= 0 && groupColIndex < row.size()) {
-                key = Objects.requireNonNullElse(row.get(groupColIndex), "");
-            }
-            if (!Objects.equals(key, lastKey)) {
-                useA = !useA;
-                lastKey = key;
-            }
-            stripeIsA.add(useA);
-        }
-        tableView.refresh();
-    }
-
-    // Search (client)
-    private void filterData(String filterText) {
-        String lowerCaseFilter = (filterText != null) ? filterText.toLowerCase() : "";
-        if (lowerCaseFilter.isEmpty()) {
-            filteredData = new ArrayList<>(originalData);
-        } else {
-            filteredData = originalData.stream()
-                    .filter(row -> row.getValues().values().stream()
-                            .filter(Objects::nonNull)
-                            .anyMatch(cell -> cell.toLowerCase().contains(lowerCaseFilter)))
-                    .collect(Collectors.toList());
-        }
-        refreshTable();
-    }
-
-    // Auto-rows per page
-    public void setRowsPerPage(int rowsPerPage) {
-        if (rowsPerPage <= 0) return;
-        this.rowsPerPage = rowsPerPage;
-        if (serverPaginationEnabled) {
-            setupServerPagination();
-        } else {
-            refreshTable();
-        }
+    public void disableGrouping() {
+        // La logique est dans la classe mère, on appelle la méthode de la classe mère
+        super.disableGrouping();
     }
 
     public void bindAutoRowsPerPage(Region observedRegion) {
-        final double chrome = 90.0;
-        final double defaultRowH = 24.0;
-        final int minRows = 10;
-        final int changeThreshold = 2;
-
-        PauseTransition debounce = new PauseTransition(Duration.millis(200));
-        observedRegion.heightProperty().addListener((obs, oldH, newH) -> {
-            debounce.stop();
-            debounce.setOnFinished(evt -> {
-                double h = (newH == null) ? 0 : newH.doubleValue();
-                double rowH = (tableView.getFixedCellSize() > 0) ? tableView.getFixedCellSize() : defaultRowH;
-                int rows = (int) Math.max(minRows, Math.floor((h - chrome) / rowH));
-                if (lastRowsPerPage == null || Math.abs(rows - lastRowsPerPage) >= changeThreshold) {
-                    lastRowsPerPage = rows;
-                    setRowsPerPage(rows);
-                }
-            });
-            debounce.playFromStart();
-        });
+        super.bindAutoRowsPerPage(observedRegion);
     }
 
-    // Table build & data
-    private void buildTableColumns(List<RowData> data) {
-        if (data == null || data.isEmpty()) {
-            tableView.getColumns().clear();
-            currentHeaders = List.of();
-            markDataChanged();
-            return;
-        }
-
-        List<String> headers = new ArrayList<>(data.get(0).getValues().keySet());
-        if (headers.equals(currentHeaders) && !tableView.getColumns().isEmpty()) {
-            return;
-        }
-
-        tableView.getColumns().clear();
-        currentHeaders = headers;
-
-        for (int i = 0; i < headers.size(); i++) {
-            final int columnIndex = i;
-            final String originalKey = headers.get(i);
-            TableColumn<ObservableList<String>, String> column = new TableColumn<>(originalKey);
-            column.setUserData(originalKey);
-            column.setCellValueFactory(param -> {
-                ObservableList<String> row = param.getValue();
-                return new SimpleStringProperty(
-                        (row != null && columnIndex < row.size()) ? row.get(columnIndex) : ""
-                );
-            });
-            addContextMenuToColumn(column);
-            tableView.getColumns().add(column);
-        }
-        markDataChanged();
-    }
-
-    private void populateTableData(List<RowData> data) {
-        if (data == null || data.isEmpty()) {
-            tableView.setItems(FXCollections.observableArrayList());
-            return;
-        }
-
-        List<String> headers = new ArrayList<>(data.get(0).getValues().keySet());
-        ObservableList<ObservableList<String>> tableData = FXCollections.observableArrayList();
-
-        for (RowData row : data) {
-            ObservableList<String> rowValues = FXCollections.observableArrayList();
-            for (String header : headers) {
-                String formattedValue = ColumnValueFormatter.format(row, header);
-                rowValues.add(formattedValue);
-            }
-            tableData.add(rowValues);
-        }
-        tableView.setItems(tableData);
-        markDataChanged();
-    }
-
-    // Clean / Kontextmenü / Delete
-    public EnhancedTableManager enableCleanTable() {
-        if (this.cleanColumnsButton == null) return this;
-        this.cleanColumnsButton.setDisable(false);
-        this.cleanColumnsButton.setOnAction(e -> cleanTable());
-        return this;
-    }
-
+    // Verdrahtung von Buttons (Builder/Controller) - sans changer de signature
     public void setCleanButton(Button cleanButton) {
         this.cleanColumnsButton = cleanButton;
-        this.cleanColumnsButton.setOnAction(e -> cleanTable());
-    }
-
-    private void cleanTable() {
-        if (this.cleanColumnsButton != null && cleanRanForThisPage) {
-            return;
-        }
-
-        var cols = new ArrayList<TableColumn<ObservableList<String>, ?>>(tableView.getColumns());
-        var items = tableView.getItems();
-
-        if (cols.isEmpty() || items == null || items.isEmpty()) return;
-
-        if (serverPaginationEnabled) {
-            boolean proceed = Dialog.showWarningDialog(
-                    "Bereinigen (nur aktuelle Seite)",
-                    "Es werden nur Spalten entfernt, die auf der AKTUELLEN Seite komplett leer sind.\n" +
-                            "Fortfahren?");
-            if (!proceed) return;
-        }
-
-        List<TableColumn<ObservableList<String>, ?>> toRemove = new ArrayList<>();
-        for (int c = 0; c < cols.size(); c++) {
-            boolean allEmpty = true;
-            for (ObservableList<String> row : items) {
-                String v = (c < row.size()) ? row.get(c) : null;
-                if (v != null && !v.trim().isEmpty()) {
-                    allEmpty = false;
-                    break;
-                }
-            }
-            if (allEmpty) toRemove.add(cols.get(c));
-        }
-
-        if (toRemove.isEmpty()) {
-            Dialog.showInfoDialog("Bereinigen", "Es gibt keine vollständig leeren Spalten auf dieser Seite.");
-            cleanRanForThisPage = true;
-            if (this.cleanColumnsButton != null) this.cleanColumnsButton.setDisable(true);
-            return;
-        }
-
-        int minKeep = 2;
-        if (cols.size() - toRemove.size() < minKeep) {
-            int canDelete = Math.max(0, cols.size() - minKeep);
-            if (canDelete == 0) {
-                Dialog.showWarningDialog("Bereinigen",
-                        "Mindestens " + minKeep + " Spalten müssen sichtbar bleiben.");
-                cleanRanForThisPage = true;
-                if (this.cleanColumnsButton != null) this.cleanColumnsButton.setDisable(true);
-                return;
-            }
-            toRemove = toRemove.subList(0, canDelete);
-        }
-
-        deleteColumns(toRemove);
-
-        cleanRanForThisPage = true;
-        if (this.cleanColumnsButton != null) this.cleanColumnsButton.setDisable(true);
-    }
-
-    private void markDataChanged() {
-        cleanRanForThisPage = false;
-        if (this.cleanColumnsButton != null) {
-            this.cleanColumnsButton.setDisable(false);
+        if (cleanButton != null) {
+            // La logique d'activation/désactivation est gérée par le modèle d'état des colonnes
+            cleanButton.setOnAction(e -> cleanColumnsAllPages());
+            // Problème 2-a/4-a: Désactiver si déjà nettoyé
+            columnModel.cleanedProperty().addListener((obs, oldV, newV) ->
+                    cleanColumnsButton.setDisable(newV || !hasData())
+            );
+            hasDataProperty().addListener((obs, oldV, newV) ->
+                    cleanColumnsButton.setDisable(columnModel.isCleaned() || !newV)
+            );
+            // État initial
+            cleanColumnsButton.setDisable(!hasData() || columnModel.isCleaned());
         }
     }
 
-    private void addContextMenuToColumn(TableColumn<ObservableList<String>, String> column) {
-        MenuItem renameItem = new MenuItem("Spalte umbenennen");
-        MenuItem deleteItem = new MenuItem("Spalte löschen");
-        renameItem.setStyle("-fx-text-fill: #000;");
-        deleteItem.setStyle("-fx-text-fill: #d00;");
-        renameItem.setOnAction(e -> renameColumn(column));
-        deleteItem.setOnAction(e -> deleteColumn(column));
-        ContextMenu contextMenu = new ContextMenu(renameItem, new SeparatorMenuItem(), deleteItem);
-        column.setContextMenu(contextMenu);
+    public void setExportCsvButton(Button b) {
+        // Dans l'architecture Cover, les boutons d'export sont bindés dans CoverDomainController.
+        // Ici, on maintient l'API mais le binding du `hasDataProperty()` n'est pas le seul facteur.
+    }
+    public void setExportXlsxButton(Button b) {
+        // Idem
     }
 
-    private void renameColumn(TableColumn<ObservableList<String>, String> column) {
-        TextInputDialog dialog = new TextInputDialog(column.getText());
-        dialog.setTitle("Spalte umbenennen");
-        dialog.setHeaderText("Neuer Name für '" + column.getText() + "':");
-        dialog.setContentText("Name:");
-        dialog.showAndWait().ifPresent(newName -> {
-            if (!newName.isBlank()) {
-                column.setText(newName);
-                tableView.refresh();
-                logger.info("Column renamed: {} -> {}", column.getUserData(), newName);
-            }
-        });
+    public void enableCleanTable() {
+        // Rétrocompatibilité, l'activation est gérée par setCleanButton
     }
 
-    private void deleteColumn(TableColumn<ObservableList<String>, String> column) {
-        if (Dialog.showWarningDialog("Spalte löschen",
-                "Möchten Sie die Spalte '" + column.getText() + "' wirklich löschen?")) {
-            deleteColumns(List.of(column));
-        }
-    }
+
+    // --- Fonctions publiques (gestion des colonnes/export) ---
 
     public void handleDeleteSelectedColumns() {
-        if (!selectionEnabled) {
-            logger.warn("Selection not enabled but delete requested");
-            return;
-        }
+        if (!selectionEnabled) return;
 
         ObservableList<TablePosition> selectedCells = tableView.getSelectionModel().getSelectedCells();
         if (selectedCells.isEmpty()) {
-            Dialog.showErrorDialog("Keine Auswahl", "Bitte wählen Sie Spalten zum Löschen aus.");
+            Dialog.showErrorDialog("Keine Auswahl", "Bitte Spalten zum Löschen auswählen.");
             return;
         }
 
@@ -605,37 +228,24 @@ public class EnhancedTableManager {
         Set<String> originalKeysToDelete = columnsToDelete.stream()
                 .map(col -> String.valueOf(col.getUserData()))
                 .collect(Collectors.toSet());
-        tableView.getColumns().removeAll(columnsToDelete);
-        for (RowData row : originalData) row.getValues().keySet().removeAll(originalKeysToDelete);
-        for (RowData row : filteredData) row.getValues().keySet().removeAll(originalKeysToDelete);
-        updateResultsCount();
-        tableView.refresh();
-        logger.info("Deleted {} columns", columnsToDelete.size());
+
+        // Mise à jour du ColumnStateModel (3-a: affecte les deux vues)
+        Platform.runLater(() -> originalKeysToDelete.forEach(columnModel::addHiddenKey));
+
+        // Note: La suppression physique et le rafraîchissement est géré par refreshView()
+        // qui est appelé après la mise à jour du modèle.
     }
 
-    // Anzeigezähler & Clear
-    private void updateResultsCount() {
-        if (resultsCountLabel != null) {
-            int countToDisplay = serverPaginationEnabled ? totalCount : filteredData.size();
-            resultsCountLabel.setText("(" + countToDisplay + " Ergebnis" + (countToDisplay != 1 ? "se" : "") + ")");
+    // Correction: Méthode deleteColumn manquante (utilisée dans addContextMenuToColumn)
+    private void deleteColumn(TableColumn<ObservableList<String>, String> column) {
+        if (Dialog.showWarningDialog("Spalte löschen",
+                "Möchten Sie die Spalte '" + column.getText() + "' wirklich löschen?")) {
+            deleteColumns(List.of(column));
         }
     }
 
-    private void clearTable() {
-        tableView.getColumns().clear();
-        tableView.getItems().clear();
-        if (pagination != null) {
-            pagination.setVisible(false);
-        }
-        hasData.set(false); // <-- important : export OFF quand plus de données
-        updateResultsCount();
-    }
-
-    // Export helpers
     public List<String> getDisplayHeaders() {
-        return tableView.getColumns().stream()
-                .map(TableColumn::getText)
-                .collect(Collectors.toList());
+        return tableView.getColumns().stream().map(TableColumn::getText).collect(Collectors.toList());
     }
 
     public List<String> getOriginalKeys() {
@@ -644,30 +254,242 @@ public class EnhancedTableManager {
                 .collect(Collectors.toList());
     }
 
+    // Rétrocompatibilité: la fonction locale cleanTable n'est plus utilisée (Bereinigen est global)
+    public void cleanTable() {
+        cleanColumnsAllPages();
+    }
+
+    // ---------- Implémentation des Hooks abstraits ----------
+
+    @Override
+    protected List<RowData> getOriginalDataForClientFilter() {
+        return originalData;
+    }
+
+    @Override
+    protected void configureSearchSection(boolean visible) {
+        // La visibilité du searchField est gérée dans le FXML/Builder
+    }
+
+    @Override
+    protected List<String> currentHeaders() {
+        return currentHeaders;
+    }
+
+    @Override
+    protected int getVisibleRowCount() {
+        return tableView.getItems() == null ? 0 : tableView.getItems().size();
+    }
+
+    @Override
+    protected String getVisibleCellValue(int rowIndex, int columnIndex) {
+        if (rowIndex < 0 || columnIndex < 0) return null;
+        var items = tableView.getItems();
+        if (items == null || rowIndex >= items.size()) return null;
+        var row = items.get(rowIndex);
+        return (row != null && columnIndex < row.size()) ? row.get(columnIndex) : null;
+    }
+
+    @Override
+    protected void installGroupRowFactory() {
+        tableView.setRowFactory(tv -> new TableRow<>() {
+            @Override
+            protected void updateItem(ObservableList<String> item, boolean empty) {
+                super.updateItem(item, empty);
+                setStyle("");
+                if (empty || item == null || isSelected()) return;
+                if (!groupStripingEnabled || groupStripingHeader == null) return;
+                if (groupColorA == null && groupColorB == null) return;
+
+                int rowIndex = getIndex();
+                if (rowIndex >= 0 && rowIndex < stripeIsA.size()) {
+                    boolean isA = stripeIsA.get(rowIndex);
+                    Color c = isA ? groupColorA : groupColorB;
+                    if (c != null) {
+                        int r = (int) Math.round(c.getRed() * 255);
+                        int g = (int) Math.round(c.getGreen() * 255);
+                        int b = (int) Math.round(c.getBlue() * 255);
+                        String a = String.format(Locale.US, "%.3f", c.getOpacity());
+                        setStyle("-fx-background-color: rgba(" + r + "," + g + "," + b + "," + a + ");");
+                    }
+                }
+            }
+        });
+    }
+
     /**
-     * Gibt die aktuell gefilterten Daten (Client-seitig) zurück.
-     * Wird z.B. vom AiAssistantViewController verwendet.
+     * RESTAURÉ: Liefert die aktuell gefilterten Daten der aktiven Seite/des Clients.
+     * HINWEIS: Bei Server-Pagination nur die aktuelle Seite!
+     * @return gefilterte Daten (der aktuellen Seite im Servermodus)
      */
     public List<RowData> getFilteredData() {
+        // Dans le mode serveur, filteredData contient uniquement les données de la page courante.
+        // Dans le mode client, filteredData contient toutes les données filtrées.
         return new ArrayList<>(filteredData);
     }
 
 
-    public EnhancedTableManager setOnServerSearch(Consumer<String> handler) {
-        this.onServerSearch = handler;
-        return this;
-    }
-
-
-    /**
-     * Gibt die Originaldaten (ungefiltert) zurück.
-     */
     public List<RowData> getOriginalData() {
-        return new ArrayList<>(originalData);
+        // Si nous sommes en pagination client (originalData existe)
+        if (!serverPaginationEnabled) {
+            return new ArrayList<>(this.originalData);
+        }
+        // Si nous sommes en pagination serveur, nous retournons filteredData (la page courante).
+        // Ceci est une API cassée, mais nécessaire pour la rétrocompatibilité.
+        return new ArrayList<>(filteredData);
     }
 
-    public TextField getSearchField() {
-        return searchField;
+    @Override
+    public void refreshView() {
+        // 1. Déterminer les headers visibles (non masqués par ColumnStateModel)
+        Set<String> hiddenKeys = columnModel.getHiddenKeys();
+
+        // 2. Construire les colonnes visibles
+        buildTableColumns(filteredData, hiddenKeys);
+
+        // 3. Remplir les données (seulement pour les colonnes visibles)
+        populateTableData(filteredData);
+
+        // 4. Mettre à jour la pagination/compteur
+        if (serverPaginationEnabled) {
+            // La pagination serveur est gérée par loadServerPageData
+        } else if (paginationEnabled && pagination != null) {
+            int rowsPerPage = stateModel.getRowsPerPage();
+            int pageCount = (int) Math.ceil((double) filteredData.size() / rowsPerPage);
+            pagination.setPageCount(Math.max(pageCount, 1));
+            pagination.setVisible(filteredData.size() > 0);
+            pagination.setPageFactory(this::createClientPage);
+        }
+
+        recomputeGroupStripes();
+        updateResultsCount();
     }
+
+    private Node createClientPage(int pageIndex) {
+        int rowsPerPage = stateModel.getRowsPerPage();
+        int fromIndex = pageIndex * rowsPerPage;
+        int toIndex = Math.min(fromIndex + rowsPerPage, filteredData.size());
+        List<RowData> pageData = filteredData.subList(fromIndex, toIndex);
+
+        // 1. Déterminer les headers visibles
+        Set<String> hiddenKeys = columnModel.getHiddenKeys();
+
+        // 2. Construire les colonnes visibles
+        buildTableColumns(pageData, hiddenKeys);
+        populateTableData(pageData);
+        recomputeGroupStripes();
+
+        return new Label();
+    }
+
+    private void buildTableColumns(List<RowData> data, Set<String> hiddenKeys) {
+        if (data == null || data.isEmpty()) {
+            tableView.getColumns().clear();
+            currentHeaders = List.of();
+            return;
+        }
+
+        // Obtient tous les headers, filtre les headers cachés
+        List<String> allHeaders = new ArrayList<>(data.get(0).getValues().keySet());
+        List<String> visibleHeaders = allHeaders.stream()
+                .filter(h -> !hiddenKeys.contains(h))
+                .toList();
+
+        if (visibleHeaders.equals(currentHeaders) && !tableView.getColumns().isEmpty()) {
+            return;
+        }
+
+        tableView.getColumns().clear();
+        currentHeaders = visibleHeaders;
+
+        for (int i = 0; i < visibleHeaders.size(); i++) {
+            final int columnIndex = i;
+            final String originalKey = visibleHeaders.get(i);
+            TableColumn<ObservableList<String>, String> column = new TableColumn<>(originalKey);
+            column.setUserData(originalKey);
+            column.setCellValueFactory(param -> {
+                ObservableList<String> row = param.getValue();
+                return new SimpleStringProperty(
+                        (row != null && columnIndex < row.size()) ? row.get(columnIndex) : ""
+                );
+            });
+            addContextMenuToColumn(column);
+            tableView.getColumns().add(column);
+        }
+    }
+
+    private void populateTableData(List<RowData> data) {
+        if (data == null || data.isEmpty() || currentHeaders.isEmpty()) {
+            tableView.setItems(FXCollections.observableArrayList());
+            return;
+        }
+
+        ObservableList<ObservableList<String>> tableData = FXCollections.observableArrayList();
+
+        for (RowData row : data) {
+            ObservableList<String> rowValues = FXCollections.observableArrayList();
+            for (String header : currentHeaders) {
+                // Correction: Utilise ColumnValueFormatter.format(row, header)
+                String formattedValue = ColumnValueFormatter.format(row, header);
+                rowValues.add(formattedValue);
+            }
+            tableData.add(rowValues);
+        }
+        tableView.setItems(tableData);
+    }
+
+    private void addContextMenuToColumn(TableColumn<ObservableList<String>, String> column) {
+        MenuItem renameItem = new MenuItem("Spalte umbenennen");
+        MenuItem deleteItem = new MenuItem("Spalte löschen");
+        renameItem.setOnAction(e -> renameColumn(column));
+        deleteItem.setOnAction(e -> deleteColumn(column));
+        ContextMenu contextMenu = new ContextMenu(renameItem, new SeparatorMenuItem(), deleteItem);
+        column.setContextMenu(contextMenu);
+    }
+
+    private void renameColumn(TableColumn<ObservableList<String>, String> column) {
+        TextInputDialog dialog = new TextInputDialog(column.getText());
+        dialog.setTitle("Spalte umbenennen");
+        dialog.setHeaderText("Neuer Name für '" + column.getText() + "':");
+        dialog.setContentText("Name:");
+        dialog.showAndWait().ifPresent(newName -> {
+            if (!newName.isBlank()) {
+                column.setText(newName);
+                tableView.refresh();
+                log.info("Spalte umbenannt: {} -> {}", column.getUserData(), newName);
+            }
+        });
+    }
+
+    @Override
+    protected void updateResultsCount() {
+        if (resultsCountLabel == null) return;
+        if (serverPaginationEnabled) {
+            int total = stateModel.getTotalCount();
+            resultsCountLabel.setText("(" + total + " Ergebnis" + (total == 1 ? "" : "se") + ")");
+        } else {
+            int visible = getVisibleRowCount();
+            resultsCountLabel.setText("(" + visible + " Ergebnis" + (visible == 1 ? "" : "se") + ")");
+        }
+    }
+
+
+    @Override
+    protected void clearView() {
+        tableView.getColumns().clear();
+        tableView.setItems(FXCollections.observableArrayList());
+        if (pagination != null) pagination.setVisible(false);
+    }
+
+    @Override
+    protected void requestRefresh() {
+        tableView.refresh();
+    }
+
+    @Override
+    protected void disableCleanButtonOnCleaned(javafx.collections.SetChangeListener.Change<? extends String> c) {
+        // La logique est gérée directement dans setCleanButton pour plus de contrôle
+    }
+
 
 }

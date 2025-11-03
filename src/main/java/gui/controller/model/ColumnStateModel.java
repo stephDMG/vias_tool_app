@@ -30,7 +30,7 @@ import java.util.Objects;
  * <h3>Threading</h3>
  * <p>Das Modell nutzt JavaFX-Observable-Datenstrukturen. Mutationen sollten auf dem FX-Thread erfolgen.</p>
  */
-public final class ColumnStateModel {
+public class ColumnStateModel {
 
     private static final Logger log = LoggerFactory.getLogger(ColumnStateModel.class);
 
@@ -67,39 +67,48 @@ public final class ColumnStateModel {
      * @param keys neue Menge (null oder leer → keine Spalten ausblenden)
      */
     public void replaceHiddenKeys(Collection<String> keys) {
-        hiddenKeys.clear();
-        if (keys != null && !keys.isEmpty()) {
-            for (String k : keys) {
-                if (k != null && !k.isBlank()) {
-                    hiddenKeys.add(k);
-                }
-            }
+        Collection<String> safe = (keys == null) ? java.util.Collections.emptySet() : keys;
+
+        // Remplacer le contenu : clear() puis addAll(...)
+        if (!hiddenKeys.isEmpty()) {
+            hiddenKeys.clear();                     // déclenche un change event (SetChangeListener)
         }
+        if (!safe.isEmpty()) {
+            hiddenKeys.addAll(safe);                // déclenche aussi des change events
+        }
+
+        // Ne passe cleaned -> true qu’une seule fois (éviter flip-flop)
+        if (!cleaned.get()) {
+            cleaned.set(true);
+        }
+
         log.info("ColumnStateModel: replaceHiddenKeys -> {}", hiddenKeys);
     }
 
     /** Fügt eine einzelne Spalte (originalKey) hinzu. */
-    public void addHiddenKey(String originalKey) {
-        Objects.requireNonNull(originalKey, "originalKey");
-        if (hiddenKeys.add(originalKey)) {
-            log.debug("ColumnStateModel: addHiddenKey {}", originalKey);
+    public void addHiddenKey(String key) {
+        if (key == null || key.isBlank()) return;
+        if (hiddenKeys.add(key)) {
+            log.debug("ColumnStateModel: addHiddenKey({})", key);
         }
     }
 
-    /** Entfernt eine einzelne Spalte (originalKey). */
-    public void removeHiddenKey(String originalKey) {
-        Objects.requireNonNull(originalKey, "originalKey");
-        if (hiddenKeys.remove(originalKey)) {
-            log.debug("ColumnStateModel: removeHiddenKey {}", originalKey);
+
+    public void removeHiddenKey(String key) {
+        if (key == null || key.isBlank()) return;
+        if (hiddenKeys.remove(key)) {
+            log.debug("ColumnStateModel: removeHiddenKey({})", key);
         }
     }
 
     /** Löscht alle Hidden-Keys (setzt den globalen Bereinigungszustand zurück). */
     public void clear() {
-        hiddenKeys.clear();
-        log.info("ColumnStateModel: clear()");
+        if (!hiddenKeys.isEmpty()) {
+            hiddenKeys.clear();
+        }
+        cleaned.set(false);
+        log.info("ColumnStateModel: clear(); cleaned=false");
     }
-
     /**
      * Abgeleitete Sicht (read-only): true, wenn mindestens eine Spalte ausgeblendet ist.
      * <p>Bindet Buttons wie "Bereinigen" bequem auf UI-Ebene.</p>

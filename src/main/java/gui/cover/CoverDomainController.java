@@ -1,11 +1,16 @@
 package gui.cover;
 
 import gui.controller.manager.*;
+// Import des modèles d'état pour la synchronisation globale
+import gui.controller.model.ColumnStateModel;
+import gui.controller.model.ResultContextModel;
+import gui.controller.model.TableStateModel;
+
 import javafx.animation.PauseTransition;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
-import javafx.event.ActionEvent; // <-- import pour @FXML handler export
+import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
@@ -23,9 +28,11 @@ import model.contract.filters.CoverFilter;
 import model.enums.ExportFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import service.ServiceFactory;
 import service.contract.CoverService;
 import service.rbac.LoginService;
+
 
 import java.io.File;
 import java.time.format.DateTimeFormatter;
@@ -38,6 +45,12 @@ import static gui.controller.utils.format.FormatterService.exportWithFormat;
 
 public class CoverDomainController {
     private static final Logger log = LoggerFactory.getLogger(CoverDomainController.class);
+
+    // --- NOUVEAUX CHAMPS D'ÉTAT GLOBAUX ---
+    private final TableStateModel tableStateModel = new TableStateModel();
+    private final ColumnStateModel columnStateModel = new ColumnStateModel();
+    private final ResultContextModel resultContextModel = new ResultContextModel();
+    // ----------------------------------------
 
     // UI
     @FXML private Label domainTitle, bastandSelectedLabel, vertragsstandSelectedLabel, messageLabel;
@@ -79,7 +92,7 @@ public class CoverDomainController {
     private Button exportCsvButton;
     private Button exportXlsxButton;
 
-    // tout en haut de CoverDomainController
+    // isSearchMode est obsolète car géré par tableStateModel.isSearchActive()
     private boolean isSearchMode = false;
 
 
@@ -126,16 +139,23 @@ public class CoverDomainController {
             "Versicherungsschein Nr","Versicherungsnehmer"
     );
 
-    // Busy overlay
     private void initBusyOverlay() {
         busy = new ProgressIndicator();
         busy.setMaxSize(90, 90);
-        busy.setVisible(false);
+        busy.setVisible(false); // OK avant le bind
         resultsStack.getChildren().add(busy);
         StackPane.setAlignment(busy, Pos.CENTER);
+
+        // Le visible du spinner suit le flag "loading" du modèle
+        busy.visibleProperty().bind(resultContextModel.loadingProperty());
+        busy.setMouseTransparent(true);
     }
-    private void showBusy() { if (busy != null) busy.setVisible(true); }
-    private void hideBusy() { if (busy != null) busy.setVisible(false); }
+
+    // ⚠️ Ne plus toucher à busy.setVisible(...)
+
+    private void showBusy()  { resultContextModel.setLoading(true);  }
+    private void hideBusy()  { resultContextModel.setLoading(false); }
+
 
     // Persistenz: Gruppierung pro KF
     private final Map<String, List<String>> groupByMemory = new HashMap<>();
@@ -155,6 +175,7 @@ public class CoverDomainController {
     @FXML
     private void initialize() {
         try {
+            // ServiceFactory est maintenant correctement importé
             coverService = ServiceFactory.getContractService();
             username = new LoginService().getCurrentWindowsUsername();
         } catch (Exception e) {
@@ -170,26 +191,40 @@ public class CoverDomainController {
         setupTable();
         setupTree();
 
-        // 🧠 Synchroniser les champs de recherche Table <-> Tree
-        if (tableManager != null && treeManager != null &&
-                tableManager.getSearchField() != null && treeManager.getSearchField() != null) {
-
-            TextField tableSearch = tableManager.getSearchField();
-            TextField treeSearch  = treeManager.getSearchField();
-
-            treeSearch.textProperty().bindBidirectional(tableSearch.textProperty());
-        }
-
+        // NOUVEAU: La synchronisation de recherche est maintenant gérée par les Models dans AbstractTableManager.
+        // Cette section du code est obsolète:
+        // if (tableManager != null && treeManager != null &&
+        //         tableManager.getSearchField() != null && treeManager.getSearchField() != null) {
+        //     TextField tableSearch = tableManager.getSearchField();
+        //     TextField treeSearch  = treeManager.getSearchField();
+        //     treeSearch.textProperty().bindBidirectional(tableSearch.textProperty());
+        // }
 
 
         // Toggle "Baumansicht" + pastille
         installToggleWithDot(toggleTreeView, "Baumansicht");
+        // NOUVEAU: Mettre à jour l'état du modèle quand la vue change
+        toggleTreeView.selectedProperty().addListener((obs, wasTree, isTree) -> {
+            treeHost.setVisible(isTree);
+            treeHost.setManaged(isTree);
+            tableHost.setVisible(!isTree);
+            tableHost.setManaged(!isTree);
+
+            // 3-a: Mettre à jour le statut dans le ResultContextModel
+            resultContextModel.setTreeViewActive(isTree);
+            // S'assurer que les deux tables affichent la dernière version des colonnes masquées
+            if (isTree) tableManager.refreshView();
+            else treeManager.refreshView();
+        });
+
 
         // Toggle "Mit/Ohne Version" + pastille
         if (toggleVersionView != null) {
             installToggleWithDot(toggleVersionView, "Ohne Version");
             toggleVersionView.selectedProperty().addListener((obs, oldV, newV) -> {
                 toggleVersionView.setText(newV ? "Mit Versionen" : "Ohne Version");
+                // NOUVEAU: Vider l'état de nettoyage si le jeu de données change
+                columnStateModel.clear();
                 Platform.runLater(this::runKernfrage);
             });
         }
@@ -251,6 +286,9 @@ public class CoverDomainController {
         if (dictionariesLoaded) {
             if (kf != null) {
                 applyKernfrageDefaults(kf);
+                // NOUVEAU: Réinitialiser l'état global au chargement du domaine
+                columnStateModel.clear();
+                tableStateModel.reset();
                 Platform.runLater(this::runKernfrage);
             }
         } else {
@@ -344,6 +382,11 @@ public class CoverDomainController {
                     if (pendingKernfrage != null || currentKF != null) {
                         applyKernfrageDefaults(pendingKernfrage != null ? pendingKernfrage : currentKF);
                         pendingKernfrage = null;
+
+                        // NOUVEAU: Réinitialiser l'état global au chargement des Dictionaries
+                        columnStateModel.clear();
+                        tableStateModel.reset();
+
                         Platform.runLater(this::runKernfrage);
                     } else {
                         hideBusy();
@@ -368,7 +411,9 @@ public class CoverDomainController {
                         TreeTableViewBuilder.Feature.PAGINATION,
                         TreeTableViewBuilder.Feature.EXPORT
                 )
-                .withExportLabel("Vollständigen Bericht exportieren als:");
+                .withExportLabel("Vollständigen Bericht exportieren als:")
+                // NOUVEAU: Passe les modèles au Builder
+                .withModels(columnStateModel, resultContextModel, tableStateModel);
 
         treeHost.getChildren().setAll(treeBuilder.getTreeContainer());
 
@@ -378,48 +423,54 @@ public class CoverDomainController {
         treeManager.enableSearch();
         treeManager.enableSelection();
         treeManager.enablePagination(100);
-        treeManager.enableCleanTable();
+        // treeManager.enableCleanTable(); // Retiré (logique déplacée)
 
 
         // 🧩 relier les exports du TreeTable au contrôleur
         treeManager.setOnExportCsv(() -> exportFullReport(ExportFormat.CSV));
         treeManager.setOnExportXlsx(() -> exportFullReport(ExportFormat.XLSX));
 
+        // NOUVEAU: Mettre à jour le ResultContextModel lorsque la vue est active
         toggleTreeView.selectedProperty().addListener((obs, wasTree, isTree) -> {
-            treeHost.setVisible(isTree);
-            treeHost.setManaged(isTree);
-            tableHost.setVisible(!isTree);
-            tableHost.setManaged(!isTree);
+            resultContextModel.setTreeViewActive(isTree);
         });
 
         // Recherche serveur
         treeManager.setOnServerSearch(query -> {
             EXECUTOR.submit(() -> {
                 try {
-                    CoverFilter filter = new CoverFilter();
-                    if (toggleVersionView != null)
-                        filter.setWithVersion(toggleVersionView.isSelected());
-                    filter.setSearchTerm(query == null || query.isBlank() ? null : query.trim());
+                    Platform.runLater(() -> resultContextModel.setLoading(true));
+                    boolean emptyQuery = (query == null || query.isBlank());
+                    if (emptyQuery) {
+                        Platform.runLater(this::runKernfrage);
+                        return;
+                    }
+
+                    CoverFilter filter = buildFilterFromUI();
+                    filter.setSearchTerm(query.trim());
 
                     int total = coverService.count(username, filter);
+                    DataLoader loader = (page, size) -> coverService.searchRaw(username, filter, page, size).getRows();
 
                     Platform.runLater(() -> {
-                        messageLabel.setText("Baumansicht-Suche läuft...");
-                        treeManager.loadDataFromServer(total, (page, size) -> {
-                            List<RowData> rows = coverService.searchRaw(username, filter, page, size).getRows();
-                            if (page == 0) {
-                                Platform.runLater(() ->
-                                        messageLabel.setText("(" + rows.size() + " Ergebnis" + (rows.size() != 1 ? "se" : "") + " – Suche aktiv)"));
-                            }
-                            return rows;
-                        });
-                    });
+                        resultContextModel.setFilter(filter);
+                        resultContextModel.setPageLoader(loader);
+                        resultContextModel.setTotalCount(total);
+                        tableStateModel.setTotalCount(total); // pour le label/pagination
 
+                        messageLabel.setText("Baumansicht-Suche läuft...");
+                        treeManager.loadDataFromServer(total, loader);
+
+                        messageLabel.setText("(" + total + " Ergebnis" + (total != 1 ? "se" : "") + " – Suche aktiv)");
+                    });
                 } catch (Exception e) {
                     log.error("Server-Suche (Tree) fehlgeschlagen", e);
+                } finally {
+                    Platform.runLater(() -> resultContextModel.setLoading(false));
                 }
             });
         });
+
     }
 
 
@@ -431,57 +482,52 @@ public class CoverDomainController {
                         TableViewBuilder.Feature.EXPORT,
                         TableViewBuilder.Feature.SEARCH
                 )
-                .withExportLabel("Vollständigen Bericht exportieren als:");
+                .withExportLabel("Vollständigen Bericht exportieren als:")
+                // NOUVEAU: Passe les modèles au Builder
+                .withModels(columnStateModel, resultContextModel, tableStateModel);
+
 
         tableManager = builder.buildManager()
                 .enableSearch()
-                .enableSelection()
-                .enableCleanTable();
+                .enableSelection();
+        // .enableCleanTable() // Retiré (logique déplacée)
 
-        // --- Recherche serveur : relie le champ de recherche à la requête CoverService ---
+
         tableManager.setOnServerSearch(query -> {
             EXECUTOR.submit(() -> {
                 try {
-                    Platform.runLater(this::showBusy); // 🆕 indique chargement
+                    Platform.runLater(() -> resultContextModel.setLoading(true));
                     boolean emptyQuery = (query == null || query.isBlank());
-                    isSearchMode = !emptyQuery; // 🆕
-
-                    CoverFilter filter = new CoverFilter();
-                    if (toggleVersionView != null) filter.setWithVersion(toggleVersionView.isSelected());
-
-                    List<String> staIds = vertragsstandList.getSelectionModel().getSelectedItems()
-                            .stream().map(this::extractSelectedId).filter(Objects::nonNull).toList();
-                    filter.setContractStatusList(staIds.isEmpty() ? null : staIds);
-                    filter.setBearbeitungsstandIds(bearbeitungsstandList.getSelectionModel().getSelectedItems()
-                            .stream().map(this::extractSelectedId).filter(Objects::nonNull).toList());
-
-                    // 🆕 Si vide → revenir à la dernière Kernfrage
                     if (emptyQuery) {
                         Platform.runLater(this::runKernfrage);
                         return;
                     }
 
+                    CoverFilter filter = buildFilterFromUI();
                     filter.setSearchTerm(query.trim());
+
+                    // 🔢 total FILTRÉ
                     int total = coverService.count(username, filter);
                     DataLoader loader = (page, size) -> coverService.searchRaw(username, filter, page, size).getRows();
 
                     Platform.runLater(() -> {
-                        messageLabel.setText("Suche läuft...");
-                        tableManager.loadDataFromServer(total, (page, size) -> {
-                            List<RowData> rows = coverService.searchRaw(username, filter, page, size).getRows();
-                            if (page == 0) { // 🧩 dès la première page, mettre à jour le message
-                                Platform.runLater(() -> {
-                                    messageLabel.setText("(~ " + rows.size() + " Ergebnis" + (rows.size() != 1 ? "se" : "") + " – Suche aktiv)");
-                                });
-                            }
-                            return rows;
-                        });
-                        hideBusy();
-                    });
+                        // synchronize contexts AVANT load
+                        resultContextModel.setFilter(filter);
+                        resultContextModel.setPageLoader(loader);
+                        resultContextModel.setTotalCount(total);
+                        tableStateModel.setTotalCount(total);
 
+                        messageLabel.setText("Suche läuft...");
+
+                        tableManager.loadDataFromServer(total, loader);
+
+                        // affiche le libellé correct immédiatement
+                        messageLabel.setText("(" + total + " Ergebnis" + (total != 1 ? "se" : "") + " – Suche aktiv)");
+                    });
                 } catch (Exception e) {
                     log.error("Server-Suche fehlgeschlagen", e);
-                    Platform.runLater(this::hideBusy);
+                } finally {
+                    Platform.runLater(() -> resultContextModel.setLoading(false));
                 }
             });
         });
@@ -498,11 +544,12 @@ public class CoverDomainController {
             exportXlsxButton.disableProperty().unbind();
 
             exportCsvButton.disableProperty().bind(
-                    tableManager.hasDataProperty().not().or(busy.visibleProperty())
+                    resultContextModel.canExportProperty().not().or(resultContextModel.loadingProperty())
             );
             exportXlsxButton.disableProperty().bind(
-                    tableManager.hasDataProperty().not().or(busy.visibleProperty())
+                    resultContextModel.canExportProperty().not().or(resultContextModel.loadingProperty())
             );
+
 
             // On relie aux handlers @FXML compatibles FXML/DbExport
             exportCsvButton.setOnAction(this::exportFullReport);
@@ -531,6 +578,10 @@ public class CoverDomainController {
 
             restoreGroupByForKF(newV);
             resetParamSelection();
+
+            // NOUVEAU: Vider l'état de nettoyage et de recherche
+            columnStateModel.clear();
+            tableStateModel.reset();
 
             if (!dictionariesLoaded) {
                 pendingKernfrage = newV;
@@ -584,25 +635,13 @@ public class CoverDomainController {
         }
     }
 
-    // =========================
-    // AUSFÜHREN
-    // =========================
-    @FXML
-    private void runKernfrage() {
-        showBusy();
-
+    /** NOUVEAU: Construit le CoverFilter à partir de l'état de l'UI. */
+    private CoverFilter buildFilterFromUI() {
         CoverFilter filter = new CoverFilter();
-        String selectedKF = kernfrageChoice.getSelectionModel().getSelectedItem();
-        if (selectedKF == null) { hideBusy(); return; }
 
         if (toggleVersionView != null) {
-            Boolean flag = toggleVersionView.isSelected();
-            filter.setWithVersion(flag);
-            log.info("runKernfrage -> toggle selected={}, filter.getWithVersion()={}",
-                    flag, filter.getWithVersion());
+            filter.setWithVersion(toggleVersionView.isSelected());
         }
-
-        groupByMemory.put(selectedKF, new ArrayList<>(groupByList.getSelectionModel().getSelectedItems()));
 
         // Vertragsstand
         List<String> staIds = vertragsstandList.getSelectionModel().getSelectedItems().stream()
@@ -630,12 +669,39 @@ public class CoverDomainController {
         List<String> selectedGroupBys = new ArrayList<>(groupByList.getSelectionModel().getSelectedItems());
         filter.setGroupBy(selectedGroupBys.size() == groupByOptions.size() ? null : selectedGroupBys);
 
+        return filter;
+    }
+
+    // =========================
+    // AUSFÜHREN
+    // =========================
+    @FXML
+    private void runKernfrage() {
+        showBusy();
+
+        CoverFilter filter = buildFilterFromUI();
+        String selectedKF = kernfrageChoice.getSelectionModel().getSelectedItem();
+        if (selectedKF == null) { hideBusy(); return; }
+
+        groupByMemory.put(selectedKF, new ArrayList<>(groupByList.getSelectionModel().getSelectedItems()));
+
+        // NOUVEAU: Vider le champ de recherche pour revenir au mode KF (propre)
+        tableStateModel.setSearchText("");
+        tableStateModel.setSearchActive(false);
+
+
         EXECUTOR.submit(() -> {
             try {
                 int total = coverService.count(username, filter);
+                // NOUVEAU: Utiliser la fonction de Service (pour le loader)
                 DataLoader loader = (page, size) -> coverService.searchRaw(username, filter, page, size).getRows();
 
                 Platform.runLater(() -> {
+                    // Mettre à jour le contexte pour l'export (Résout 2-b, 3-b)
+                    resultContextModel.setFilter(filter);
+                    resultContextModel.setPageLoader(loader);
+                    resultContextModel.setTotalCount(total);
+
                     tableManager.loadDataFromServer(total, loader);
                     showMessage(null);
 
@@ -671,7 +737,7 @@ public class CoverDomainController {
             } finally {
                 Platform.runLater(() -> {
                     PauseTransition pt = new PauseTransition(Duration.millis(220));
-                    isSearchMode = false;
+                    // isSearchMode est obsolète
                     pt.setOnFinished(ev -> hideBusy());
                     pt.play();
                 });
@@ -696,32 +762,19 @@ public class CoverDomainController {
         exportFullReport(fmt);
     }
 
-    /** Implémentation réelle : charge toutes les pages côté serveur et exporte. */
+    /** Implémentation réelle : charge toutes les pages côté serveur et exporte. (Résout 2-b, 3-b) */
     private void exportFullReport(ExportFormat format) {
+        // NOUVEAU: Utilise ResultContextModel pour le filtre et le loader
+        CoverFilter filter = resultContextModel.getFilter();
+        DataLoader loader = resultContextModel.getPageLoader();
+        int total = resultContextModel.getTotalCount();
+
+        if (filter == null || loader == null || total <= 0) {
+            new Alert(Alert.AlertType.INFORMATION, "Keine Daten zum Exportieren verfügbar (Filtre ou données absents).", ButtonType.OK).showAndWait();
+            return;
+        }
+
         try {
-            CoverFilter filter = new CoverFilter();
-            if (toggleVersionView != null) filter.setWithVersion(toggleVersionView.isSelected());
-
-            List<String> staIds = vertragsstandList.getSelectionModel().getSelectedItems().stream()
-                    .map(this::extractSelectedId).filter(Objects::nonNull).toList();
-            filter.setContractStatusList(staIds.isEmpty() ? null : staIds);
-
-            filter.setBearbeitungsstandIds(bearbeitungsstandList.getSelectionModel().getSelectedItems()
-                    .stream().map(this::extractSelectedId).filter(Objects::nonNull).toList());
-
-            List<String> stornoValues = stornoGrundList.getSelectionModel().getSelectedItems().stream()
-                    .map(this::extractSelectedLabel).filter(Objects::nonNull).toList();
-            filter.setStornoGrundIds(stornoValues.isEmpty() ? null : stornoValues);
-
-            if (abDatePicker.getValue() != null) filter.setAbDate(abDatePicker.getValue());
-            if (bisDatePicker.getValue() != null) filter.setBisDate(bisDatePicker.getValue());
-
-            int total = coverService.count(username, filter);
-            if (total <= 0) {
-                new Alert(Alert.AlertType.INFORMATION, "Keine Daten zum Exportieren.", ButtonType.OK).showAndWait();
-                return;
-            }
-
             final int pageSize = 1000;
             List<RowData> all = new ArrayList<>(Math.min(total, 20000));
             int pages = (int) Math.ceil(total / (double) pageSize);
@@ -729,46 +782,25 @@ public class CoverDomainController {
             showBusy();
             EXECUTOR.submit(() -> {
                 try {
+                    // Chargement de toutes les pages (identique pour KF et Search)
                     for (int p = 0; p < pages; p++) {
-                        List<RowData> chunk = coverService.searchRaw(username, filter, p, pageSize).getRows();
+                        List<RowData> chunk = loader.loadPage(p, pageSize);
                         if (chunk != null && !chunk.isEmpty()) {
                             all.addAll(chunk);
                         }
                     }
 
                     Platform.runLater(() -> {
-                        if (all == null || all.isEmpty()) {
+                        if (all.isEmpty()) {
                             hideBusy();
                             new Alert(Alert.AlertType.INFORMATION, "Keine Daten zum Exportieren.", ButtonType.OK).showAndWait();
                             return;
                         }
 
-                        //List<String> displayHeaders = tableManager.getDisplayHeaders();
-                        //List<String> originalKeys = tableManager.getOriginalKeys();
-                        /**
-                         FileChooser fileChooser = new FileChooser();
-                         fileChooser.setTitle("Datenbankbericht exportieren");
-                         fileChooser.setInitialFileName("cover_export." + format.getExtension());
-                         fileChooser.getExtensionFilters().add(
-                         new FileChooser.ExtensionFilter(format.name() + "-Dateien", "*." + format.getExtension())
-                         );
-                         File file = fileChooser.showSaveDialog(ausfuehrenButton.getScene().getWindow());
-                         if (file == null) { hideBusy(); return; }
-
-                         try {
-                         exportWithFormat(all, displayHeaders, originalKeys, file, format);
-                         new Alert(Alert.AlertType.INFORMATION, "Export erfolgreich:\n" + file.getName(), ButtonType.OK).showAndWait();
-                         } catch (Exception ex) {
-                         log.error("Export fehlgeschlagen", ex);
-                         new Alert(Alert.AlertType.ERROR, "Exportfehler:\n" + ex.getMessage(), ButtonType.OK).showAndWait();
-                         } finally {
-                         hideBusy();
-                         }
-                         });**/
                         List<String> displayHeaders;
                         List<String> originalKeys;
 
-                        // 🧠 Si Baumansicht active → utiliser TreeTable + grouped export
+                        // 🧠 Détermine la vue active et l'utilise pour les headers et keys
                         boolean isTreeView = toggleTreeView != null && toggleTreeView.isSelected();
 
                         if (isTreeView) {
@@ -781,7 +813,28 @@ public class CoverDomainController {
 
                         FileChooser fileChooser = new FileChooser();
                         fileChooser.setTitle("Datenbankbericht exportieren");
-                        fileChooser.setInitialFileName("cover_export." + format.getExtension());
+
+                        String kf = (kernfrageChoice.getSelectionModel().getSelectedItem() == null)
+                                ? "cover_export" : kernfrageChoice.getSelectionModel().getSelectedItem().replaceAll("\\s+", "_");
+
+
+                        String groupSuffix = isTreeView ? "_Group" : "";
+
+                        String versionSuffix = (toggleVersionView != null && toggleVersionView.isSelected()) ? "_MitVersion" : "_OhneVersion";
+
+                        String staSuffix = "";
+                        try {
+                            List<String> staSel = vertragsstandList.getSelectionModel().getSelectedItems();
+                            if (staSel != null && !staSel.isEmpty()) {
+                                String id = staSel.get(0);
+                                int idx = id.indexOf(" - ");
+                                staSuffix = "_Sta_" + (idx > 0 ? id.substring(0, idx) : id);
+                            }
+                        } catch (Exception ignore) {}
+
+                        String baseName = kf + groupSuffix + versionSuffix + staSuffix;
+                        fileChooser.setInitialFileName(baseName + "." + format.getExtension());
+
                         fileChooser.getExtensionFilters().add(
                                 new FileChooser.ExtensionFilter(format.name() + "-Dateien", "*." + format.getExtension())
                         );
@@ -816,7 +869,6 @@ public class CoverDomainController {
                 } catch (Exception e) {
                     log.error("Export Task fehlgeschlagen", e);
                     Platform.runLater(() -> {
-                        isSearchMode = false;
                         hideBusy();
                         new Alert(Alert.AlertType.ERROR, "Exportfehler:\n" + e.getMessage(), ButtonType.OK).showAndWait();
                     });
@@ -950,7 +1002,6 @@ public class CoverDomainController {
         });
     }
 
-    // DatePicker converter (multi-format) sans toucher à editor.bind
     private void installDatePickerConverter(DatePicker picker, Locale locale) {
         if (picker == null) return;
 

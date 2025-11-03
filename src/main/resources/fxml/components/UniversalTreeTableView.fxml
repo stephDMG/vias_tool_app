@@ -21,12 +21,18 @@
         <Separator orientation="VERTICAL"/>
         <Button fx:id="expandAllButton"
                 text="Alle aufklappen"
-                tooltip="Alle Gruppen öffnen"
-                style="-fx-background-radius: 6; -fx-padding: 4 10;"/>
+                style="-fx-background-radius: 6; -fx-padding: 4 10;">
+            <tooltip>
+                <Tooltip text="Alle Gruppen öffnen"/>
+            </tooltip>
+        </Button>
         <Button fx:id="collapseAllButton"
                 text="Alle zuklappen"
-                tooltip="Alle Gruppen schließen"
-                style="-fx-background-radius: 6; -fx-padding: 4 10;"/>
+                style="-fx-background-radius: 6; -fx-padding: 4 10;">
+            <tooltip>
+                <Tooltip text="Alle Gruppen schließen"/>
+            </tooltip>
+        </Button>
     </HBox>
 
     <!-- Main TreeTable (Replaced TableView) -->
