@@ -464,15 +464,21 @@ public class EnhancedTableManager extends AbstractTableManager {
     @Override
     protected void updateResultsCount() {
         if (resultsCountLabel == null) return;
-        if (serverPaginationEnabled) {
-            int total = stateModel.getTotalCount();
-            resultsCountLabel.setText("(" + total + " Ergebnis" + (total == 1 ? "" : "se") + ")");
-        } else {
-            int visible = getVisibleRowCount();
-            resultsCountLabel.setText("(" + visible + " Ergebnis" + (visible == 1 ? "" : "se") + ")");
-        }
-    }
 
+        // [FIX] Prioriser le count du filtre client si le champ de recherche est rempli
+        boolean isSearchActive = !searchField.getText().trim().isEmpty();
+
+        int countToDisplay;
+        if (isSearchActive) {
+            // Affiche la taille du jeu de données filtré (correct pour la recherche)
+            countToDisplay = filteredData.size();
+        } else {
+            // Si aucune recherche n'est active, affiche le count total de la requête principale
+            countToDisplay = totalCount;
+        }
+
+        resultsCountLabel.setText("(" + countToDisplay + " Ergebnis" + (countToDisplay != 1 ? "se" : "") + ")");
+    }
 
     @Override
     protected void clearView() {

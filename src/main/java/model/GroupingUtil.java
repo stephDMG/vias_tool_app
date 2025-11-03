@@ -10,14 +10,10 @@ import java.util.stream.Collectors;
 public class GroupingUtil {
 
     private static final Map<String, String> GROUPBY_ALIAS_MAP = Map.of(
-            "Cover Art", "Vertragsparte_Text", // alias réel
-            "Makler", "Makler",
-            "Gesellschaft", "Gesellschaft_Name",
-            "Versicherungsart", "Versicherungsart_Text",
-            "Versicherungssparte", "Vertragsparte_Text", // en fait c’est LU_ART_Text
-            "Beteiligungsform", "Beteiligungsform_Text",
-            "Sachbearbeiter (Vertrag)", "SB_Vertr",
-            "Sachbearbeiter (Schaden)", "SB_Schad"
+            "Cover Art", "Makler", "Gesellschaft", "Versicherungsart",
+            "Versicherungssparte", "Beteiligungsform",
+            "Sachbearbeiter (Vertrag)", "Sachbearbeiter (Schaden)",
+            "Versicherungsschein Nr","Versicherungsnehmer"
     );
 
 
@@ -35,5 +31,25 @@ public class GroupingUtil {
             return key; // 👉 clé = vraie liste de colonnes, pas un string concaténé
         }, LinkedHashMap::new, Collectors.toList()));
     }
+    /**
+    public static List<RowData> groupRows(List<RowData> rows, List<String> groupKeys) {
+        if (rows == null || rows.isEmpty() || groupKeys == null || groupKeys.isEmpty()) {
+            return rows == null ? List.of() : rows;
+        }
+        // clé composite robuste (jamais null)
+        return rows.stream().collect(Collectors.groupingBy(r -> {
+                    Map<String, String> v = r.getValues();
+                    Map<String, Object> pk = new LinkedHashMap<>();
+                    for (String k : groupKeys) {
+                        String val = (v == null) ? null : v.get(k);
+                        pk.put(k, (val == null || val.isBlank()) ? "—" : val);
+                    }
+                    return Map.copyOf(pk); // clé immuable et non nulle
+                }))
+                .values().stream()
+                .flatMap(List::stream)
+                .toList();
+    }
+     */
 
 }
