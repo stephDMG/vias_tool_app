@@ -203,19 +203,23 @@ public class CoverDomainController {
 
         // Toggle "Baumansicht" + pastille
         installToggleWithDot(toggleTreeView, "Baumansicht");
-        // NOUVEAU: Mettre à jour l'état du modèle quand la vue change
+
         toggleTreeView.selectedProperty().addListener((obs, wasTree, isTree) -> {
             treeHost.setVisible(isTree);
             treeHost.setManaged(isTree);
             tableHost.setVisible(!isTree);
             tableHost.setManaged(!isTree);
 
-            // 3-a: Mettre à jour le statut dans le ResultContextModel
             resultContextModel.setTreeViewActive(isTree);
-            // S'assurer que les deux tables affichent la dernière version des colonnes masquées
-            if (isTree) tableManager.refreshView();
-            else treeManager.refreshView();
+
+            // ✅ réaligner la page affichée avec l’index global partagé
+            if (isTree) {
+                treeManager.syncToModelPage();
+            } else {
+                tableManager.syncToModelPage();
+            }
         });
+
 
 
         // Toggle "Mit/Ohne Version" + pastille

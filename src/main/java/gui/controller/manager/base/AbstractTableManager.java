@@ -165,27 +165,46 @@ public abstract class AbstractTableManager {
 
         if (totalCount <= 0) {
             stateModel.setTotalCount(0);
+            resultModel.setPageLoader(null);
             clearView();
             hasData.set(false);
+            if (pagination != null) {
+                pagination.setPageCount(1);
+                pagination.setCurrentPageIndex(0);
+                pagination.setVisible(false);
+                pagination.setPageFactory(null);
+            }
+            updateResultsCount();
             return;
         }
 
         stateModel.setTotalCount(totalCount);
-        resultModel.setPageLoader(dataLoader); // Wichtig für den Export (2-b)
+        resultModel.setPageLoader(dataLoader);
         hasData.set(true);
 
+        int targetIndex = 0;
         if (pagination != null) {
-            int rowsPerPage = stateModel.getRowsPerPage();
-            pagination.setPageCount(Math.max(1, (int) Math.ceil((double) totalCount / rowsPerPage)));
-            // setCurrentPageIndex(0) löst event aus, was loadServerPageData(0) aufruft
-            pagination.setCurrentPageIndex(0);
+            int rowsPerPage = Math.max(1, stateModel.getRowsPerPage());
+            int pageCount   = Math.max(1, (int) Math.ceil((double) totalCount / rowsPerPage));
+
+            // 👉 reprendre l’index mémorisé dans le TableStateModel
+            targetIndex = Math.min(Math.max(0, stateModel.getCurrentPageIndex()), pageCount - 1);
+
+            pagination.setPageFactory(null);
+            pagination.setPageCount(pageCount);
+            pagination.setCurrentPageIndex(targetIndex);
             pagination.setVisible(true);
             pagination.setPageFactory(this::createServerPage);
+
+            // 👉 refléter tout changement de page dans le modèle partagé
+            pagination.currentPageIndexProperty().addListener((obs, ov, nv) ->
+                    stateModel.setCurrentPageIndex(nv == null ? 0 : nv.intValue()));
         }
 
         updateResultsCount();
-        loadServerPageData(0);
+        loadServerPageData(targetIndex);
     }
+
 
     public AbstractTableManager setOnServerSearch(Consumer<String> handler) {
         this.onServerSearch = handler;
@@ -195,16 +214,24 @@ public abstract class AbstractTableManager {
     public void setRowsPerPage(int rowsPerPage) {
         if (rowsPerPage <= 0 || !paginationEnabled) return;
         stateModel.setRowsPerPage(rowsPerPage);
+
         if (serverPaginationEnabled && pagination != null) {
-            pagination.setPageCount(Math.max(1, (int) Math.ceil((double) stateModel.getTotalCount() / rowsPerPage)));
-            // Bleibt auf der aktuellen Seite, wenn möglich, sonst wechselt zu letzter Seite
-            int newIndex = Math.min(pagination.getCurrentPageIndex(), pagination.getPageCount() - 1);
+            pagination.setPageCount(Math.max(1, (int) Math.ceil(
+                    (double) stateModel.getTotalCount() / rowsPerPage)));
+
+            int newIndex = Math.min(
+                    Math.max(0, stateModel.getCurrentPageIndex()),
+                    Math.max(0, pagination.getPageCount() - 1)
+            );
+
             pagination.setCurrentPageIndex(newIndex);
+            stateModel.setCurrentPageIndex(newIndex); // ✅ garder le modèle en phase
             loadServerPageData(newIndex);
         } else if (!serverPaginationEnabled) {
-            refreshView(); // Nur Client-Pagination muss neu gerendert werden
+            refreshView();
         }
     }
+
 
     public void bindAutoRowsPerPage(Region observedRegion) {
         final double chrome = 90.0;
@@ -369,6 +396,7 @@ public abstract class AbstractTableManager {
                 List<RowData> page = loader.loadPage(pageIndex, stateModel.getRowsPerPage());
                 final List<RowData> finalPage = (page == null) ? Collections.emptyList() : page;
                 Platform.runLater(() -> {
+                    stateModel.setCurrentPageIndex(pageIndex); // ✅ mémoriser la page courante
                     filteredData = finalPage;
                     refreshView();
                 });
@@ -377,6 +405,20 @@ public abstract class AbstractTableManager {
             }
         });
     }
+
+    /** Aligne la Pagination locale sur l'index mémorisé dans TableStateModel (sans recharger toute la KF). */
+    public void syncToModelPage() {
+        if (!serverPaginationEnabled || pagination == null) return;
+        int idx = Math.min(Math.max(0, stateModel.getCurrentPageIndex()),
+                Math.max(0, pagination.getPageCount() - 1));
+        if (pagination.getCurrentPageIndex() != idx) {
+            pagination.setCurrentPageIndex(idx);
+            // Déclenche le PageFactory; on force aussi le fetch pour être sûr
+            loadServerPageData(idx);
+        }
+    }
+
+
 
     protected void recomputeGroupStripes() {
         if (!groupStripingEnabled || groupStripingHeader == null) return;
