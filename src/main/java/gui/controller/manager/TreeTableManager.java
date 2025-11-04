@@ -17,6 +17,7 @@ import model.RowData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javafx.scene.control.cell.TextFieldTreeTableCell;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
@@ -24,12 +25,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-/**
- * Universeller Manager für TreeTableView<ObservableList<String>>.
- *
- * Behält die öffentliche API (Rückwärtskompatibilität) und implementiert
- * Tree-spezifische Darstellung/Gruppierung.
- */
 public class TreeTableManager extends AbstractTableManager {
 
     private static final Logger log = LoggerFactory.getLogger(TreeTableManager.class);
@@ -274,12 +269,12 @@ public class TreeTableManager extends AbstractTableManager {
             return;
         }
 
-        // Mode granulaire (par groupe)
+        // Mode granulaire (par groupe) — clé unique par (vue,page,chemin)
         for (TreeItem<ObservableList<String>> item : root.getChildren()) {
             if (!item.isLeaf()) {
-                String key = item.getValue().get(0);
+                String key = pathKeyOf(item);
                 boolean expanded = stateModel.getExpansionState()
-                        .getOrDefault(key, false); // mets false par défaut pour éviter réouverture
+                        .getOrDefault(key, false);
                 setExpandedRecursively(item, expanded);
             }
         }
@@ -375,15 +370,18 @@ public class TreeTableManager extends AbstractTableManager {
     }
 
     private TreeItem<ObservableList<String>> makeGroupItem(String label) {
+        if (label == null || label.isBlank()) label = "(leer)";
         ObservableList<String> row = emptyRow();
         if (!row.isEmpty()) row.set(0, label);
         TreeItem<ObservableList<String>> item = new TreeItem<>(row);
 
         item.expandedProperty().addListener((obs, ov, nv) -> {
-            // Lors d’un toggle manuel, on mémorise l’état et on sort du mode global
-            stateModel.putExpansion(label, nv);
+            String key = pathKeyOf(item); // clé stable (vue+page+chemin)
+            stateModel.putExpansion(key, nv);
             globalExpand = null;
+            relayoutSoon();
         });
+
         return item;
     }
 
@@ -508,25 +506,45 @@ public class TreeTableManager extends AbstractTableManager {
             }
         });
 
-        // Clic: toggle groupe + mémorisation + sortie du mode global
+        // Click: toggle, mais sans “sauter” au bas
         treeTableView.setOnMouseClicked(e -> {
-            if (e.getTarget() == null || e.getClickCount() != 1) return;
-            TreeTableRow<ObservableList<String>> row = getRowFromEvent(e);
+            if (e.getClickCount() != 1) return;
+
+            Node tgt = (e.getPickResult() == null) ? null : e.getPickResult().getIntersectedNode();
+
+            // remonte jusqu’à la TreeTableRow cliquée
+            TreeTableRow<ObservableList<String>> row = null;
+            for (Node n = tgt; n != null; n = n.getParent()) {
+                if (n instanceof TreeTableRow<?> r) {
+                    @SuppressWarnings("unchecked")
+                    TreeTableRow<ObservableList<String>> rr = (TreeTableRow<ObservableList<String>>) r;
+                    row = rr; break;
+                }
+            }
             if (row == null || row.isEmpty()) return;
 
-            if (isDisclosureHit(e.getPickResult() == null ? null : e.getPickResult().getIntersectedNode(), row)) return;
+            // si clic sur le disclosure → laisser JavaFX gérer icône + enfants
+            if (isDisclosureHit(tgt, row)) return;
 
             TreeItem<ObservableList<String>> ti = row.getTreeItem();
             if (ti == null || ti.isLeaf()) return;
-            boolean exp = !ti.isExpanded();
-            ti.setExpanded(exp);
-            ObservableList<String> v = ti.getValue();
-            if (v != null && !v.isEmpty()) stateModel.putExpansion(String.valueOf(v.get(0)), exp);
+
+            boolean expand = !ti.isExpanded();
+
+            // forcer la création des enfants
+            ti.getChildren().size();
+
+            ti.setExpanded(expand);
+            rememberExpansion(ti);
             globalExpand = null;
+
+            // garde le focus visuel près du nœud cible uniquement
+            forceMaterializeAndRelayout(ti, row.getIndex());
+
             e.consume();
         });
 
-        // Clavier: idem
+        // Clavier
         treeTableView.setOnKeyPressed(e -> {
             TreeItem<ObservableList<String>> ti = treeTableView.getSelectionModel().getSelectedItem();
             if (ti == null || ti.isLeaf()) return;
@@ -562,25 +580,57 @@ public class TreeTableManager extends AbstractTableManager {
         });
     }
 
-    private TreeTableRow<ObservableList<String>> getRowFromEvent(javafx.scene.input.MouseEvent e) {
-        Node n = e.getPickResult() == null ? null : e.getPickResult().getIntersectedNode();
-        while (n != null && !(n instanceof TreeTableRow)) n = n.getParent();
-        @SuppressWarnings("unchecked")
-        TreeTableRow<ObservableList<String>> row = (TreeTableRow<ObservableList<String>>) n;
-        return row;
+    /** Clé d’expansion stable et non-collision :
+     *  vue ("tree") + page courante + chemin des segments (col 0) */
+    private String pathKeyOf(TreeItem<ObservableList<String>> item) {
+        int page = stateModel.getCurrentPageIndex();
+        Deque<String> stack = new ArrayDeque<>();
+        for (TreeItem<ObservableList<String>> it = item;
+             it != null && it.getParent() != null; it = it.getParent()) {
+            ObservableList<String> v = it.getValue();
+            String seg = (v != null && !v.isEmpty()) ? String.valueOf(v.get(0)) : "";
+            if (seg == null || seg.isBlank()) seg = "(leer)";
+            stack.push(seg);
+        }
+        String path = String.join("⟂", stack);
+        return "tree|p" + page + "|" + path;
+    }
+
+    /** Force la matérialisation près de l’index cible sans sauter en bas. */
+    private void forceMaterializeAndRelayout(TreeItem<ObservableList<String>> item, int rowIndexHint) {
+        try {
+            int row = (rowIndexHint >= 0) ? rowIndexHint : treeTableView.getRow(item);
+            if (row >= 0) {
+                // un léger scroll vers la ligne elle-même suffit
+                treeTableView.scrollTo(Math.max(row, 0));
+            }
+        } catch (Exception ignore) {}
+
+        Platform.runLater(() -> {
+            treeTableView.refresh();
+            treeTableView.requestLayout();
+        });
+    }
+
+    private void relayoutSoon() {
+        Platform.runLater(() -> {
+            treeTableView.refresh();
+            treeTableView.requestLayout();
+        });
     }
 
     private boolean isDisclosureHit(Node target, TreeTableRow<?> row) {
         for (Node n = target; n != null && n != row; n = n.getParent()) {
             var sc = n.getStyleClass();
-            if (sc != null && sc.contains("tree-disclosure-node")) return true;
+            if (sc == null) continue;
+            if (sc.contains("tree-disclosure-node") || sc.contains("arrow") || sc.contains("arrow-button")) return true;
         }
         return false;
     }
 
     private void rememberExpansion(TreeItem<ObservableList<String>> ti) {
-        ObservableList<String> v = ti.getValue();
-        if (v != null && !v.isEmpty()) stateModel.putExpansion(String.valueOf(v.get(0)), ti.isExpanded());
+        String key = pathKeyOf(ti);
+        stateModel.putExpansion(key, ti.isExpanded());
     }
 
     @Override
@@ -625,9 +675,8 @@ public class TreeTableManager extends AbstractTableManager {
     protected void updateResultsCount() {
         if (resultsCountLabel == null) return;
 
-        final int countToDisplay = serverPaginationEnabled
-                ? stateModel.getTotalCount()
-                : getVisibleRowCount();
+        // Aligne le Tree sur le même total (KF ou Search) que le modèle partagé
+        final int countToDisplay = stateModel.getTotalCount();
 
         resultsCountLabel.setText("(" + countToDisplay + " Ergebnis" + (countToDisplay == 1 ? "" : "se") + ")");
     }
