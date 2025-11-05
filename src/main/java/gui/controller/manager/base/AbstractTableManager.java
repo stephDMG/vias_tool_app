@@ -8,9 +8,7 @@ import gui.controller.model.ResultContextModel;
 import gui.controller.model.TableStateModel;
 import javafx.animation.PauseTransition;
 import javafx.application.Platform;
-import javafx.beans.property.BooleanProperty;
-import javafx.beans.property.ReadOnlyBooleanProperty;
-import javafx.beans.property.SimpleBooleanProperty;
+import javafx.beans.property.*;
 import javafx.scene.Node;
 import javafx.scene.control.Label;
 import javafx.scene.control.Pagination;
@@ -69,6 +67,9 @@ public abstract class AbstractTableManager {
 
     // Status
     protected final BooleanProperty hasData = new SimpleBooleanProperty(false);
+    protected PauseTransition searchDebounce = new PauseTransition(Duration.millis(400)); // NEU: 300ms Verzögerung
+    private final BooleanProperty isUpdatingSearchField = new SimpleBooleanProperty(false);
+
 
     protected int groupColIndex = -1;
     protected List<Boolean> stripeIsA = new ArrayList<>();
@@ -93,20 +94,43 @@ public abstract class AbstractTableManager {
         // Bindings vom Zustand
         stateModel.totalCountProperty().addListener((obs, oldV, newV) -> updateResultsCount());
         stateModel.rowsPerPageProperty().addListener((obs, oldV, newV) -> setRowsPerPage(newV.intValue()));
-        columnModel.cleanedProperty().addListener((obs, oldV, newV) -> refreshView()); // Neubau der Spalten
+        columnModel.cleanedProperty().addListener((obs, oldV, newV) -> refreshView());
+
 
         if (searchField != null) {
-            // Synchronisiert SearchText zwischen den Views (1-e)
-            searchField.textProperty().bindBidirectional(stateModel.searchTextProperty());
-            stateModel.searchTextProperty().addListener((obs, ov, nv) -> {
-                if (serverPaginationEnabled) {
-                    // Startet die Serversuche (via Controller-Hook)
-                    if (onServerSearch != null) onServerSearch.accept(nv == null ? "" : nv.trim());
-                } else {
-                    // Startet die Clientsuche
-                    filterData(nv);
-                }
+
+            // 1. Synchronisation der UI-Eingabe zum Modell (Saisie Utilisateur)
+            searchField.textProperty().addListener((obs, ov, nv) -> {
+                // 1. Ignorer les mises à jour venant du modèle
+                if (isUpdatingSearchField.get()) return;
+
+                // 2. Démarrer/Réinitialiser le Debounce pour la requête serveur
+                searchDebounce.stop();
+                searchDebounce.setOnFinished(evt -> {
+
+                    stateModel.setSearchText(nv);
+
+                    final String qTrimmé = (nv == null) ? "" : nv.trim();
+                    startSearchOrReturnToKF(qTrimmé);
+                });
+                searchDebounce.playFromStart();
             });
+        }
+    }
+
+    /** Startet den Suchvorgang oder kehrt zur Kernfrage zurück.
+     * DIESE Methode wird NACH dem Debounce aufgerufen. */
+    private void startSearchOrReturnToKF(String q) {
+        final boolean active = !q.isEmpty();
+
+        // Setzt das Flag (wichtig für den Controller: applyResultContext)
+        stateModel.setSearchActive(active);
+
+        if (serverPaginationEnabled) {
+            if (onServerSearch != null) onServerSearch.accept(q);
+        } else {
+            // Client-seitiges Filtern (lokal)
+            filterData(q);
         }
     }
 
@@ -163,47 +187,44 @@ public abstract class AbstractTableManager {
     public void loadDataFromServer(int totalCount, DataLoader dataLoader) {
         this.serverPaginationEnabled = true;
 
-        if (totalCount <= 0) {
-            stateModel.setTotalCount(0);
-            resultModel.setPageLoader(null);
-            clearView();
-            hasData.set(false);
-            if (pagination != null) {
+        stateModel.setTotalCount(Math.max(0, totalCount));
+        resultModel.setTotalCount(Math.max(0, totalCount));
+        resultModel.setPageLoader(dataLoader);
+        hasData.set(totalCount > 0);
+        Platform.runLater(() -> {
+            if (pagination == null) return;
+
+            pagination.setPageFactory(null); // WICHTIG: Entfernt die alte Factory
+
+            if (totalCount <= 0) {
+                clearView();
                 pagination.setPageCount(1);
                 pagination.setCurrentPageIndex(0);
                 pagination.setVisible(false);
                 pagination.setPageFactory(null);
+                updateResultsCount();
+                return;
             }
-            updateResultsCount();
-            return;
-        }
 
-        stateModel.setTotalCount(totalCount);
-        resultModel.setPageLoader(dataLoader);
-        hasData.set(true);
-
-        int targetIndex = 0;
-        if (pagination != null) {
             int rowsPerPage = Math.max(1, stateModel.getRowsPerPage());
             int pageCount   = Math.max(1, (int) Math.ceil((double) totalCount / rowsPerPage));
 
-            // 👉 reprendre l’index mémorisé dans le TableStateModel
-            targetIndex = Math.min(Math.max(0, stateModel.getCurrentPageIndex()), pageCount - 1);
+            // targetIndex ist 0, da der Controller (applyResultContext) setCurrentPageIndex(0) aufruft
+            int targetIndex = 0;
 
-            pagination.setPageFactory(null);
             pagination.setPageCount(pageCount);
             pagination.setCurrentPageIndex(targetIndex);
             pagination.setVisible(true);
+
+            // ✅ Re-Binding der PageFactory
             pagination.setPageFactory(this::createServerPage);
 
-            // 👉 refléter tout changement de page dans le modèle partagé
-            pagination.currentPageIndexProperty().addListener((obs, ov, nv) ->
-                    stateModel.setCurrentPageIndex(nv == null ? 0 : nv.intValue()));
-        }
-
-        updateResultsCount();
-        loadServerPageData(targetIndex);
+            log.info("Laden Server-Daten: Gesamt={}, Seiten={}/{}", totalCount, targetIndex + 1, pageCount);
+            updateResultsCount();
+            loadServerPageData(targetIndex);
+        });
     }
+
 
 
     public AbstractTableManager setOnServerSearch(Consumer<String> handler) {
@@ -225,7 +246,7 @@ public abstract class AbstractTableManager {
             );
 
             pagination.setCurrentPageIndex(newIndex);
-            stateModel.setCurrentPageIndex(newIndex); // ✅ garder le modèle en phase
+            stateModel.setCurrentPageIndex(newIndex);
             loadServerPageData(newIndex);
         } else if (!serverPaginationEnabled) {
             refreshView();
@@ -396,7 +417,7 @@ public abstract class AbstractTableManager {
                 List<RowData> page = loader.loadPage(pageIndex, stateModel.getRowsPerPage());
                 final List<RowData> finalPage = (page == null) ? Collections.emptyList() : page;
                 Platform.runLater(() -> {
-                    stateModel.setCurrentPageIndex(pageIndex); // ✅ mémoriser la page courante
+                    stateModel.setCurrentPageIndex(pageIndex);
                     filteredData = finalPage;
                     refreshView();
                 });
@@ -502,4 +523,5 @@ public abstract class AbstractTableManager {
 
     public abstract List<String> getDisplayHeaders();
     public abstract List<String> getOriginalKeys();
+
 }

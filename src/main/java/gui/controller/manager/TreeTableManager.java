@@ -675,11 +675,24 @@ public class TreeTableManager extends AbstractTableManager {
     protected void updateResultsCount() {
         if (resultsCountLabel == null) return;
 
-        // Aligne le Tree sur le même total (KF ou Search) que le modèle partagé
-        final int countToDisplay = stateModel.getTotalCount();
+        int countToDisplay;
 
+        if (serverPaginationEnabled) {
+            // ✅ Im Server-Modus immer das Ergebnis des ResultContextModels verwenden
+            countToDisplay = resultModel.getTotalCount();
+            // VORHER: if (stateModel.isSearchActive()) suffix = " – Suche aktiv";
+        } else {
+            // ✅ Im Client-Modus (nicht Server-Modus)
+            countToDisplay = getVisibleRowCount();
+            // VORHER: if (searchField != null && !searchField.getText().trim().isEmpty()) { // VORHER: suffix = " – Suche aktiv"; }
+        }
+
+        // Das KF-Label zeigt NUR die Gesamtanzahl an (ohne Suffix)
         resultsCountLabel.setText("(" + countToDisplay + " Ergebnis" + (countToDisplay == 1 ? "" : "se") + ")");
+
+        log.debug("Update KF-Label: ServerModus={}, Gesamt={}", serverPaginationEnabled, countToDisplay);
     }
+
 
     @Override
     protected void clearView() {

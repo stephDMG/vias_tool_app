@@ -29,6 +29,7 @@ public class ResultContextModel {
 
     // NOUVEAU: Eigenschaft pour le binding de l'export
     private final ReadOnlyBooleanWrapper canExport = new ReadOnlyBooleanWrapper(false);
+    private CoverFilter lastValidFilter = null;
 
     /**
      * Loader, der <b>exakt</b> den gleichen Datenpfad nutzt wie die UI beim Paging.
@@ -71,9 +72,14 @@ public class ResultContextModel {
     public ObjectProperty<CoverFilter> filterProperty() { return filter; }
     public CoverFilter getFilter() { return filter.get(); }
 
+    /**
+     * Setzt den aktiven Filter und speichert diesen als den letzten bekannten gültigen Filter.
+     * @param f Der neue Filter (darf nicht null sein).
+     */
     public void setFilter(CoverFilter f) {
-        Objects.requireNonNull(f, "CoverFilter");
+        Objects.requireNonNull(f, "CoverFilter darf nicht null sein. Verwenden Sie stattdessen einen leeren Filter.");
         this.filter.set(f);
+        this.lastValidFilter = f; // NEU: Speicherung des Filters
         log.debug("ResultContextModel: filter gesetzt (withVersion={}, searchTerm={})",
                 f.getWithVersion(), f.getSearchTerm());
         updateCanExport();

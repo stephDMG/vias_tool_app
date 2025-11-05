@@ -19,9 +19,7 @@ import javafx.scene.paint.Color;
 import model.RowData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import formatter.ColumnValueFormatter;
-import gui.controller.dialog.Dialog;
-import gui.controller.manager.base.AbstractTableManager;
+
 
 import java.util.*;
 import java.util.function.Consumer;
@@ -254,6 +252,14 @@ public class EnhancedTableManager extends AbstractTableManager {
                 .collect(Collectors.toList());
     }
 
+    @Override
+    public void loadDataFromServer(int totalCount, DataLoader dataLoader) {
+        // Nur Logging + Delegation an AbstractTableManager
+        log.info("TABLE.loadDataFromServer: total={}, rowsPerPage={}", totalCount, stateModel.getRowsPerPage());
+        super.loadDataFromServer(totalCount, dataLoader);
+    }
+
+
     // Rétrocompatibilité: la fonction locale cleanTable n'est plus utilisée (Bereinigen est global)
     public void cleanTable() {
         cleanColumnsAllPages();
@@ -464,14 +470,26 @@ public class EnhancedTableManager extends AbstractTableManager {
     @Override
     protected void updateResultsCount() {
         if (resultsCountLabel == null) return;
+
+        int countToDisplay;
+
         if (serverPaginationEnabled) {
-            int total = stateModel.getTotalCount();
-            resultsCountLabel.setText("(" + total + " Ergebnis" + (total == 1 ? "" : "se") + ")");
+            // ✅ Im Server-Modus immer das Ergebnis des ResultContextModels verwenden
+            countToDisplay = resultModel.getTotalCount();
+            // VORHER: if (stateModel.isSearchActive()) suffix = " – Suche aktiv";
         } else {
-            int visible = getVisibleRowCount();
-            resultsCountLabel.setText("(" + visible + " Ergebnis" + (visible == 1 ? "" : "se") + ")");
+            // ✅ Im Client-Modus (nicht Server-Modus)
+            countToDisplay = getVisibleRowCount();
+            // VORHER: if (searchField != null && !searchField.getText().trim().isEmpty()) { // VORHER: suffix = " – Suche aktiv"; }
         }
+
+        // Das KF-Label zeigt NUR die Gesamtanzahl an (ohne Suffix)
+        resultsCountLabel.setText("(" + countToDisplay + " Ergebnis" + (countToDisplay == 1 ? "" : "se") + ")");
+
+        log.debug("Update KF-Label: ServerModus={}, Gesamt={}", serverPaginationEnabled, countToDisplay);
     }
+
+
 
 
     @Override
