@@ -220,7 +220,8 @@ public class CoverCacheService {
 
         String status = norm(filter.getStatus());
         String broker = norm(filter.getBroker());
-        String text = norm(filter.getTextSearch());
+
+        String searchTerm = norm(filter.getSearchTerm());
 
         String contractStatus = norm(filter.getContractStatus());
         String contractStatusList = filter.getContractStatusList() != null
@@ -251,7 +252,7 @@ public class CoverCacheService {
 
         return String.valueOf(Objects.hash(
                 from, to, ab, bis,
-                status, broker, text,
+                status, broker, searchTerm,
                 contractStatus, contractStatusList,
                 bearbeitungsstaende,
                 mode, kuendigDat, kuendigInit,

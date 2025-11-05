@@ -32,6 +32,8 @@ public final class TableStateModel {
     private final IntegerProperty totalCount = new SimpleIntegerProperty(0);
     private final IntegerProperty currentPageIndex = new SimpleIntegerProperty(0);
     private final IntegerProperty rowsPerPage = new SimpleIntegerProperty(100);
+    private final IntegerProperty searchTotalCount = new SimpleIntegerProperty(0);
+
 
     /** État d'expansion par clé de nœud (pour TreeTable). */
     private final ObservableMap<String, Boolean> expansionState = FXCollections.observableHashMap();
@@ -40,14 +42,29 @@ public final class TableStateModel {
     private final BooleanProperty cleaningApplied = new SimpleBooleanProperty(false);
 
 
+    /** Zustand für die Gesamtanzahl der Ergebnisse, wenn die Suche aktiv ist. */
+    public IntegerProperty searchTotalCountProperty() {
+        return searchTotalCount;
+    }
+    public int getSearchTotalCount() {
+        return searchTotalCount.get();
+    }
+
+    public void setSearchTotalCount(int count) {
+        int old = searchTotalCount.get();
+        searchTotalCount.set(Math.max(0, count));
+        if (old != count) log.debug("TableStateModel: searchTotalCount={}", getSearchTotalCount());
+    }
+
+
     // --- Search Text ---
 
     public StringProperty searchTextProperty() { return searchText; }
     public String getSearchText() { return searchText.get(); }
     public void setSearchText(String text) {
         String old = searchText.get();
-        searchText.set(text == null ? "" : text.trim());
-        if (!String.valueOf(old).trim().equals(searchText.get())) {
+        searchText.set(text == null ? "" : text);
+        if (!String.valueOf(old).equals(searchText.get())){
             log.debug("TableStateModel: searchText='{}'", getSearchText());
         }
     }

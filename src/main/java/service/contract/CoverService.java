@@ -1,12 +1,15 @@
 package service.contract;
 
 import formatter.contract.CoverFormatter;
+import gui.cover.CoverDomainController;
 import model.GroupingUtil;
 import model.RowData;
 import model.contract.CoverDetails;
 import model.contract.CoverRecord;
 import model.contract.CoverStats;
 import model.contract.filters.CoverFilter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import service.cache.CoverCacheService;
 import service.contract.rbac.CoverAccessGuard;
 import service.contract.repository.CoverDetailsRepository;
@@ -32,6 +35,7 @@ import java.util.Objects;
  * </ul>
  */
 public class CoverService {
+    private static final Logger logger = LoggerFactory.getLogger(CoverService.class);
 
     private final CoverAccessGuard accessGuard;
     private final CoverCacheService coverCache;
@@ -76,7 +80,6 @@ public class CoverService {
             grouped.values().forEach(groupedRows::addAll);
             rows = groupedRows;
         }
-
 
         return new CoverPageRaw(rows, total);
     }
