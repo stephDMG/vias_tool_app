@@ -12,7 +12,7 @@ import java.io.File;
 
 public class DetectVSymbol {
 
-    private static final String PDF_PATH = "C:\\Users\\stephane.dongmo\\Downloads\\Mai2025_115896-100209-25.08.2025-€ - 234.677,11.pdf";
+    private static final String PDF_PATH = "C:\\Users\\stephane.dongmo\\Downloads\\Dokument_August.pdf";
     private static final String TESSDATA_PATH = "C:\\Program Files\\Tesseract-OCR\\tessdata";
 
     public static void main(String[] args) {

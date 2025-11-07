@@ -2,7 +2,6 @@ package gui.controller.model;
 
 import gui.controller.manager.DataLoader;
 import javafx.beans.property.*;
-import model.RowData;
 import model.contract.filters.CoverFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

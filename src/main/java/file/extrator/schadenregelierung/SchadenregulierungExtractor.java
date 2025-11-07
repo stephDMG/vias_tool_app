@@ -73,11 +73,12 @@ public class SchadenregulierungExtractor implements DataExtractor<Schadenregulie
 
         int processed = 0;
         for (String line : cleanedText.split("\\r?\\n")) {
+            line = line.replace('_', ' ');
             line = line.trim();
             if (line.isEmpty() || !line.startsWith("w")) continue;
             processed++;
 
-            SchadenregulierungData data = parseLineWithProtocol(line, processed); // <<< CHANGE: route via helper qui 'loge' dans protocol
+            SchadenregulierungData data = parseLineWithProtocol(line, processed);
             results.add(data);
         }
 
@@ -152,6 +153,7 @@ public class SchadenregulierungExtractor implements DataExtractor<Schadenregulie
                                     .contains(m.group(1))) { guess = i - 1; break; }
                         }
                         String vn = (guess >= 0 ? normalizeVn(toks[guess]) : null);
+
                         data.setVn(vn);
                         statCorrectedSchaNr++;
 
@@ -166,6 +168,7 @@ public class SchadenregulierungExtractor implements DataExtractor<Schadenregulie
                     }
                 } else {
                     String vnRaw = parts[schaIdx - 1];
+                    //String vnRaw= (parts.length > 1) ? parts[schaIdx - 1].replace("_", "") : "";
                     data.setVn(normalizeVn(vnRaw));
                     data.setSchaNr(parts[schaIdx]);
                 }
@@ -183,11 +186,11 @@ public class SchadenregulierungExtractor implements DataExtractor<Schadenregulie
             }
 
             int startAfter = (dateIdx == -1 ? Math.max(1, (schaIdx == -1 ? 1 : schaIdx + 1)) : dateIdx + 1);
-            int buchIdx = indexOf(parts, "(?:K|R|SE)", startAfter);
-            if (buchIdx == -1) buchIdx = indexOf(parts, "(?:K|R|SE)", startAfter + 1);
+            int buchIdx = indexOf(parts, "(?:K|R|SE|RE)", startAfter);
+            if (buchIdx == -1) buchIdx = indexOf(parts, "(?:K|R|SE|RE)", startAfter + 1);
             if (buchIdx == -1) {
                 logger.warn("❌ Buchungstext nicht gefunden (leer gesetzt): {}", line);
-                protocol.missing("BUCHTXT_MISSING", "Buchungstext (K|R|SE) nicht gefunden.", rowNo, Map.of("line", line));
+                protocol.missing("BUCHTXT_MISSING", "Buchungstext (K|R|SE|RE) nicht gefunden.", rowNo, Map.of("line", line));
                 data.setBuchungstext(null);
                 anyMissing = true;
             } else {
@@ -254,7 +257,6 @@ public class SchadenregulierungExtractor implements DataExtractor<Schadenregulie
                 antRegulRaw = montants.get(montants.size() - 2);
             }
 
-
             data.setProzent100(cleanForOutput(hundertRaw));
             data.setAntRegul(cleanForOutput(antRegulRaw));
 
@@ -303,41 +305,6 @@ public class SchadenregulierungExtractor implements DataExtractor<Schadenregulie
 
         return data;
     }
-/**
-    @Override
-    public List<SchadenregulierungData> extractData(String filePath) {
-        logger.info("🚀 Starte Extraktion HYBRID für: {}", filePath);
-        List<SchadenregulierungData> results = new ArrayList<>();
-
-        String fullText = extractTextWithPDFBox(filePath);
-        if (fullText == null || fullText.trim().length() < 100) {
-            logger.warn("⚠️ PDFBox hat nichts gelesen → OCR wird verwendet...");
-            fullText = extractTextWithOCR(filePath);
-        } else {
-            logger.info("✅ Text erfolgreich via PDFBox extrahiert.");
-        }
-        if (fullText == null || fullText.trim().isEmpty()) {
-            logger.error("❌ Weder PDFBox noch OCR konnten Text lesen!");
-            return results;
-        }
-
-        String cleanedText = cleanOcrText(fullText);
-
-        int processed = 0;
-        for (String line : cleanedText.split("\\r?\\n")) {
-            line = line.trim();
-            if (line.isEmpty() || !line.startsWith("w")) continue; // nur echte Datensätze
-            processed++;
-
-            SchadenregulierungData data = parseLine(line); // **gibt NIEMALS null zurück**
-            results.add(data);
-        }
-
-        logger.info("✅ Statistik: {} Zeilen verarbeitet, {} mit korrigierter SCHA-NR, {} mit fehlenden Feldern, {} mit V-Symbol, {} exportiert.",
-                processed, statCorrectedSchaNr, statMissingFields, statVSymbol, results.size());
-        return results;
-    }
-    */
 
     // --- Extraction / Cleaning (Unverändert) ---
     private String extractTextWithPDFBox(String filePath) {
@@ -476,10 +443,10 @@ public class SchadenregulierungExtractor implements DataExtractor<Schadenregulie
                 data.setSchDatum(datum);
             }
 
-            // --- Buchungstext (K | R | SE) ---
+            // --- Buchungstext (K | R | SE | S | RE) ---
             int startAfter = (dateIdx == -1 ? Math.max(1, (schaIdx == -1 ? 1 : schaIdx + 1)) : dateIdx + 1);
-            int buchIdx = indexOf(parts, "(?:K|R|SE|S)", startAfter);
-            if (buchIdx == -1) buchIdx = indexOf(parts, "(?:K|R|SE|S)", startAfter + 1);
+            int buchIdx = indexOf(parts, "(?:K|R|SE|S|RE)", startAfter);
+            if (buchIdx == -1) buchIdx = indexOf(parts, "(?:K|R|SE|S|RE)", startAfter + 1);
             if (buchIdx == -1) {
                 logger.warn("❌ Buchungstext nicht gefunden (leer gesetzt): {}", line);
                 data.setBuchungstext(null);

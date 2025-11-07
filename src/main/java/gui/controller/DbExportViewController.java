@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
 
 import static gui.controller.dialog.Dialog.showErrorDialog;
 import static gui.controller.dialog.Dialog.showSuccessDialog;
-import static gui.controller.utils.format.FormatterService.exportWithFormat;
+import static gui.controller.service.FormatterService.exportWithFormat;
 
 /**
  * Controller für den Datenbank-Exportbereich mit verbesserter Tabellenverwaltung.

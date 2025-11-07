@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 
 public class PoliceAuditVN {
     private static final String PDF_PATH =
-            "C:\\Users\\stephane.dongmo\\Downloads\\Juli 2025 Liste 116053 .pdf";
+            "C:\\Users\\stephane.dongmo\\Downloads\\Dokument_August.pdf";
 
     public static void main(String[] args) throws Exception {
         ITesseract tesseract = new Tesseract();

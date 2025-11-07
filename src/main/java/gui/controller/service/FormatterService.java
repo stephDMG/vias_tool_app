@@ -1,8 +1,10 @@
-package gui.controller.utils.format;
+package gui.controller.service;
 
 import com.google.gson.Gson;
 import formatter.DateFieldFormatter;
 import formatter.MoneyFieldFormatter;
+import gui.controller.utils.format.FormatterConfig;
+import gui.controller.utils.format.FormatterField;
 import model.RowData;
 import model.enums.ExportFormat;
 import service.ServiceFactory;

@@ -122,15 +122,15 @@ public class TableViewBuilder {
         // Utilise le constructeur complet si des modèles sont fournis
         if (columnStateModel != null || resultContextModel != null || tableStateModel != null) {
             manager = new EnhancedTableManager(
-                    tableView,
-                    searchField,
-                    deleteColumnsButton,
-                    pagination,
-                    resultsCountLabel,
+                                tableView,
+                                searchField,
+                                deleteColumnsButton,
+                                pagination,
+                                resultsCountLabel,
+                    tableStateModel,
                     columnStateModel,
-                    resultContextModel,
-                    tableStateModel // NOUVEAU: Ajout du 3e modèle
-            );
+                    resultContextModel // NOUVEAU: Ajout du 3e modèle
+                        );
         } else {
             // Fallback pour la rétrocompatibilité (constructeur 5 arguments)
             manager = new EnhancedTableManager(

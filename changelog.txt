@@ -1,4 +1,15 @@
 ﻿====================
+Version 1.2.28 (2025-11-06)
+====================
+- [Aenderung] Update funktioniert schon wieder nicht
+
+====================
+Version 1.2.27 (2025-11-06)
+====================
+- [Aenderung] Synchronisierung zwischen TreeTable/Table (und Export-Funktion)
+- [Aenderung] end
+
+====================
 Version 1.2.26 (2025-10-21)
 ====================
 - [Aenderung] Daten laden Rechte gefixt
@@ -387,6 +398,8 @@ Version 1.0.1 (2025-08-07)
 ====================
 - [Aenderung] Es wurde eine Build-Automatisierung eingebunden, die sollte nur mit PowerShell-Skript umsetzen. Zum starten einfach ./release.ps1
 - [Aenderung] 
+
+
 
 
 

@@ -1,6 +1,5 @@
 package gui.controller.manager;
 
-// Correction de l'import manquant
 import formatter.ColumnValueFormatter;
 import gui.controller.dialog.Dialog;
 import gui.controller.manager.base.AbstractTableManager;
@@ -20,34 +19,49 @@ import model.RowData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 /**
- * Tabellen-Manager für TableView<ObservableList<String>>.
+ * Manager für eine klassische {@link TableView} mit Zeilen vom Typ
+ * {@code ObservableList<String>}.
  *
- * <p>Implementiert die Table-spezifischen UI-Hooks auf Basis von AbstractTableManager
- * und behält die komplette öffentliche API für die Rückwärtskompatibilität.</p>
+ * <p>
+ * Diese Klasse implementiert die UI-spezifische Logik auf Basis von
+ * {@link AbstractTableManager} (Suche, Pagination, globales Bereinigen,
+ * Gruppierungs-Streifen) und behält die bestehende öffentliche API
+ * (enableSearch, enablePagination, enableSelection, etc.) für
+ * Rückwärtskompatibilität.
+ * </p>
  */
 public class EnhancedTableManager extends AbstractTableManager {
 
     private static final Logger log = LoggerFactory.getLogger(EnhancedTableManager.class);
 
-    // UI (partenaires)
+    // UI-Referenzen
     private final TableView<ObservableList<String>> tableView;
     private final Button deleteButton;
     private Button cleanColumnsButton;
 
-    // Données (pour le mode client-side search)
+    // Datenbasis für Client-Side-Suche
     private List<RowData> originalData = new ArrayList<>();
 
-    // État
+    // Zustand
     private boolean selectionEnabled = false;
 
-    // --- Rétrocompatibilité Constructors ---
+    // Gemeinsame Map für Spaltennamen, wird mit TreeTableManager geteilt
+    private javafx.collections.ObservableMap<String, String> sharedColumnDisplayNames;
 
+
+    // -------------------------------------------------------------------------
+    // Konstruktoren
+    // -------------------------------------------------------------------------
+
+    /**
+     * Legacy-Konstruktor: erzeugt interne Models, wenn keine externen
+     * Zustands-Modelle übergeben werden.
+     */
     public EnhancedTableManager(TableView<ObservableList<String>> tableView,
                                 TextField searchField,
                                 Button deleteButton,
@@ -55,45 +69,35 @@ public class EnhancedTableManager extends AbstractTableManager {
                                 Label resultsCountLabel) {
         this(tableView, searchField, deleteButton, pagination, resultsCountLabel,
                 new TableStateModel(), new ColumnStateModel(), new ResultContextModel());
-        log.warn("EnhancedTableManager instanziiert ohne Models. Lokale Modelle erstellt. Nur für Tests/Legacy-Kontext verwenden!");
+        log.warn("EnhancedTableManager ohne explizite Models instanziiert – lokale Modelle erzeugt. " +
+                "Nur für Tests/Legacy-Kontext empfohlen.");
     }
 
-    // Le vrai constructeur (privé)
-    private EnhancedTableManager(TableView<ObservableList<String>> tableView,
-                                 TextField searchField,
-                                 Button deleteButton,
-                                 Pagination pagination,
-                                 Label resultsCountLabel,
-                                 TableStateModel stateModel,
-                                 ColumnStateModel columnModel,
-                                 ResultContextModel resultModel) {
-        super(searchField, pagination, resultsCountLabel, stateModel, columnModel, resultModel);
-        this.tableView = Objects.requireNonNull(tableView, "tableView");
-        this.deleteButton = deleteButton;
-        if (deleteButton != null) deleteButton.setDisable(true);
-        installGroupRowFactory();
-    }
-
-
-    // NOUVEAU CONSTRUCTEUR COMPLET (utilisé par le Builder)
+    /**
+     * Vollständiger Konstruktor mit expliziten Zustandsmodellen.
+     * Wird typischerweise vom {@code TableViewBuilder} verwendet.
+     */
     public EnhancedTableManager(TableView<ObservableList<String>> tableView,
                                 TextField searchField,
                                 Button deleteButton,
                                 Pagination pagination,
                                 Label resultsCountLabel,
-                                ColumnStateModel columnStateModel,
-                                ResultContextModel resultContextModel,
-                                TableStateModel tableStateModel) { // NOUVEAU
-        super(searchField, pagination, resultsCountLabel, tableStateModel, columnStateModel, resultContextModel);
+                                TableStateModel stateModel,
+                                ColumnStateModel columnModel,
+                                ResultContextModel resultModel) {
+        super(searchField, pagination, resultsCountLabel, stateModel, columnModel, resultModel);
         this.tableView = Objects.requireNonNull(tableView, "tableView");
         this.deleteButton = deleteButton;
-        if (deleteButton != null) deleteButton.setDisable(true);
+        if (deleteButton != null) {
+            deleteButton.setDisable(true);
+        }
         installGroupRowFactory();
     }
 
-
-
-    // Ancien constructeur 7 args obsolète (pour la compatibilité de l'ancienne implémentation du Builder)
+    /**
+     * Alter 7-Argumente-Konstruktor (wurde früher vom Builder genutzt).
+     * Bleibt aus Kompatibilitätsgründen erhalten.
+     */
     @Deprecated
     public EnhancedTableManager(TableView<ObservableList<String>> tableView,
                                 TextField searchField,
@@ -102,21 +106,34 @@ public class EnhancedTableManager extends AbstractTableManager {
                                 Label resultsCountLabel,
                                 Object ignoredColumnStateModel,
                                 Object ignoredResultContextModel) {
-        // Tente de caster les arguments en modèles, sinon utilise des modèles par défaut
-        this(tableView, searchField, deleteButton, pagination, resultsCountLabel,
-                (ignoredColumnStateModel instanceof ColumnStateModel) ? (ColumnStateModel) ignoredColumnStateModel : new ColumnStateModel(),
-                (ignoredResultContextModel instanceof ResultContextModel) ? (ResultContextModel) ignoredResultContextModel : new ResultContextModel(),
-                new TableStateModel()
-        );
+        this(tableView,
+                searchField,
+                deleteButton,
+                pagination,
+                resultsCountLabel,
+                new TableStateModel(),
+                (ignoredColumnStateModel instanceof ColumnStateModel)
+                        ? (ColumnStateModel) ignoredColumnStateModel
+                        : new ColumnStateModel(),
+                (ignoredResultContextModel instanceof ResultContextModel)
+                        ? (ResultContextModel) ignoredResultContextModel
+                        : new ResultContextModel());
     }
 
+    /**
+     * Minimal-Konstruktor nur mit TableView (hauptsächlich für Tests).
+     */
     public EnhancedTableManager(TableView<ObservableList<String>> tableView) {
         this(tableView, null, null, null, null);
     }
-    // ---------- Méthodes publiques pour Rétrocompatibilité ----------
+
+    // -------------------------------------------------------------------------
+    // Öffentliche API (kompatibel)
+    // -------------------------------------------------------------------------
 
     public EnhancedTableManager enableSearch() {
-        return (EnhancedTableManager) super.enableSearch();
+        super.enableSearch();
+        return this;
     }
 
     public EnhancedTableManager enableSelection() {
@@ -137,135 +154,229 @@ public class EnhancedTableManager extends AbstractTableManager {
     }
 
     public EnhancedTableManager enablePagination(int rowsPerPage) {
-        return (EnhancedTableManager) super.enablePagination(rowsPerPage);
+        super.enablePagination(rowsPerPage);
+        return this;
     }
 
-    public EnhancedTableManager setOnServerSearch(Consumer<String> handler) {
-        return (EnhancedTableManager) super.setOnServerSearch(handler);
+    /**
+     * Bindet die automatische Berechnung der Zeilen pro Seite an eine Region
+     * (z.B. BorderPane-Zentrum).
+     *
+     * <p>
+     * Diese Methode überschreibt NICHT die Methode in {@link AbstractTableManager},
+     * sondern ruft sie nur auf und gibt zur besseren Chainbarkeit {@code this} zurück.
+     * </p>
+     */
+    @Override
+    public void bindAutoRowsPerPage(Region observedRegion) {
+        // ruft nur die Logik der Basisklasse auf
+        super.bindAutoRowsPerPage(observedRegion);
+    }
+
+    public EnhancedTableManager withAutoRowsPerPage(Region observedRegion) {
+        super.bindAutoRowsPerPage(observedRegion);
+        return this;
+    }
+
+
+
+    public EnhancedTableManager setOnServerSearch(Consumer<String> searchHandler) {
+        super.setOnServerSearch(searchHandler);
+        return this;
     }
 
     public EnhancedTableManager enableGroupStripingByHeader(String headerName) {
-        // La logique est dans la classe mère, on appelle la méthode de la classe mère
         super.enableGroupStripingByHeader(headerName);
         return this;
     }
 
+    /**
+     * Setzt die Datenbasis für den Client-Side-Modus.
+     */
     public void populateTableView(List<RowData> data) {
-        this.originalData = new ArrayList<>(data);
-        super.populateTableView(data); // Appelle la logique de base
+        this.originalData = (data == null) ? new ArrayList<>() : new ArrayList<>(data);
+        super.populateTableView(data);
     }
 
     public void configureGrouping(String headerName, Color colorA, Color colorB) {
-        // La logique est dans la classe mère, on appelle la méthode de la classe mère
         super.configureGrouping(headerName, colorA, colorB);
     }
 
     public void disableGrouping() {
-        // La logique est dans la classe mère, on appelle la méthode de la classe mère
         super.disableGrouping();
     }
 
-    public void bindAutoRowsPerPage(Region observedRegion) {
-        super.bindAutoRowsPerPage(observedRegion);
-    }
+    // ---------------- Buttons / Verdrahtung ----------------
 
-    // Verdrahtung von Buttons (Builder/Controller) - sans changer de signature
     public void setCleanButton(Button cleanButton) {
         this.cleanColumnsButton = cleanButton;
         if (cleanButton != null) {
-            // La logique d'activation/désactivation est gérée par le modèle d'état des colonnes
             cleanButton.setOnAction(e -> cleanColumnsAllPages());
-            // Problème 2-a/4-a: Désactiver si déjà nettoyé
             columnModel.cleanedProperty().addListener((obs, oldV, newV) ->
                     cleanColumnsButton.setDisable(newV || !hasData())
             );
             hasDataProperty().addListener((obs, oldV, newV) ->
                     cleanColumnsButton.setDisable(columnModel.isCleaned() || !newV)
             );
-            // État initial
             cleanColumnsButton.setDisable(!hasData() || columnModel.isCleaned());
         }
     }
 
     public void setExportCsvButton(Button b) {
-        // Dans l'architecture Cover, les boutons d'export sont bindés dans CoverDomainController.
-        // Ici, on maintient l'API mais le binding du `hasDataProperty()` n'est pas le seul facteur.
+        // Export-Buttons werden in CoverDomainController gebunden (keine Logik hier).
     }
+
     public void setExportXlsxButton(Button b) {
-        // Idem
+        // Export-Buttons werden in CoverDomainController gebunden (keine Logik hier).
     }
 
-    public void enableCleanTable() {
-        // Rétrocompatibilité, l'activation est gérée par setCleanButton
-    }
-
-
-    // --- Fonctions publiques (gestion des colonnes/export) ---
-
-    public void handleDeleteSelectedColumns() {
-        if (!selectionEnabled) return;
-
-        ObservableList<TablePosition> selectedCells = tableView.getSelectionModel().getSelectedCells();
-        if (selectedCells.isEmpty()) {
-            Dialog.showErrorDialog("Keine Auswahl", "Bitte Spalten zum Löschen auswählen.");
-            return;
-        }
-
-        List<TableColumn<ObservableList<String>, ?>> selectedColumns = selectedCells.stream()
-                .map(pos -> (TableColumn<ObservableList<String>, ?>) pos.getTableColumn())
-                .distinct()
-                .collect(Collectors.toList());
-
-        if (Dialog.showWarningDialog("Spalten löschen",
-                selectedColumns.size() + " Spalte(n) löschen?")) {
-            deleteColumns(selectedColumns);
-        }
-    }
-
-    private void deleteColumns(List<TableColumn<ObservableList<String>, ?>> columnsToDelete) {
-        Set<String> originalKeysToDelete = columnsToDelete.stream()
-                .map(col -> String.valueOf(col.getUserData()))
-                .collect(Collectors.toSet());
-
-        // Mise à jour du ColumnStateModel (3-a: affecte les deux vues)
-        Platform.runLater(() -> originalKeysToDelete.forEach(columnModel::addHiddenKey));
-
-        // Note: La suppression physique et le rafraîchissement est géré par refreshView()
-        // qui est appelé après la mise à jour du modèle.
-    }
-
-    // Correction: Méthode deleteColumn manquante (utilisée dans addContextMenuToColumn)
-    private void deleteColumn(TableColumn<ObservableList<String>, String> column) {
-        if (Dialog.showWarningDialog("Spalte löschen",
-                "Möchten Sie die Spalte '" + column.getText() + "' wirklich löschen?")) {
-            deleteColumns(List.of(column));
-        }
-    }
-
-    public List<String> getDisplayHeaders() {
-        return tableView.getColumns().stream().map(TableColumn::getText).collect(Collectors.toList());
-    }
-
-    public List<String> getOriginalKeys() {
-        return tableView.getColumns().stream()
-                .map(col -> String.valueOf(col.getUserData()))
-                .collect(Collectors.toList());
-    }
-
-    @Override
-    public void loadDataFromServer(int totalCount, DataLoader dataLoader) {
-        // Nur Logging + Delegation an AbstractTableManager
-        log.info("TABLE.loadDataFromServer: total={}, rowsPerPage={}", totalCount, stateModel.getRowsPerPage());
-        super.loadDataFromServer(totalCount, dataLoader);
-    }
-
-
-    // Rétrocompatibilité: la fonction locale cleanTable n'est plus utilisée (Bereinigen est global)
+    // Legacy-Alias
     public void cleanTable() {
         cleanColumnsAllPages();
     }
 
-    // ---------- Implémentation des Hooks abstraits ----------
+    // -------------------------------------------------------------------------
+    // Getter für andere Controller (AiAssistantViewController, DbExportViewController)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Liefert eine Kopie der aktuell gefilterten Daten (z.B. für KI/Export).
+     */
+    public List<RowData> getFilteredData() {
+        return new ArrayList<>(filteredData);
+    }
+
+    /**
+     * Liefert eine Kopie der Original-Daten-Basis (vor Client-Side-Filterung).
+     */
+    public List<RowData> getOriginalData() {
+        return new ArrayList<>(originalData);
+    }
+
+    // -------------------------------------------------------------------------
+    // Interne Hilfsmethoden (Delete / Context-Menü)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Diese Methode wird sowohl intern (Context-Menü) als auch von einigen
+     * Controllern direkt aufgerufen, daher ist sie öffentlich.
+     */
+    public void handleDeleteSelectedColumns() {
+        if (!selectionEnabled || deleteButton == null) return;
+
+        ObservableList<TablePosition> selectedCells = tableView.getSelectionModel().getSelectedCells();
+        if (selectedCells == null || selectedCells.isEmpty()) return;
+
+        // Wegen Java-Generics nutzen wir hier eine einfache Schleife anstatt Collectors.toSet().
+        Set<TableColumn<?, ?>> columnsToDelete = new HashSet<>();
+        for (TablePosition<?, ?> pos : selectedCells) {
+            TableColumn<?, ?> col = pos.getTableColumn();
+            if (col != null) {
+                columnsToDelete.add(col);
+            }
+        }
+
+        deleteColumns(new ArrayList<>(columnsToDelete));
+    }
+
+    private void deleteColumns(List<TableColumn<?, ?>> columnsToDelete) {
+        Set<String> originalKeysToDelete = columnsToDelete.stream()
+                .map(col -> String.valueOf(col.getUserData()))
+                .collect(Collectors.toSet());
+
+        // Klassisches Verhalten: nur ColumnStateModel.hiddenKeys setzen
+        Platform.runLater(() -> originalKeysToDelete.forEach(columnModel::addHiddenKey));
+    }
+
+    private void deleteColumn(TableColumn<ObservableList<String>, String> column) {
+        if (Dialog.showWarningDialog("Spalte löschen",
+                "Möchten Sie die Spalte '" + column.getText() + "' wirklich löschen?")) {
+            // Einzelelement-Liste erzeugen und an deleteColumns übergeben
+            List<TableColumn<?, ?>> cols = new ArrayList<>();
+            cols.add(column);
+            deleteColumns(cols);
+        }
+    }
+
+    /**
+     * Setzt eine gemeinsame Map für Spalten-Anzeigenamen.
+     * <p>
+     * Beide Manager (Table und Tree) erhalten dieselbe Map-Instanz.
+     * Wenn ein Benutzer eine Spalte umbenennt, wird der Eintrag in dieser Map
+     * aktualisiert und alle Listener (Table/Tree) passen ihre Headertexte an.
+     * </p>
+     *
+     * @param map ObservableMap mit Key = technischem Spaltennamen
+     *            und Value = angezeigtem Spaltennamen.
+     */
+    public void setSharedColumnDisplayNames(javafx.collections.ObservableMap<String, String> map) {
+        this.sharedColumnDisplayNames = map;
+        if (map != null) {
+            map.addListener((javafx.collections.MapChangeListener<String, String>) change -> {
+                applySharedDisplayNames();
+            });
+        }
+    }
+
+    /**
+     * Wendet die in {@link #sharedColumnDisplayNames} hinterlegten Anzeigenamen
+     * auf alle aktuellen TableColumns an.
+     */
+    private void applySharedDisplayNames() {
+        if (sharedColumnDisplayNames == null) {
+            return;
+        }
+        for (TableColumn<ObservableList<String>, ?> col : tableView.getColumns()) {
+            Object ud = col.getUserData();
+            if (ud == null) continue;
+            String key = String.valueOf(ud);
+            String name = sharedColumnDisplayNames.get(key);
+            if (name != null && !name.isBlank()) {
+                col.setText(name);
+            }
+        }
+    }
+
+
+
+    private void addContextMenuToColumn(TableColumn<ObservableList<String>, String> column) {
+        MenuItem renameItem = new MenuItem("Spalte umbenennen");
+        MenuItem deleteItem = new MenuItem("Spalte löschen");
+
+        renameItem.setStyle("-fx-text-fill: #2563eb;");
+        deleteItem.setStyle("-fx-text-fill: #dc2626;");
+
+        renameItem.setOnAction(e -> renameColumn(column));
+        deleteItem.setOnAction(e -> deleteColumn(column));
+        ContextMenu contextMenu = new ContextMenu(renameItem, new SeparatorMenuItem(), deleteItem);
+        column.setContextMenu(contextMenu);
+    }
+
+    private void renameColumn(TableColumn<ObservableList<String>, String> column) {
+        TextInputDialog dialog = new TextInputDialog(column.getText());
+        dialog.setTitle("Spalte umbenennen");
+        dialog.setHeaderText("Neuer Name für '" + column.getText() + "':");
+        dialog.setContentText("Name:");
+        dialog.showAndWait().ifPresent(newName -> {
+            if (!newName.isBlank()) {
+                column.setText(newName);
+
+                // Gemeinsame Map aktualisieren, damit TreeTable dieselbe Umbenennung sieht
+                Object ud = column.getUserData();
+                if (sharedColumnDisplayNames != null && ud != null) {
+                    sharedColumnDisplayNames.put(String.valueOf(ud), newName);
+                }
+
+                tableView.refresh();
+                log.info("Spalte umbenannt: {} -> {}", column.getUserData(), newName);
+            }
+
+        });
+    }
+
+    // -------------------------------------------------------------------------
+    // AbstractTableManager: Implementierung der Hooks
+    // -------------------------------------------------------------------------
 
     @Override
     protected List<RowData> getOriginalDataForClientFilter() {
@@ -274,7 +385,7 @@ public class EnhancedTableManager extends AbstractTableManager {
 
     @Override
     protected void configureSearchSection(boolean visible) {
-        // La visibilité du searchField est gérée dans le FXML/Builder
+        // Suchbereich (TextField, Label) wird in der Regel über FXML/Controller gesteuert.
     }
 
     @Override
@@ -284,7 +395,7 @@ public class EnhancedTableManager extends AbstractTableManager {
 
     @Override
     protected int getVisibleRowCount() {
-        return tableView.getItems() == null ? 0 : tableView.getItems().size();
+        return (tableView.getItems() == null) ? 0 : tableView.getItems().size();
     }
 
     @Override
@@ -296,6 +407,10 @@ public class EnhancedTableManager extends AbstractTableManager {
         return (row != null && columnIndex < row.size()) ? row.get(columnIndex) : null;
     }
 
+    /**
+     * RowFactory, die Gruppen-Streifen (abwechselnde Farben) visualisiert,
+     * wenn in {@link AbstractTableManager} eine Gruppierung konfiguriert ist.
+     */
     @Override
     protected void installGroupRowFactory() {
         tableView.setRowFactory(tv -> new TableRow<>() {
@@ -303,9 +418,16 @@ public class EnhancedTableManager extends AbstractTableManager {
             protected void updateItem(ObservableList<String> item, boolean empty) {
                 super.updateItem(item, empty);
                 setStyle("");
-                if (empty || item == null || isSelected()) return;
-                if (!groupStripingEnabled || groupStripingHeader == null) return;
-                if (groupColorA == null && groupColorB == null) return;
+
+                if (empty || item == null || isSelected()) {
+                    return;
+                }
+                if (!groupStripingEnabled || groupStripingHeader == null) {
+                    return;
+                }
+                if (groupColorA == null && groupColorB == null) {
+                    return;
+                }
 
                 int rowIndex = getIndex();
                 if (rowIndex >= 0 && rowIndex < stripeIsA.size()) {
@@ -324,46 +446,24 @@ public class EnhancedTableManager extends AbstractTableManager {
     }
 
     /**
-     * RESTAURÉ: Liefert die aktuell gefilterten Daten der aktiven Seite/des Clients.
-     * HINWEIS: Bei Server-Pagination nur die aktuelle Seite!
-     * @return gefilterte Daten (der aktuellen Seite im Servermodus)
+     * Baut die sichtbaren Spalten und befüllt die TableView mit den aktuellen
+     * gefilterten Daten. Berücksichtigt Client-Side-Pagination.
      */
-    public List<RowData> getFilteredData() {
-        // Dans le mode serveur, filteredData contient uniquement les données de la page courante.
-        // Dans le mode client, filteredData contient toutes les données filtrées.
-        return new ArrayList<>(filteredData);
-    }
-
-
-    public List<RowData> getOriginalData() {
-        // Si nous sommes en pagination client (originalData existe)
-        if (!serverPaginationEnabled) {
-            return new ArrayList<>(this.originalData);
-        }
-        // Si nous sommes en pagination serveur, nous retournons filteredData (la page courante).
-        // Ceci est une API cassée, mais nécessaire pour la rétrocompatibilité.
-        return new ArrayList<>(filteredData);
-    }
-
     @Override
-    public void refreshView() {
-        // 1. Déterminer les headers visibles (non masqués par ColumnStateModel)
+    protected void refreshView() {
         Set<String> hiddenKeys = columnModel.getHiddenKeys();
 
-        // 2. Construire les colonnes visibles
         buildTableColumns(filteredData, hiddenKeys);
-
-        // 3. Remplir les données (seulement pour les colonnes visibles)
         populateTableData(filteredData);
 
-        // 4. Mettre à jour la pagination/compteur
-        if (serverPaginationEnabled) {
-            // La pagination serveur est gérée par loadServerPageData
-        } else if (paginationEnabled && pagination != null) {
+        if (!serverPaginationEnabled && pagination != null && paginationEnabled) {
             int rowsPerPage = stateModel.getRowsPerPage();
-            int pageCount = (int) Math.ceil((double) filteredData.size() / rowsPerPage);
-            pagination.setPageCount(Math.max(pageCount, 1));
-            pagination.setVisible(filteredData.size() > 0);
+            int pageCount = (rowsPerPage <= 0)
+                    ? 1
+                    : (int) Math.ceil(filteredData.size() / (double) rowsPerPage);
+            pagination.setPageCount(Math.max(1, pageCount));
+            pagination.setCurrentPageIndex(0);
+            pagination.setVisible(!filteredData.isEmpty());
             pagination.setPageFactory(this::createClientPage);
         }
 
@@ -377,15 +477,18 @@ public class EnhancedTableManager extends AbstractTableManager {
         int toIndex = Math.min(fromIndex + rowsPerPage, filteredData.size());
         List<RowData> pageData = filteredData.subList(fromIndex, toIndex);
 
-        // 1. Déterminer les headers visibles
-        Set<String> hiddenKeys = columnModel.getHiddenKeys();
+        ObservableList<ObservableList<String>> tableData = FXCollections.observableArrayList();
+        for (RowData row : pageData) {
+            ObservableList<String> rowValues = FXCollections.observableArrayList();
+            for (String header : currentHeaders) {
+                String formattedValue = ColumnValueFormatter.format(row, header);
+                rowValues.add(formattedValue);
+            }
+            tableData.add(rowValues);
+        }
 
-        // 2. Construire les colonnes visibles
-        buildTableColumns(pageData, hiddenKeys);
-        populateTableData(pageData);
-        recomputeGroupStripes();
-
-        return new Label();
+        tableView.setItems(tableData);
+        return tableView;
     }
 
     private void buildTableColumns(List<RowData> data, Set<String> hiddenKeys) {
@@ -395,11 +498,10 @@ public class EnhancedTableManager extends AbstractTableManager {
             return;
         }
 
-        // Obtient tous les headers, filtre les headers cachés
         List<String> allHeaders = new ArrayList<>(data.get(0).getValues().keySet());
         List<String> visibleHeaders = allHeaders.stream()
-                .filter(h -> !hiddenKeys.contains(h))
-                .toList();
+                .filter(h -> hiddenKeys == null || !hiddenKeys.contains(h))
+                .collect(Collectors.toList());
 
         if (visibleHeaders.equals(currentHeaders) && !tableView.getColumns().isEmpty()) {
             return;
@@ -411,10 +513,23 @@ public class EnhancedTableManager extends AbstractTableManager {
         for (int i = 0; i < visibleHeaders.size(); i++) {
             final int columnIndex = i;
             final String originalKey = visibleHeaders.get(i);
-            TableColumn<ObservableList<String>, String> column = new TableColumn<>(originalKey);
+
+            String headerText = originalKey;
+            if (sharedColumnDisplayNames != null) {
+                String mapped = sharedColumnDisplayNames.get(originalKey);
+                if (mapped != null && !mapped.isBlank()) {
+                    headerText = mapped;
+                }
+            }
+
+            TableColumn<ObservableList<String>, String> column = new TableColumn<>(headerText);
             column.setUserData(originalKey);
+
             column.setCellValueFactory(param -> {
                 ObservableList<String> row = param.getValue();
+
+                applySharedDisplayNames();
+
                 return new SimpleStringProperty(
                         (row != null && columnIndex < row.size()) ? row.get(columnIndex) : ""
                 );
@@ -435,7 +550,6 @@ public class EnhancedTableManager extends AbstractTableManager {
         for (RowData row : data) {
             ObservableList<String> rowValues = FXCollections.observableArrayList();
             for (String header : currentHeaders) {
-                // Correction: Utilise ColumnValueFormatter.format(row, header)
                 String formattedValue = ColumnValueFormatter.format(row, header);
                 rowValues.add(formattedValue);
             }
@@ -444,58 +558,24 @@ public class EnhancedTableManager extends AbstractTableManager {
         tableView.setItems(tableData);
     }
 
-    private void addContextMenuToColumn(TableColumn<ObservableList<String>, String> column) {
-        MenuItem renameItem = new MenuItem("Spalte umbenennen");
-        MenuItem deleteItem = new MenuItem("Spalte löschen");
-        renameItem.setOnAction(e -> renameColumn(column));
-        deleteItem.setOnAction(e -> deleteColumn(column));
-        ContextMenu contextMenu = new ContextMenu(renameItem, new SeparatorMenuItem(), deleteItem);
-        column.setContextMenu(contextMenu);
-    }
-
-    private void renameColumn(TableColumn<ObservableList<String>, String> column) {
-        TextInputDialog dialog = new TextInputDialog(column.getText());
-        dialog.setTitle("Spalte umbenennen");
-        dialog.setHeaderText("Neuer Name für '" + column.getText() + "':");
-        dialog.setContentText("Name:");
-        dialog.showAndWait().ifPresent(newName -> {
-            if (!newName.isBlank()) {
-                column.setText(newName);
-                tableView.refresh();
-                log.info("Spalte umbenannt: {} -> {}", column.getUserData(), newName);
-            }
-        });
-    }
-
     @Override
     protected void updateResultsCount() {
         if (resultsCountLabel == null) return;
 
-        int countToDisplay;
+        int countToDisplay = serverPaginationEnabled
+                ? resultModel.getTotalCount()
+                : filteredData.size();
 
-        if (serverPaginationEnabled) {
-            // ✅ Im Server-Modus immer das Ergebnis des ResultContextModels verwenden
-            countToDisplay = resultModel.getTotalCount();
-            // VORHER: if (stateModel.isSearchActive()) suffix = " – Suche aktiv";
-        } else {
-            // ✅ Im Client-Modus (nicht Server-Modus)
-            countToDisplay = getVisibleRowCount();
-            // VORHER: if (searchField != null && !searchField.getText().trim().isEmpty()) { // VORHER: suffix = " – Suche aktiv"; }
-        }
-
-        // Das KF-Label zeigt NUR die Gesamtanzahl an (ohne Suffix)
-        resultsCountLabel.setText("(" + countToDisplay + " Ergebnis" + (countToDisplay == 1 ? "" : "se") + ")");
-
-        log.debug("Update KF-Label: ServerModus={}, Gesamt={}", serverPaginationEnabled, countToDisplay);
+        resultsCountLabel.setText(countToDisplay + " Ergebnisse");
     }
-
-
-
 
     @Override
     protected void clearView() {
         tableView.getColumns().clear();
         tableView.setItems(FXCollections.observableArrayList());
+        currentHeaders = List.of();
+        filteredData = new ArrayList<>();
+        originalData = new ArrayList<>();
         if (pagination != null) pagination.setVisible(false);
     }
 
@@ -506,8 +586,22 @@ public class EnhancedTableManager extends AbstractTableManager {
 
     @Override
     protected void disableCleanButtonOnCleaned(javafx.collections.SetChangeListener.Change<? extends String> c) {
-        // La logique est gérée directement dans setCleanButton pour plus de contrôle
+        // De-/Aktivierung des Clean-Buttons erfolgt in setCleanButton()
     }
 
+    // -------------------------------------------------------------------------
+    // Export-Schnittstelle (für Controller)
+    // -------------------------------------------------------------------------
 
+    @Override
+    public List<String> getDisplayHeaders() {
+        return tableView.getColumns().stream().map(TableColumn::getText).collect(Collectors.toList());
+    }
+
+    @Override
+    public List<String> getOriginalKeys() {
+        return tableView.getColumns().stream()
+                .map(col -> String.valueOf(col.getUserData()))
+                .collect(Collectors.toList());
+    }
 }

@@ -404,17 +404,45 @@ public final class ServiceFactory {
         }
     }
 
+    /**
+     * Aufzählung der verfügbaren AI-Modi.
+     * 
+     * <p>Jeder Modus definiert, welche KI-Service-Implementierung verwendet wird:</p>
+     * <ul>
+     *   <li><b>LOCAL</b> - Nur lokale, offline verfügbare KI ohne externe Abhängigkeiten</li>
+     *   <li><b>HYBRID</b> - Kombiniert externe API (HuggingFace) mit lokalem Fallback</li>
+     *   <li><b>AUTO</b> - Wählt automatisch zwischen LOCAL und HYBRID basierend auf Netzwerkverfügbarkeit</li>
+     * </ul>
+     * 
+     * @see ServiceFactory#setAiMode(AiMode)
+     * @see ServiceFactory#getAiService()
+     */
     public enum AiMode {
+        /** Lokaler Pattern-basierter Service (offline verfügbar) */
         LOCAL("Lokaler Pattern-Service"),
+        
+        /** Hybrid-Service: HuggingFace + Lokaler Fallback */
         HYBRID("Hybrid HF+Lokal"),
+        
+        /** Automatische Erkennung basierend auf Netzwerkverfügbarkeit */
         AUTO("Automatische Erkennung");
 
         private final String description;
 
+        /**
+         * Konstruktor für AiMode.
+         * 
+         * @param description Beschreibung des Modus für UI-Anzeige
+         */
         AiMode(String description) {
             this.description = description;
         }
 
+        /**
+         * Liefert die Beschreibung des Modus.
+         * 
+         * @return die Beschreibung
+         */
         public String getDescription() {
             return description;
         }
@@ -428,7 +456,22 @@ public final class ServiceFactory {
 
 
 /**
- * Hybrid AI Service - Kombiniert HuggingFace und lokalen Service
+ * Hybrid AI Service - Kombiniert HuggingFace-API mit lokalem Fallback.
+ * 
+ * <p>Diese Implementierung delegiert alle Anfragen an den lokalen Service.
+ * In zukünftigen Versionen kann hier die Integration mit der HuggingFace-API 
+ * für erweiterte KI-Funktionen erfolgen.</p>
+ * 
+ * <p>Der Service wird nur verwendet, wenn:</p>
+ * <ul>
+ *   <li>Der AI-Modus auf {@link ServiceFactory.AiMode#HYBRID} gesetzt ist, oder</li>
+ *   <li>Der AI-Modus auf {@link ServiceFactory.AiMode#AUTO} gesetzt ist und 
+ *       HuggingFace über das Netzwerk erreichbar ist</li>
+ * </ul>
+ * 
+ * @see AiService
+ * @see LocalAiServiceImpl
+ * @see ServiceFactory.AiMode
  */
 class HybridAiService implements AiService {
     private static final Logger logger = LoggerFactory.getLogger(HybridAiService.class);

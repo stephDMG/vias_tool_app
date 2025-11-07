@@ -20,9 +20,6 @@ import model.RowData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javafx.scene.paint.Color;
-
-import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -98,22 +95,17 @@ public abstract class AbstractTableManager {
 
 
         if (searchField != null) {
-
             // 1. Synchronisation der UI-Eingabe zum Modell (Saisie Utilisateur)
             searchField.textProperty().addListener((obs, ov, nv) -> {
-                // 1. Ignorer les mises à jour venant du modèle
-                if (isUpdatingSearchField.get()) return;
-
-                // 2. Démarrer/Réinitialiser le Debounce pour la requête serveur
+                stateModel.setSearchText(nv);
+                final String q = (nv == null) ? "" : nv.trim();
                 searchDebounce.stop();
                 searchDebounce.setOnFinished(evt -> {
-
-                    stateModel.setSearchText(nv);
-
-                    final String qTrimmé = (nv == null) ? "" : nv.trim();
-                    startSearchOrReturnToKF(qTrimmé);
+                    startSearchOrReturnToKF(q);
                 });
-                searchDebounce.playFromStart();
+                if (q.length() >= 1 || q.isEmpty()) {
+                    searchDebounce.playFromStart();
+                }
             });
         }
     }
@@ -502,6 +494,10 @@ public abstract class AbstractTableManager {
     protected void refreshCommonState() {
         hasData.set(!filteredData.isEmpty());
         updateResultsCount();
+    }
+
+    public TextField getSearchField() {
+        return searchField;
     }
 
 
