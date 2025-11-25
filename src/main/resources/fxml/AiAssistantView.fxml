@@ -65,8 +65,8 @@
                     </HBox>
 
                     <!-- In AiAssistantView.fxml ersetzen Sie den Tabellenbereich durch: -->
-                <VBox fx:id="resultsContainer" spacing="10" VBox.vgrow="ALWAYS" >
-                </VBox>
+                    <VBox fx:id="resultsContainer" spacing="10" VBox.vgrow="ALWAYS">
+                    </VBox>
 
                 </VBox>
 

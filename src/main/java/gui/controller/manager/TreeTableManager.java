@@ -2,7 +2,6 @@ package gui.controller.manager;
 
 import formatter.ColumnValueFormatter;
 import gui.controller.dialog.Dialog;
-import gui.controller.manager.DataLoader;
 import gui.controller.manager.base.AbstractTableManager;
 import gui.controller.model.ColumnStateModel;
 import gui.controller.model.ResultContextModel;
@@ -13,9 +12,7 @@ import javafx.beans.property.ReadOnlyBooleanProperty;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
-import javafx.scene.Node;
 import javafx.scene.control.*;
-import javafx.scene.control.cell.TextFieldTreeTableCell;
 import javafx.scene.layout.Region;
 import javafx.scene.paint.Color;
 import model.RowData;
@@ -46,20 +43,17 @@ public class TreeTableManager extends AbstractTableManager {
     // UI
     private final TreeTableView<ObservableList<String>> treeTableView;
     private final Button deleteColumnsButton;
+    // Steuerung von expandAll/collapseAll
+    private final AtomicLong expandOpSeq = new AtomicLong(0);
     private Button cleanColumnsButton;
     private Button expandAllButton;
     private Button collapseAllButton;
     private String groupingHeaderKey;
-
     // Export-Hooks (werden vom Controller gesetzt)
     private Runnable onExportCsv;
     private Runnable onExportXlsx;
-
     // Gruppierungspfad: RowData -> Liste von Segmenten (Makler, Gesellschaft, ...)
     private Function<RowData, List<String>> groupingPathProvider = r -> List.of("Alle");
-
-    // Steuerung von expandAll/collapseAll
-    private final AtomicLong expandOpSeq = new AtomicLong(0);
     private volatile Boolean globalExpand = null;
 
     // Auswahl
@@ -67,30 +61,11 @@ public class TreeTableManager extends AbstractTableManager {
 
     // Welche Spalten dienen als Gruppierungs-Schlüssel je Ebene? (null = keine Substitution)
     private List<String> groupingHeaderKeys = List.of();
-
-    /** Vom Controller setzen: pro Ebene der Gruppierung den Header-Alias (z.B. ["SB_Vertr","SB_Schad", null, ...]). */
-    public void setGroupingHeaderKeys(List<String> keysPerLevel) {
-        this.groupingHeaderKeys = (keysPerLevel == null) ? List.of() : new ArrayList<>(keysPerLevel);
-    }
-
-    /** (Optionnel) Für Rückwärts-Kompatibilität – 1 Ebene */
-    @Deprecated
-    public void setGroupingHeaderKey(String key) {
-        setGroupingHeaderKeys(key == null ? List.of() : List.of(key));
-    }
-
-
     // Root-Item
     private TreeItem<ObservableList<String>> rootItem = new TreeItem<>(emptyRow());
-
     // Gemeinsame Map für Spaltennamen, wird mit EnhancedTableManager geteilt
     private javafx.collections.ObservableMap<String, String> sharedColumnDisplayNames;
-
-
-
-    // -------------------------------------------------------------------------
-    // Konstruktoren
-    // -------------------------------------------------------------------------
+    private volatile boolean expandTaskRunning = false;
 
     public TreeTableManager(TreeTableView<ObservableList<String>> treeTableView,
                             TextField searchField,
@@ -102,6 +77,11 @@ public class TreeTableManager extends AbstractTableManager {
         log.warn("TreeTableManager ohne explizite Models instanziiert – lokale Modelle erzeugt. " +
                 "Nur für Tests/Legacy-Kontext empfohlen.");
     }
+
+
+    // -------------------------------------------------------------------------
+    // Konstruktoren
+    // -------------------------------------------------------------------------
 
     public TreeTableManager(TreeTableView<ObservableList<String>> treeTableView,
                             TextField searchField,
@@ -116,11 +96,26 @@ public class TreeTableManager extends AbstractTableManager {
         this.deleteColumnsButton = deleteColumnsButton;
 
         initTree();
-
+        //treeTableView.getStylesheets().add(Objects.requireNonNull(getClass().getResource("/css/fixed-header.css")).toExternalForm());
 
         installSelectionSupport();
         installRowStyling();
         installGroupRowFactory();
+    }
+
+    /**
+     * Vom Controller setzen: pro Ebene der Gruppierung den Header-Alias (z.B. ["SB_Vertr","SB_Schad", null, ...]).
+     */
+    public void setGroupingHeaderKeys(List<String> keysPerLevel) {
+        this.groupingHeaderKeys = (keysPerLevel == null) ? List.of() : new ArrayList<>(keysPerLevel);
+    }
+
+    /**
+     * (Optionnel) Für Rückwärts-Kompatibilität – 1 Ebene
+     */
+    @Deprecated
+    public void setGroupingHeaderKey(String key) {
+        setGroupingHeaderKeys(key == null ? List.of() : List.of(key));
     }
 
     public TreeTableView<ObservableList<String>> getTreeTableView() {
@@ -142,9 +137,15 @@ public class TreeTableManager extends AbstractTableManager {
             });
         }
     }
+
     public void rebuildView() {
         refreshView(); // méthode protégée existante
     }
+
+
+    // -------------------------------------------------------------------------
+    // Öffentliche API (kompatibel)
+    // -------------------------------------------------------------------------
 
     /**
      * Wendet die in {@link #sharedColumnDisplayNames} hinterlegten Anzeigenamen
@@ -171,19 +172,18 @@ public class TreeTableManager extends AbstractTableManager {
         });
     }
 
-
-
-    // -------------------------------------------------------------------------
-    // Öffentliche API (kompatibel)
-    // -------------------------------------------------------------------------
-
     public void loadDataFromServer(int totalCount, DataLoader dataLoader, Function<RowData, List<String>> provider) {
         this.groupingPathProvider = (provider != null) ? provider : (r -> List.of("Alle"));
         super.loadDataFromServer(totalCount, dataLoader);
     }
 
-    public ReadOnlyBooleanProperty hasDataProperty() { return super.hasDataProperty(); }
-    public boolean hasData() { return super.hasData(); }
+    public ReadOnlyBooleanProperty hasDataProperty() {
+        return super.hasDataProperty();
+    }
+
+    public boolean hasData() {
+        return super.hasData();
+    }
 
     public TreeTableManager enableSearch() {
         super.enableSearch();
@@ -212,10 +212,11 @@ public class TreeTableManager extends AbstractTableManager {
 
         // ➜ Activer/désactiver selon la sélection de CELLULES (pas selectedItem)
         treeTableView.getSelectionModel().getSelectedCells().addListener(
-                (javafx.collections.ListChangeListener<TreeTablePosition<ObservableList<String>, ?>>) c -> {
-                    boolean empty = treeTableView.getSelectionModel().getSelectedCells().isEmpty();
-                    deleteColumnsButton.setDisable(empty);
-                }
+                (javafx.collections.ListChangeListener<TreeTablePosition<ObservableList<String>, ?>>)
+                        c -> {
+                            boolean empty = treeTableView.getSelectionModel().getSelectedCells().isEmpty();
+                            deleteColumnsButton.setDisable(empty);
+                        }
         );
 
         // ➜ (optionnel) si plus de données → désactiver
@@ -223,7 +224,6 @@ public class TreeTableManager extends AbstractTableManager {
             boolean emptySel = treeTableView.getSelectionModel().getSelectedCells().isEmpty();
             deleteColumnsButton.setDisable(!hasData || emptySel);
         });
-
         deleteColumnsButton.setOnAction(e -> handleDeleteSelectedColumns());
         return this;
     }
@@ -242,21 +242,29 @@ public class TreeTableManager extends AbstractTableManager {
         }
     }
 
+    public void setOnExportCsv(Runnable r) {
+        this.onExportCsv = r;
+    }
 
-    public void setOnExportCsv(Runnable r) { this.onExportCsv = r; }
-    public void setOnExportXlsx(Runnable r) { this.onExportXlsx = r; }
+    public void setOnExportXlsx(Runnable r) {
+        this.onExportXlsx = r;
+    }
 
     public void setExportCsvButton(Button b) {
         if (b != null) {
             b.disableProperty().bind(hasDataProperty().not());
-            b.setOnAction(e -> { if (onExportCsv != null) onExportCsv.run(); });
+            b.setOnAction(e -> {
+                if (onExportCsv != null) onExportCsv.run();
+            });
         }
     }
 
     public void setExportXlsxButton(Button b) {
         if (b != null) {
             b.disableProperty().bind(hasDataProperty().not());
-            b.setOnAction(e -> { if (onExportXlsx != null) onExportXlsx.run(); });
+            b.setOnAction(e -> {
+                if (onExportXlsx != null) onExportXlsx.run();
+            });
         }
     }
 
@@ -267,16 +275,16 @@ public class TreeTableManager extends AbstractTableManager {
         }
     }
 
+    // -------------------------------------------------------------------------
+    // Initialisierung Tree
+    // -------------------------------------------------------------------------
+
     public void setCollapseAllButton(Button b) {
         this.collapseAllButton = b;
         if (b != null) {
             b.setOnAction(e -> collapseAll());
         }
     }
-
-    // -------------------------------------------------------------------------
-    // Initialisierung Tree
-    // -------------------------------------------------------------------------
 
     private void initTree() {
         treeTableView.getStylesheets().add(Objects.requireNonNull(getClass().getResource("/css/fixed-header.css")).toExternalForm());
@@ -294,7 +302,6 @@ public class TreeTableManager extends AbstractTableManager {
         super.bindAutoRowsPerPage(observedRegion);
         return this;
     }
-
 
     private void installSelectionSupport() {
         // Zusätzliche Selektion-Logik könnte hier ergänzt werden
@@ -326,9 +333,9 @@ public class TreeTableManager extends AbstractTableManager {
                             boolean isA = stripeIsA.get(rowIndex);
                             Color c = isA ? groupColorA : groupColorB;
                             if (c != null) {
-                                int r = (int)Math.round(c.getRed()*255);
-                                int g = (int)Math.round(c.getGreen()*255);
-                                int b = (int)Math.round(c.getBlue()*255);
+                                int r = (int) Math.round(c.getRed() * 255);
+                                int g = (int) Math.round(c.getGreen() * 255);
+                                int b = (int) Math.round(c.getBlue() * 255);
                                 String a = String.format(java.util.Locale.US, "%.3f", c.getOpacity());
                                 setStyle("-fx-background-color: rgba(" + r + "," + g + "," + b + "," + a + ");");
                             }
@@ -345,7 +352,7 @@ public class TreeTableManager extends AbstractTableManager {
                         && ev.getButton() == javafx.scene.input.MouseButton.PRIMARY
                         && ev.getClickCount() == 1) {
                     TreeItem<ObservableList<String>> ti = row.getTreeItem();
-                    if (ti != null && isGroupItem(ti)) {
+                    if (isGroupItem(ti)) {
                         ti.setExpanded(!ti.isExpanded());
                         // nach manueller Aktion keinen globalen Expand mehr erzwingen
                         globalExpand = null;
@@ -369,19 +376,22 @@ public class TreeTableManager extends AbstractTableManager {
         return Boolean.TRUE.equals(ud);
     }
 
-    private ObservableList<String> emptyRow() {
-        return FXCollections.observableArrayList();
-    }
-
     // -------------------------------------------------------------------------
     // Datenaufbau / Gruppierung
     // -------------------------------------------------------------------------
+
+    private ObservableList<String> emptyRow() {
+        return FXCollections.observableArrayList();
+    }
 
     @Override
     protected void refreshView() {
         Set<String> hiddenKeys = columnModel.getHiddenKeys();
         TreeItem<ObservableList<String>> newRoot = buildTreeAndColumns(filteredData, hiddenKeys);
-        try { treeTableView.getSelectionModel().clearSelection(); } catch (Exception ignore) {}
+        try {
+            treeTableView.getSelectionModel().clearSelection();
+        } catch (Exception ignore) {
+        }
 
         applyRoot(newRoot);
         restoreExpansion(newRoot);
@@ -440,7 +450,6 @@ public class TreeTableManager extends AbstractTableManager {
 
         return root;
     }
-
 
     private void rebuildColumns(List<String> visibleHeaders) {
         treeTableView.getColumns().clear();
@@ -561,20 +570,31 @@ public class TreeTableManager extends AbstractTableManager {
         }
     }
 
-    /** Nach Gruppierungswechsel aufrufen, um Interaktionen wieder zuzulassen. */
-    public void onGroupingChanged() {
-        try { treeTableView.setMouseTransparent(false); } catch (Exception ignore) {}
-        globalExpand = null;
-        expandTaskRunning = false;
-        setExpandButtonsDisabled(false);
-        try { resultModel.setLoading(false); } catch (Exception ignore) {}
-        try { treeTableView.getSelectionModel().clearSelection(); } catch (Exception ignore) {}
-    }
-
 
     // -------------------------------------------------------------------------
     // Expand / Collapse
     // -------------------------------------------------------------------------
+
+    /**
+     * Nach Gruppierungswechsel aufrufen, um Interaktionen wieder zuzulassen.
+     */
+    public void onGroupingChanged() {
+        try {
+            treeTableView.setMouseTransparent(false);
+        } catch (Exception ignore) {
+        }
+        globalExpand = null;
+        expandTaskRunning = false;
+        setExpandButtonsDisabled(false);
+        try {
+            resultModel.setLoading(false);
+        } catch (Exception ignore) {
+        }
+        try {
+            treeTableView.getSelectionModel().clearSelection();
+        } catch (Exception ignore) {
+        }
+    }
 
     private void setExpandButtonsDisabled(boolean disabled) {
         if (expandAllButton != null) expandAllButton.setDisable(disabled);
@@ -657,9 +677,6 @@ public class TreeTableManager extends AbstractTableManager {
         });
     }
 
-
-    private volatile boolean expandTaskRunning = false;
-
     private void setExpandedRecursively(TreeItem<ObservableList<String>> item, boolean expanded) {
         if (item == null) return;
         item.setExpanded(expanded);
@@ -679,14 +696,14 @@ public class TreeTableManager extends AbstractTableManager {
         // ➜ NEU: Format-Untermenü
         Menu formatMenu = new Menu("Spalte formatieren");
         MenuItem moneyItem = new MenuItem("Währung (€)");
-        MenuItem dateItem  = new MenuItem("Datum");
-        MenuItem sbItem    = new MenuItem("SB (Voll. Name)");
-        MenuItem noneItem  = new MenuItem("Kein Format");
+        MenuItem dateItem = new MenuItem("Datum");
+        MenuItem sbItem = new MenuItem("SB (Voll. Name)");
+        MenuItem noneItem = new MenuItem("Kein Format");
 
         moneyItem.setOnAction(e -> applyFormatAndPersist(column, "MONEY"));
-        dateItem.setOnAction(e  -> applyFormatAndPersist(column, "DATE"));
-        sbItem.setOnAction(e    -> applyFormatAndPersist(column, "SB"));
-        noneItem.setOnAction(e  -> applyFormatAndPersist(column, "NONE"));
+        dateItem.setOnAction(e -> applyFormatAndPersist(column, "DATE"));
+        sbItem.setOnAction(e -> applyFormatAndPersist(column, "SB"));
+        noneItem.setOnAction(e -> applyFormatAndPersist(column, "NONE"));
 
         renameItem.setOnAction(e -> renameColumn(column));
         deleteItem.setOnAction(e -> deleteColumn(column));
@@ -704,7 +721,7 @@ public class TreeTableManager extends AbstractTableManager {
 
     private void applyFormatAndPersist(TreeTableColumn<ObservableList<String>, String> column, String type) {
         String originalKey = String.valueOf(column.getUserData());   // → clé stable côté backend
-        String headerText  = column.getText();                        // → label visible (peut changer)
+        String headerText = column.getText();                        // → label visible (peut changer)
         try {
             FormatterService.setColumnFormat(originalKey, headerText, type);
             // Recharger la config dans les singletons et rafraîchir l’UI
@@ -774,7 +791,6 @@ public class TreeTableManager extends AbstractTableManager {
 
         deleteColumns(new ArrayList<>(cols));
     }
-
 
 
     private void deleteColumns(List<TreeTableColumn<ObservableList<String>, ?>> columns) {
@@ -870,5 +886,13 @@ public class TreeTableManager extends AbstractTableManager {
     @Override
     protected void disableCleanButtonOnCleaned(javafx.collections.SetChangeListener.Change<? extends String> c) {
         // Gesteuert über setCleanButton()
+    }
+
+    public Button getCleanColumnsButton() {
+        return cleanColumnsButton;
+    }
+
+    public void setCleanColumnsButton(Button cleanColumnsButton) {
+        this.cleanColumnsButton = cleanColumnsButton;
     }
 }

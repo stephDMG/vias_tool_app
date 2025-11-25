@@ -31,7 +31,7 @@ public class DatabaseServiceImpl implements DatabaseService {
     @Override
     public void executeQuery(String sql, Consumer<RowData> processor) {
         try (Connection conn = DatabaseConfig.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql);
+             PreparedStatement stmt = tunedReadOnlyStatement(conn, sql);
              ResultSet rs = stmt.executeQuery()) {
             ResultSetMetaData meta = rs.getMetaData();
             int columnCount = meta.getColumnCount();
@@ -46,6 +46,7 @@ public class DatabaseServiceImpl implements DatabaseService {
             throw new RuntimeException("Fehler bei SQL-Abfrage: " + sql, e);
         }
     }
+
 
     @Override
     public void exportToFile(String sql, String outputPath, ExportFormat format) {

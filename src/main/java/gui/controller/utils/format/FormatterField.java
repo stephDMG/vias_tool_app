@@ -11,6 +11,7 @@ public class FormatterField {
         this.name = name;
         this.type = type;
     }
+
     // Konstruktor, Getter und Setter
     public String getName() {
         return name;

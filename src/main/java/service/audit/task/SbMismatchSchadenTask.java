@@ -31,6 +31,13 @@ public class SbMismatchSchadenTask extends Task<ExecutionResult> implements Prog
         }
     }
 
-    @Override public void updateMessage(String message) { super.updateMessage(message); }
-    @Override public void updateProgress(long workDone, long max) { super.updateProgress(workDone, max); }
+    @Override
+    public void updateMessage(String message) {
+        super.updateMessage(message);
+    }
+
+    @Override
+    public void updateProgress(long workDone, long max) {
+        super.updateProgress(workDone, max);
+    }
 }

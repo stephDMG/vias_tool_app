@@ -56,15 +56,10 @@ public class TreeTableViewBuilder {
         this.collapseAllButton = (Button) treeContainer.lookup("#collapseAllButton");
 
         alignHBox("actionsSection", Pos.CENTER_RIGHT);
-        alignHBox("exportSection",  Pos.CENTER_RIGHT);
-        alignHBox("searchSection",  Pos.CENTER_LEFT);
+        alignHBox("exportSection", Pos.CENTER_RIGHT);
+        alignHBox("searchSection", Pos.CENTER_LEFT);
 
         if (this.treeTableView != null) this.treeTableView.setFixedCellSize(24);
-    }
-
-    private void alignHBox(String id, Pos pos) {
-        Node n = treeContainer.lookup("#" + id);
-        if (n instanceof HBox box) box.setAlignment(pos);
     }
 
     public static TreeTableViewBuilder create() {
@@ -73,6 +68,11 @@ public class TreeTableViewBuilder {
         } catch (IOException e) {
             throw new RuntimeException("Could not load UniversalTreeTableView.fxml", e);
         }
+    }
+
+    private void alignHBox(String id, Pos pos) {
+        Node n = treeContainer.lookup("#" + id);
+        if (n instanceof HBox box) box.setAlignment(pos);
     }
 
     // NOUVEAU: Signature correcte avec les 3 modèles (résout l'erreur de withModels)
@@ -134,26 +134,61 @@ public class TreeTableViewBuilder {
         }
 
         if (cleanColumnsButton != null) manager.setCleanButton(cleanColumnsButton);
-        if (exportCsvButton  != null) manager.setExportCsvButton(exportCsvButton);
+        if (exportCsvButton != null) manager.setExportCsvButton(exportCsvButton);
         if (exportXlsxButton != null) manager.setExportXlsxButton(exportXlsxButton);
-        if (expandAllButton  != null) manager.setExpandAllButton(expandAllButton);
-        if (collapseAllButton!= null) manager.setCollapseAllButton(collapseAllButton);
+        if (expandAllButton != null) manager.setExpandAllButton(expandAllButton);
+        if (collapseAllButton != null) manager.setCollapseAllButton(collapseAllButton);
 
         return manager;
     }
 
-    public VBox getTreeContainer() { return treeContainer; }
-    public TreeTableView<ObservableList<String>> getTreeTableView() { return treeTableView; }
-    public TextField getSearchField() { return searchField; }
-    public Button getDeleteColumnsButton() { return deleteColumnsButton; }
-    public Pagination getPagination() { return pagination; }
-    public Label getResultsCountLabel() { return resultsCountLabel; }
-    public Button getExportCsvButton() { return exportCsvButton; }
-    public Button getExportXlsxButton() { return exportXlsxButton; }
-    public Button getCleanColumnsButton() { return cleanColumnsButton; } // AJOUTÉ (Résout l'erreur 413)
-    public Button getExpandAllButton() { return expandAllButton; }
-    public Button getCollapseAllButton() { return collapseAllButton; }
-    public Button getCleanButton() { return cleanColumnsButton; }
+    public VBox getTreeContainer() {
+        return treeContainer;
+    }
 
-    public enum Feature { SEARCH, SELECTION, PAGINATION, EXPORT }
+    public TreeTableView<ObservableList<String>> getTreeTableView() {
+        return treeTableView;
+    }
+
+    public TextField getSearchField() {
+        return searchField;
+    }
+
+    public Button getDeleteColumnsButton() {
+        return deleteColumnsButton;
+    }
+
+    public Pagination getPagination() {
+        return pagination;
+    }
+
+    public Label getResultsCountLabel() {
+        return resultsCountLabel;
+    }
+
+    public Button getExportCsvButton() {
+        return exportCsvButton;
+    }
+
+    public Button getExportXlsxButton() {
+        return exportXlsxButton;
+    }
+
+    public Button getCleanColumnsButton() {
+        return cleanColumnsButton;
+    } // AJOUTÉ (Résout l'erreur 413)
+
+    public Button getExpandAllButton() {
+        return expandAllButton;
+    }
+
+    public Button getCollapseAllButton() {
+        return collapseAllButton;
+    }
+
+    public Button getCleanButton() {
+        return cleanColumnsButton;
+    }
+
+    public enum Feature {SEARCH, SELECTION, PAGINATION, EXPORT}
 }

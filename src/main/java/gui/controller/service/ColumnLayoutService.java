@@ -1,9 +1,15 @@
-package gui.controller.model;
+package gui.controller.service;
 
+import gui.controller.model.ColumnLayoutModel;
+import gui.controller.model.ColumnLayoutPersistence;
+import gui.controller.model.ColumnStateModel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 
 /**
  * ColumnLayoutService
@@ -149,8 +155,8 @@ public class ColumnLayoutService {
      * Spalten, die im Modell vorhanden, aber nicht in der Liste enthalten sind, behalten
      * ihren bisherigen Index hinter den explizit genannten Spalten.
      *
-     * @param model          Layout-Modell
-     * @param orderedKeys    Liste der Original-Keys in gewünschter Reihenfolge
+     * @param model       Layout-Modell
+     * @param orderedKeys Liste der Original-Keys in gewünschter Reihenfolge
      */
     public void reorderColumns(ColumnLayoutModel model, List<String> orderedKeys) {
         Objects.requireNonNull(model, "model");
@@ -231,10 +237,10 @@ public class ColumnLayoutService {
      * wird ein neues {@link ColumnLayoutModel} mit den gegebenen Default-Headern
      * erzeugt.
      *
-     * @param username          Benutzerkennung
-     * @param layoutId          logische Layout-Id (z.B. "COVER_MAIN")
-     * @param columnStateModel  optionaler Legacy-{@link ColumnStateModel}
-     * @param defaultHeaders    Default-Header für den Fall, dass kein gespeichertes Layout existiert
+     * @param username         Benutzerkennung
+     * @param layoutId         logische Layout-Id (z.B. "COVER_MAIN")
+     * @param columnStateModel optionaler Legacy-{@link ColumnStateModel}
+     * @param defaultHeaders   Default-Header für den Fall, dass kein gespeichertes Layout existiert
      * @return geladene oder neu erzeugte Layout-Instanz (niemals {@code null})
      */
     public ColumnLayoutModel loadOrCreateLayoutForUser(String username,

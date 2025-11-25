@@ -41,10 +41,14 @@ public class ColumnLayoutModel {
 
     private static final Logger log = LoggerFactory.getLogger(ColumnLayoutModel.class);
 
-    /** Logische ID des Layouts (z.B. "COVER_MAIN"). */
+    /**
+     * Logische ID des Layouts (z.B. "COVER_MAIN").
+     */
     private final StringProperty layoutId = new SimpleStringProperty("");
 
-    /** Geordnete Einträge, die jede Spalte beschreiben. */
+    /**
+     * Geordnete Einträge, die jede Spalte beschreiben.
+     */
     private final ObservableList<ColumnLayoutEntry> columns =
             FXCollections.observableArrayList();
 
@@ -59,7 +63,9 @@ public class ColumnLayoutModel {
      */
     private final ReadOnlyBooleanWrapper cleaned = new ReadOnlyBooleanWrapper(false);
 
-    /** Optional: Kompatibilitätslink zum historischen Modell. */
+    /**
+     * Optional: Kompatibilitätslink zum historischen Modell.
+     */
     private final ColumnStateModel columnStateModel;
 
     /**
@@ -140,7 +146,9 @@ public class ColumnLayoutModel {
         return columns;
     }
 
-    /** Read-only Eigenschaft, die anzeigt, ob Spalten ausgeblendet wurden (Bereinigung). */
+    /**
+     * Read-only Eigenschaft, die anzeigt, ob Spalten ausgeblendet wurden (Bereinigung).
+     */
     public ReadOnlyBooleanProperty cleanedProperty() {
         return cleaned.getReadOnlyProperty();
     }
@@ -163,7 +171,7 @@ public class ColumnLayoutModel {
      *   <li>visible = true</li>
      *   <li>orderIndex = Index in der Liste</li>
      * </ul>
-     *
+     * <p>
      * Jede vorherige Konfiguration wird gelöscht.
      */
     public void applyDefaultFromHeaders(List<String> headers) {
@@ -190,8 +198,8 @@ public class ColumnLayoutModel {
     /**
      * Benennt die Spalte, die {@code originalKey} entspricht, um.
      *
-     * @param originalKey     technischer Schlüssel (RowData)
-     * @param newDisplayName  neue angezeigte Beschriftung (nicht null)
+     * @param originalKey    technischer Schlüssel (RowData)
+     * @param newDisplayName neue angezeigte Beschriftung (nicht null)
      * @return true, wenn eine Spalte gefunden und geändert wurde
      */
     public boolean renameColumn(String originalKey, String newDisplayName) {
@@ -327,7 +335,9 @@ public class ColumnLayoutModel {
     // Hilfsmethoden zum Lesen
     // -------------------------------------------------------------------------
 
-    /** Gibt die sichtbaren Einträge zurück, sortiert nach orderIndex. */
+    /**
+     * Gibt die sichtbaren Einträge zurück, sortiert nach orderIndex.
+     */
     public List<ColumnLayoutEntry> getVisibleEntries() {
         return columns.stream()
                 .filter(ColumnLayoutEntry::isVisible)
@@ -335,21 +345,27 @@ public class ColumnLayoutModel {
                 .collect(Collectors.toList());
     }
 
-    /** Gibt die sichtbaren originalKeys in der Anzeigereihenfolge zurück. */
+    /**
+     * Gibt die sichtbaren originalKeys in der Anzeigereihenfolge zurück.
+     */
     public List<String> getVisibleOriginalKeys() {
         return getVisibleEntries().stream()
                 .map(ColumnLayoutEntry::getOriginalKey)
                 .collect(Collectors.toList());
     }
 
-    /** Gibt die sichtbaren displayNames in der Anzeigereihenfolge zurück. */
+    /**
+     * Gibt die sichtbaren displayNames in der Anzeigereihenfolge zurück.
+     */
     public List<String> getVisibleDisplayNames() {
         return getVisibleEntries().stream()
                 .map(ColumnLayoutEntry::getDisplayName)
                 .collect(Collectors.toList());
     }
 
-    /** Gibt den Eintrag zurück, der einem technischen Schlüssel entspricht, oder null, falls nicht vorhanden. */
+    /**
+     * Gibt den Eintrag zurück, der einem technischen Schlüssel entspricht, oder null, falls nicht vorhanden.
+     */
     public ColumnLayoutEntry findByOriginalKey(String originalKey) {
         if (originalKey == null) {
             return null;
@@ -389,13 +405,21 @@ public class ColumnLayoutModel {
      */
     public static class ColumnLayoutEntry {
 
-        /** Der ursprüngliche, technische Schlüssel der Spalte (z.B. der Feldname in der Datenbank). */
+        /**
+         * Der ursprüngliche, technische Schlüssel der Spalte (z.B. der Feldname in der Datenbank).
+         */
         private final StringProperty originalKey = new SimpleStringProperty();
-        /** Der für die Anzeige verwendete Name der Spalte, der umbenannt werden kann. */
+        /**
+         * Der für die Anzeige verwendete Name der Spalte, der umbenannt werden kann.
+         */
         private final StringProperty displayName = new SimpleStringProperty();
-        /** Gibt an, ob die Spalte sichtbar ist (true) oder ausgeblendet (false). */
+        /**
+         * Gibt an, ob die Spalte sichtbar ist (true) oder ausgeblendet (false).
+         */
         private final BooleanProperty visible = new SimpleBooleanProperty(true);
-        /** Der Index, der die Position der Spalte in der Anzeigereihenfolge bestimmt. */
+        /**
+         * Der Index, der die Position der Spalte in der Anzeigereihenfolge bestimmt.
+         */
         private final IntegerProperty orderIndex = new SimpleIntegerProperty(0);
 
         public ColumnLayoutEntry(String originalKey,

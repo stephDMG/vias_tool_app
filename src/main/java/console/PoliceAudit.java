@@ -37,6 +37,7 @@ public class PoliceAudit {
 
     /**
      * Führt OCR auf allen Seiten des PDFs durch.
+     *
      * @param pdfPath Der Pfad zur PDF-Datei.
      * @return Der gesamte extrahierte Text.
      */
@@ -61,6 +62,7 @@ public class PoliceAudit {
 
     /**
      * Erstellt eine Liste von Datensätzen (Zeilen) aus dem OCR-Text.
+     *
      * @param text Der gesamte Text aus dem PDF.
      * @return Eine Liste von Maps, die je eine Zeile darstellen.
      */
@@ -161,6 +163,7 @@ public class PoliceAudit {
     /**
      * Konvertiert einen String (deutsches Zahlenformat) in einen numerischen Wert.
      * Entfernt Tausendertrennzeichen (Punkte) und ersetzt Dezimalkomma durch Punkt.
+     *
      * @param s Der zu konvertierende String (z.B. "1.945,00" oder "1945007").
      * @return Der numerische Wert als Double.
      */
@@ -195,9 +198,10 @@ public class PoliceAudit {
     /**
      * Zentrales Verfahren: Bestimmt, ob ein 'V' (Haken) vorhanden ist,
      * basierend auf explizitem Text oder einem angehängten "7" / "," im OCR-Resultat.
-     * @param antRegul Der extrahierte ANT.REGUL-Betrag.
+     *
+     * @param antRegul   Der extrahierte ANT.REGUL-Betrag.
      * @param hundertRaw Der Roh-Betrag der 100%-Spalte (könnte "7" oder "V" enthalten).
-     * @param line Die gesamte Textzeile.
+     * @param line       Die gesamte Textzeile.
      * @return "V" wenn der Haken erkannt wird, sonst "".
      */
     private static String detectResidualSymbol(String antRegul, String hundertRaw, String line) {

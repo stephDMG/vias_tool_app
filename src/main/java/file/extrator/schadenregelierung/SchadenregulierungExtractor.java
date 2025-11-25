@@ -33,11 +33,10 @@ public class SchadenregulierungExtractor implements DataExtractor<Schadenregulie
             Pattern.compile("(-?\\d{1,3}(?:\\.\\d{3})*,\\d{2}[^\\s]*)(\\s+)?(-?\\d{1,3}(?:\\.\\d{3})*,\\d{2}[^\\s]*)$");
 
 
-
     // --- ZUSATZ: Laufende Statistik für Korrekturen / fehlende Felder ---
     private int statCorrectedSchaNr = 0;
-    private int statMissingFields   = 0;
-    private int statVSymbol         = 0;
+    private int statMissingFields = 0;
+    private int statVSymbol = 0;
 
     private ProtocolReport protocol;
 
@@ -130,7 +129,7 @@ public class SchadenregulierungExtractor implements DataExtractor<Schadenregulie
                                 parts[i], parts[i + 1], combined);
                         protocol.correction("SCHA_JOIN",
                                 "SCHA-NR mit Leerzeichen erkannt und korrigiert.",
-                                rowNo, Map.of("before", parts[i] + " " + parts[i+1], "after", combined, "vn", String.valueOf(vnRaw)));
+                                rowNo, Map.of("before", parts[i] + " " + parts[i + 1], "after", combined, "vn", String.valueOf(vnRaw)));
 
                         schaIdx = i + 1;
                         schaAlreadySet = true;
@@ -150,7 +149,10 @@ public class SchadenregulierungExtractor implements DataExtractor<Schadenregulie
                         int guess = -1;
                         for (int i = 1; i < toks.length; i++) {
                             if ((toks[i] + (i + 1 < toks.length ? toks[i + 1] : ""))
-                                    .contains(m.group(1))) { guess = i - 1; break; }
+                                    .contains(m.group(1))) {
+                                guess = i - 1;
+                                break;
+                            }
                         }
                         String vn = (guess >= 0 ? normalizeVn(toks[guess]) : null);
 
@@ -243,17 +245,17 @@ public class SchadenregulierungExtractor implements DataExtractor<Schadenregulie
 
                 if (montants.isEmpty() && amountMatcher.find()) {
                     antRegulRaw = amountMatcher.group(1);
-                    hundertRaw  = amountMatcher.group(4) + amountMatcher.group(5);
+                    hundertRaw = amountMatcher.group(4) + amountMatcher.group(5);
                 } else if (montants.isEmpty() && amountMatcherFallback.find()) {
                     antRegulRaw = amountMatcherFallback.group(1);
-                    hundertRaw  = amountMatcherFallback.group(3);
+                    hundertRaw = amountMatcherFallback.group(3);
                 } else {
                     logger.warn("❌ Beträge (ANT.REGUL & 100%) nicht gefunden (leer gesetzt): {}", line);
                     protocol.missing("AMOUNT_MISSING", "Beträge (ANT.REGUL/100%) nicht gefunden.", rowNo, Map.of("line", line));
                     anyMissing = true;
                 }
             } else {
-                hundertRaw  = montants.get(montants.size() - 1);
+                hundertRaw = montants.get(montants.size() - 1);
                 antRegulRaw = montants.get(montants.size() - 2);
             }
 
@@ -264,14 +266,18 @@ public class SchadenregulierungExtractor implements DataExtractor<Schadenregulie
             int startIdxAN = Math.min(afterVaSaIdx, parts.length);
             for (int i = startIdxAN; i < parts.length; i++) {
                 String tok = parts[i];
-                if (tok.matches("\\d{1,2}[.,]\\d{1,2}[.,]\\d{4}") || tok.matches("\\d{6}") || tok.matches("\\d{3}")) continue;
+                if (tok.matches("\\d{1,2}[.,]\\d{1,2}[.,]\\d{4}") || tok.matches("\\d{6}") || tok.matches("\\d{3}"))
+                    continue;
                 String norm = normalizeNumericToken(tok);
                 if (norm != null) allNumericTokens.add(norm);
             }
             data.setAntKosten(null); // bleibt leer
             String anteil = null;
             for (String t : allNumericTokens) {
-                if (t.matches("\\d{1,3},\\d{4}")) { anteil = t; break; }
+                if (t.matches("\\d{1,3},\\d{4}")) {
+                    anteil = t;
+                    break;
+                }
             }
             if (anteil == null && allNumericTokens.contains("100,0000")) {
                 anteil = "100,0000";
@@ -414,7 +420,10 @@ public class SchadenregulierungExtractor implements DataExtractor<Schadenregulie
                         int guess = -1;
                         for (int i = 1; i < toks.length; i++) {
                             if ((toks[i] + (i + 1 < toks.length ? toks[i + 1] : ""))
-                                    .contains(m.group(1))) { guess = i - 1; break; }
+                                    .contains(m.group(1))) {
+                                guess = i - 1;
+                                break;
+                            }
                         }
                         data.setVn(guess >= 0 ? normalizeVn(toks[guess]) : null);
                         statCorrectedSchaNr++;
@@ -498,16 +507,16 @@ public class SchadenregulierungExtractor implements DataExtractor<Schadenregulie
 
                 if (montants.isEmpty() && amountMatcher.find()) {
                     antRegulRaw = amountMatcher.group(1);
-                    hundertRaw  = amountMatcher.group(4) + amountMatcher.group(5);
+                    hundertRaw = amountMatcher.group(4) + amountMatcher.group(5);
                 } else if (montants.isEmpty() && amountMatcherFallback.find()) {
                     antRegulRaw = amountMatcherFallback.group(1);
-                    hundertRaw  = amountMatcherFallback.group(3);
+                    hundertRaw = amountMatcherFallback.group(3);
                 } else {
                     logger.warn("❌ Beträge (ANT.REGUL & 100%) nicht gefunden (leer gesetzt): {}", line);
                     anyMissing = true;
                 }
             } else {
-                hundertRaw  = montants.get(montants.size() - 1);
+                hundertRaw = montants.get(montants.size() - 1);
                 antRegulRaw = montants.get(montants.size() - 2);
             }
 
@@ -527,7 +536,8 @@ public class SchadenregulierungExtractor implements DataExtractor<Schadenregulie
             int startIdxAN = Math.min(afterVaSaIdx, parts.length);
             for (int i = startIdxAN; i < parts.length; i++) {
                 String tok = parts[i];
-                if (tok.matches("\\d{1,2}[.,]\\d{1,2}[.,]\\d{4}") || tok.matches("\\d{6}") || tok.matches("\\d{3}")) continue;
+                if (tok.matches("\\d{1,2}[.,]\\d{1,2}[.,]\\d{4}") || tok.matches("\\d{6}") || tok.matches("\\d{3}"))
+                    continue;
                 String norm = normalizeNumericToken(tok);
                 if (norm != null) allNumericTokens.add(norm);
             }
@@ -536,7 +546,10 @@ public class SchadenregulierungExtractor implements DataExtractor<Schadenregulie
 
             String anteil = null;
             for (String t : allNumericTokens) {
-                if (t.matches("\\d{1,3},\\d{4}")) { anteil = t; break; }
+                if (t.matches("\\d{1,3},\\d{4}")) {
+                    anteil = t;
+                    break;
+                }
             }
             if (anteil == null && allNumericTokens.contains("100,0000")) {
                 anteil = "100,0000";
@@ -554,7 +567,6 @@ public class SchadenregulierungExtractor implements DataExtractor<Schadenregulie
         if (anyMissing) statMissingFields++;
         return data;
     }
-
 
 
     // --- HILFSMETHODEN FÜR V-DETEKTION (Identisch zur vorherigen Logik) ---
@@ -588,7 +600,7 @@ public class SchadenregulierungExtractor implements DataExtractor<Schadenregulie
         Matcher explicit = Pattern.compile("(Walting|NG|[vV/,\\}]+)$").matcher(line.replaceAll("\\s+$", ""));
         if (explicit.find()) return "V";
 
-        double valAnt  = getNumericValue(antRegulRaw);
+        double valAnt = getNumericValue(antRegulRaw);
         double valHund = getNumericValue(hundertRaw);
 
         String numericPart = hundertRaw.replaceAll("[^0-9,\\.-]", "").replace(".", "").replace(',', '.');
@@ -597,7 +609,8 @@ public class SchadenregulierungExtractor implements DataExtractor<Schadenregulie
             Pattern p = Pattern.compile(Pattern.quote(numericPart));
             Matcher m = p.matcher(hundertRaw);
             if (m.find()) remainder = hundertRaw.substring(m.end()).replaceAll("\\s", "");
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
 
         if (Math.abs(valAnt - valHund) > 0.01 || !remainder.isEmpty()) {
             if (hundertRaw.matches(".*[7},]*$") || !remainder.matches("^[\\s]*$")) {
@@ -636,7 +649,8 @@ public class SchadenregulierungExtractor implements DataExtractor<Schadenregulie
 
         if (t.contains(",") && t.contains(".")) t = t.replace(".", "");
         if (!t.contains(",") && t.matches(".*\\.\\d{2}$")) t = t.replaceFirst("\\.(\\d{2})$", ",$1");
-        if (!t.contains(",") && !t.contains(".") && t.matches("\\d{3,}")) t = t.replaceFirst("(\\d+)(\\d{2})$", "$1,$2");
+        if (!t.contains(",") && !t.contains(".") && t.matches("\\d{3,}"))
+            t = t.replaceFirst("(\\d+)(\\d{2})$", "$1,$2");
         t = t.replaceAll("\\.(?=\\d{3}(\\D|$))", "");
         t = t.replaceFirst("([,]\\d{2})\\d$", "$1");
 

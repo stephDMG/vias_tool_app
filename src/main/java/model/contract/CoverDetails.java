@@ -111,7 +111,6 @@ public class CoverDetails {
     private String wvg2Prio;           // Prio 2 (WVG2_PRIO)
 
 
-
     // ---------------------------
 // Block 0 – Versicherungsnehmer
 // ---------------------------
@@ -121,6 +120,8 @@ public class CoverDetails {
     private String insuredName3;
     private String insuredStreet;
     private String insuredPlz;
+    private String insuredCity;
+    private String insuredNation;
 
     public String getInsuredName() {
         return insuredName;
@@ -185,9 +186,6 @@ public class CoverDetails {
     public void setInsuredNation(String insuredNation) {
         this.insuredNation = insuredNation;
     }
-
-    private String insuredCity;
-    private String insuredNation;
 
 
     // --- Getter/Setter (aus Platzgründen gekürzt im Kommentar) ---

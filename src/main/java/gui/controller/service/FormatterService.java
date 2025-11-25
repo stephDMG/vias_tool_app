@@ -1,6 +1,7 @@
 package gui.controller.service;
 
 import com.google.gson.Gson;
+import formatter.ColumnValueFormatter;
 import formatter.DateFieldFormatter;
 import formatter.MoneyFieldFormatter;
 import gui.controller.utils.format.FormatterConfig;
@@ -17,16 +18,14 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.*;
-import java.util.stream.Collectors;
-import formatter.ColumnValueFormatter;
 
 
 public final class FormatterService {
     private static final Gson gson = new Gson();
 
     private static final Set<String> moneyFields = new LinkedHashSet<>();
-    private static final Set<String> dateFields  = new LinkedHashSet<>();
-    private static final Set<String> sbFields    = new LinkedHashSet<>();
+    private static final Set<String> dateFields = new LinkedHashSet<>();
+    private static final Set<String> sbFields = new LinkedHashSet<>();
 
     private static Path getAppHome() {
         try {
@@ -84,14 +83,18 @@ public final class FormatterService {
             try (InputStreamReader r = new InputStreamReader(in, StandardCharsets.UTF_8)) {
                 return gson.fromJson(r, FormatterConfig.class);
             }
-        } catch (Exception e) { return null; }
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private static FormatterConfig loadFromPath(Path p) {
         if (p == null || !Files.exists(p)) return null;
         try (Reader r = Files.newBufferedReader(p, StandardCharsets.UTF_8)) {
             return gson.fromJson(r, FormatterConfig.class);
-        } catch (Exception e) { return null; }
+        } catch (Exception e) {
+            return null;
+        }
     }
 
 
@@ -101,19 +104,23 @@ public final class FormatterService {
 
         // 2) overrides (app-local user → roaming user → programdata)
         FormatterConfig appUser = loadFromPath(appLocalUserConfig());
-        FormatterConfig roam    = loadFromPath(roamingUserConfig());
+        FormatterConfig roam = loadFromPath(roamingUserConfig());
         FormatterConfig machine = loadFromPath(programDataConfig());
 
         // merge par priorité: machine > roaming > appLocal > base
-        Map<String,String> typeByName = new LinkedHashMap<>();
-        if (base != null && base.getFields()!=null) base.getFields().forEach(f -> typeByName.put(f.getName(), f.getType()));
-        if (appUser != null && appUser.getFields()!=null) appUser.getFields().forEach(f -> typeByName.put(f.getName(), f.getType()));
-        if (roam   != null && roam.getFields()!=null)     roam.getFields().forEach(f -> typeByName.put(f.getName(), f.getType()));
-        if (machine!= null && machine.getFields()!=null) machine.getFields().forEach(f -> typeByName.put(f.getName(), f.getType()));
+        Map<String, String> typeByName = new LinkedHashMap<>();
+        if (base != null && base.getFields() != null)
+            base.getFields().forEach(f -> typeByName.put(f.getName(), f.getType()));
+        if (appUser != null && appUser.getFields() != null)
+            appUser.getFields().forEach(f -> typeByName.put(f.getName(), f.getType()));
+        if (roam != null && roam.getFields() != null)
+            roam.getFields().forEach(f -> typeByName.put(f.getName(), f.getType()));
+        if (machine != null && machine.getFields() != null)
+            machine.getFields().forEach(f -> typeByName.put(f.getName(), f.getType()));
 
         FormatterConfig merged = new FormatterConfig();
         List<FormatterField> fields = new ArrayList<>();
-        typeByName.forEach((n,t) -> fields.add(new FormatterField(n, t)));
+        typeByName.forEach((n, t) -> fields.add(new FormatterField(n, t)));
         merged.setFields(fields);
 
         initRuntimeSetsFrom(merged);
@@ -121,16 +128,14 @@ public final class FormatterService {
     }
 
 
-
     private static File getUserConfigFile() {
-        String base = System.getProperty("os.name","").toLowerCase().contains("win")
+        String base = System.getProperty("os.name", "").toLowerCase().contains("win")
                 ? System.getenv("APPDATA") + File.separator + "CarlSchroeter"
                 : System.getProperty("user.home") + File.separator + ".vias";
         File dir = new File(base);
         if (!dir.exists()) dir.mkdirs();
         return new File(dir, "formatter.json");
     }
-
 
 
     private static FormatterConfig loadFromUserFile() {
@@ -162,19 +167,27 @@ public final class FormatterService {
         if (originalKey == null && headerText == null) return;
 
         // retirer d’abord des 3 ensembles
-        if (originalKey != null) { moneyFields.remove(originalKey); dateFields.remove(originalKey); sbFields.remove(originalKey); }
-        if (headerText != null)  { moneyFields.remove(headerText);  dateFields.remove(headerText);  sbFields.remove(headerText);  }
+        if (originalKey != null) {
+            moneyFields.remove(originalKey);
+            dateFields.remove(originalKey);
+            sbFields.remove(originalKey);
+        }
+        if (headerText != null) {
+            moneyFields.remove(headerText);
+            dateFields.remove(headerText);
+            sbFields.remove(headerText);
+        }
 
         // écrire
         if ("MONEY".equalsIgnoreCase(type)) {
             if (originalKey != null) moneyFields.add(originalKey);
-            if (headerText != null)  moneyFields.add(headerText);
+            if (headerText != null) moneyFields.add(headerText);
         } else if ("DATE".equalsIgnoreCase(type)) {
             if (originalKey != null) dateFields.add(originalKey);
-            if (headerText != null)  dateFields.add(headerText);
+            if (headerText != null) dateFields.add(headerText);
         } else if ("SB".equalsIgnoreCase(type)) {
             if (originalKey != null) sbFields.add(originalKey);
-            if (headerText != null)  sbFields.add(headerText);
+            if (headerText != null) sbFields.add(headerText);
         } // "NONE" → rien n’ajouter
 
         // sauvegarder + propager dans ColumnValueFormatter
@@ -198,8 +211,8 @@ public final class FormatterService {
         FormatterConfig cfg = new FormatterConfig();
         List<FormatterField> list = new ArrayList<>();
         moneyFields.forEach(n -> list.add(new FormatterField(n, "MONEY")));
-        dateFields.forEach(n  -> list.add(new FormatterField(n, "DATE")));
-        sbFields.forEach(n    -> list.add(new FormatterField(n, "SB")));
+        dateFields.forEach(n -> list.add(new FormatterField(n, "DATE")));
+        sbFields.forEach(n -> list.add(new FormatterField(n, "SB")));
         cfg.setFields(list);
 
         Path target = pickWritableUserConfigTarget();
@@ -244,10 +257,10 @@ public final class FormatterService {
 
             for (int i = 0; i < n; i++) {
                 String header = displayHeaders.get(i); // clé visible attendue par le writer
-                String key    = backingKeys.get(i);    // clé source dans RowData
+                String key = backingKeys.get(i);    // clé source dans RowData
 
                 String raw = row.getValues().getOrDefault(key, "");
-                String v   = (raw == null) ? "" : raw;
+                String v = (raw == null) ? "" : raw;
 
                 if (fullNameMode) {
                     // Applique Voll.Name uniquement pour les colonnes SB_*
@@ -276,11 +289,18 @@ public final class FormatterService {
     }
 
 
+    public static boolean isMoneyField(String name) {
+        return moneyFields.contains(name);
+    }
 
-    public static boolean isMoneyField(String name) { return moneyFields.contains(name); }
-    public static boolean isDateField(String name)  { return dateFields.contains(name); }
+    public static boolean isDateField(String name) {
+        return dateFields.contains(name);
+    }
+
     // utile si tu veux vérifier au rendu
-    public static boolean isSbField(String name)    { return sbFields.contains(name); }
+    public static boolean isSbField(String name) {
+        return sbFields.contains(name);
+    }
 
 
 }

@@ -26,11 +26,11 @@ import service.rbac.LoginService;
 
 /**
  * Zentrale Factory-Klasse für Service-Singletons.
- * 
- * <p>Diese Klasse stellt alle wichtigen Services der Anwendung als Singletons bereit und 
- * verwaltet deren Lebenszyklus. Sie implementiert das Singleton-Pattern mit Thread-Safety 
+ *
+ * <p>Diese Klasse stellt alle wichtigen Services der Anwendung als Singletons bereit und
+ * verwaltet deren Lebenszyklus. Sie implementiert das Singleton-Pattern mit Thread-Safety
  * durch doppelte Überprüfung (Double-Check Locking).</p>
- * 
+ *
  * <h2>Bereitgestellte Services:</h2>
  * <ul>
  *   <li>{@link DatabaseService} - Datenbankzugriff mit Caching</li>
@@ -40,34 +40,34 @@ import service.rbac.LoginService;
  *   <li>{@link CoverService} - Verwaltung von Versicherungsverträgen mit RBAC</li>
  *   <li>{@link AuditService} - Audit-Protokollierung und -Verwaltung</li>
  * </ul>
- * 
+ *
  * <h2>AI-Modi:</h2>
- * <p>Die Factory unterstützt verschiedene KI-Modi, die über {@link #setAiMode(AiMode)} 
+ * <p>Die Factory unterstützt verschiedene KI-Modi, die über {@link #setAiMode(AiMode)}
  * umgeschaltet werden können:</p>
  * <ul>
  *   <li>{@link AiMode#LOCAL} - Nur lokale Pattern-basierte KI</li>
  *   <li>{@link AiMode#HYBRID} - Kombination aus HuggingFace und lokal</li>
  *   <li>{@link AiMode#AUTO} - Automatische Erkennung des besten verfügbaren Services</li>
  * </ul>
- * 
+ *
  * <h2>Beispiel:</h2>
  * <pre>{@code
  * // Service abrufen
  * DatabaseService dbService = ServiceFactory.getDatabaseService();
  * CoverService coverService = ServiceFactory.getCoverService();
- * 
+ *
  * // AI-Modus ändern
  * ServiceFactory.setAiMode(AiMode.HYBRID);
  * AiService aiService = ServiceFactory.getAiService();
  * }</pre>
- * 
+ *
  * @author Stephane Dongmo
  * @version 2.0
- * @since 1.0
  * @see DatabaseService
  * @see FileService
  * @see CoverService
  * @see AiService
+ * @since 1.0
  */
 public final class ServiceFactory {
 
@@ -100,13 +100,13 @@ public final class ServiceFactory {
 
     /**
      * Liefert den Singleton des {@link OPListenService}.
-     * 
-     * <p>Dieser Service verwaltet OP-Listen (Offene Posten) und bietet Funktionen 
+     *
+     * <p>Dieser Service verwaltet OP-Listen (Offene Posten) und bietet Funktionen
      * zum Laden, Filtern und Exportieren von OP-Daten.</p>
-     * 
-     * <p><b>Thread-Safe:</b> Verwendet Double-Check Locking für sichere 
+     *
+     * <p><b>Thread-Safe:</b> Verwendet Double-Check Locking für sichere
      * Singleton-Initialisierung.</p>
-     * 
+     *
      * @return die Singleton-Instanz des OPListenService
      * @see OPListenService
      */
@@ -123,13 +123,13 @@ public final class ServiceFactory {
 
     /**
      * Liefert das Repository für OP-Listen (Offene Posten).
-     * 
-     * <p>Das {@link OpRepository} bietet Low-Level-Datenzugriff für OP-Listen 
-     * und arbeitet direkt mit der Datenbank. Es formatiert die Daten mithilfe 
+     *
+     * <p>Das {@link OpRepository} bietet Low-Level-Datenzugriff für OP-Listen
+     * und arbeitet direkt mit der Datenbank. Es formatiert die Daten mithilfe
      * des {@link OpListeFormatter}.</p>
-     * 
+     *
      * <p><b>Thread-Safe:</b> Singleton mit Double-Check Locking.</p>
-     * 
+     *
      * @return die Singleton-Instanz des OpRepository
      * @see OpRepository
      * @see OpListeFormatter
@@ -148,11 +148,11 @@ public final class ServiceFactory {
 
     /**
      * Liefert den {@link FileService} für Dateiverwaltung.
-     * 
-     * <p>Dieser Service bietet Funktionen zum Lesen, Schreiben und Verwalten 
-     * von Dateien im System. Er wird für Konfigurationsdateien, 
+     *
+     * <p>Dieser Service bietet Funktionen zum Lesen, Schreiben und Verwalten
+     * von Dateien im System. Er wird für Konfigurationsdateien,
      * Exportdateien und temporäre Daten verwendet.</p>
-     * 
+     *
      * @return die aktuelle Instanz des FileService
      * @see FileService
      * @see #setFileService(FileService)
@@ -164,10 +164,10 @@ public final class ServiceFactory {
 
     /**
      * Setzt eine neue {@link FileService}-Implementierung.
-     * 
-     * <p>Diese Methode ermöglicht das Austauschen der FileService-Implementierung, 
+     *
+     * <p>Diese Methode ermöglicht das Austauschen der FileService-Implementierung,
      * z.B. für Tests mit Mock-Objekten oder alternative Speicherstrategien.</p>
-     * 
+     *
      * @param newFile die neue FileService-Implementierung
      * @see FileService
      */
@@ -177,11 +177,11 @@ public final class ServiceFactory {
 
     /**
      * Liefert den {@link DatabaseService} mit Caching.
-     * 
-     * <p>Dieser Service stellt Datenbankzugriff mit automatischem Caching bereit. 
-     * Die Implementierung verwendet {@link CachedDatabaseService}, der häufig 
+     *
+     * <p>Dieser Service stellt Datenbankzugriff mit automatischem Caching bereit.
+     * Die Implementierung verwendet {@link CachedDatabaseService}, der häufig
      * genutzte Abfragen zwischenspeichert, um die Performance zu verbessern.</p>
-     * 
+     *
      * @return die Singleton-Instanz des DatabaseService (mit Caching)
      * @see DatabaseService
      * @see CachedDatabaseService
@@ -193,16 +193,16 @@ public final class ServiceFactory {
 
     /**
      * Liefert den {@link AiService} entsprechend dem aktuellen AI-Modus.
-     * 
+     *
      * <p>Der zurückgegebene Service hängt vom eingestellten {@link AiMode} ab:</p>
      * <ul>
      *   <li>{@link AiMode#LOCAL} - Lokaler Pattern-basierter Service</li>
      *   <li>{@link AiMode#HYBRID} - Kombination aus HuggingFace und lokal</li>
      *   <li>{@link AiMode#AUTO} - Automatische Erkennung basierend auf Netzwerkverfügbarkeit</li>
      * </ul>
-     * 
+     *
      * <p>Der Service wird beim ersten Aufruf initialisiert (Lazy Initialization).</p>
-     * 
+     *
      * @return die AiService-Instanz entsprechend dem aktuellen Modus
      * @see AiService
      * @see AiMode
@@ -221,13 +221,13 @@ public final class ServiceFactory {
 
     /**
      * Liefert das Repository für Audit-Zwecke.
-     * 
-     * <p>Das {@link AuditRepository} bietet Datenzugriff für Audit-Protokolle 
-     * und ermöglicht das Speichern und Abrufen von Benutzeraktivitäten, 
+     *
+     * <p>Das {@link AuditRepository} bietet Datenzugriff für Audit-Protokolle
+     * und ermöglicht das Speichern und Abrufen von Benutzeraktivitäten,
      * Systemereignissen und Änderungshistorien.</p>
-     * 
+     *
      * <p><b>Thread-Safe:</b> Singleton mit Double-Check Locking.</p>
-     * 
+     *
      * @return die Singleton-Instanz des AuditRepository
      * @see AuditRepository
      * @see AuditRepositoryImpl
@@ -245,7 +245,7 @@ public final class ServiceFactory {
 
     /**
      * Liefert den Singleton des {@link AuditService}.
-     * 
+     *
      * <p>Dieser Service stellt High-Level-Funktionen für Audit-Protokollierung bereit:</p>
      * <ul>
      *   <li>Protokollierung von Benutzeraktionen</li>
@@ -253,9 +253,9 @@ public final class ServiceFactory {
      *   <li>Export von Audit-Berichten</li>
      *   <li>Analyse von Systemereignissen</li>
      * </ul>
-     * 
+     *
      * <p><b>Thread-Safe:</b> Singleton mit Double-Check Locking.</p>
-     * 
+     *
      * @return die Singleton-Instanz des AuditService
      * @see AuditService
      * @see AuditRepository
@@ -274,11 +274,10 @@ public final class ServiceFactory {
     }
 
 
-
     /**
      * Liefert den {@link CoverService} für Versicherungsvertragsverwaltung.
-     * 
-     * <p>Dieser Service ist die zentrale Fassade für alle Operationen mit 
+     *
+     * <p>Dieser Service ist die zentrale Fassade für alle Operationen mit
      * Versicherungsverträgen (Cover). Er integriert:</p>
      * <ul>
      *   <li><b>RBAC (Role-Based Access Control)</b> - Rollenbasierte Zugriffskontrolle über {@link CoverAccessGuard}</li>
@@ -287,12 +286,12 @@ public final class ServiceFactory {
      *   <li><b>Detailansichten</b> - Erweiterte Daten über {@link CoverDetailsRepository}</li>
      *   <li><b>Formatierung</b> - Einheitliche Darstellung über {@link CoverFormatter}</li>
      * </ul>
-     * 
-     * <p>Der Service überprüft automatisch die Berechtigungen des aktuellen Windows-Benutzers 
+     *
+     * <p>Der Service überprüft automatisch die Berechtigungen des aktuellen Windows-Benutzers
      * über {@link LoginService} und wendet entsprechende Zugriffsregeln an.</p>
-     * 
+     *
      * <p><b>Thread-Safe:</b> Singleton mit Double-Check Locking.</p>
-     * 
+     *
      * @return die Singleton-Instanz des CoverService
      * @see CoverService
      * @see CoverAccessGuard
@@ -327,10 +326,10 @@ public final class ServiceFactory {
 
     /**
      * Alias für {@link #getContractService()}.
-     * 
+     *
      * <p>Liefert denselben {@link CoverService} wie {@code getContractService()}.
      * Dieser Alias wird aus historischen Gründen beibehalten.</p>
-     * 
+     *
      * @return die Singleton-Instanz des CoverService
      * @see #getContractService()
      */
@@ -341,17 +340,17 @@ public final class ServiceFactory {
 
     /**
      * Ändert den AI-Modus für zukünftige {@link AiService}-Instanzen.
-     * 
-     * <p>Bei Änderung des Modus wird die aktuelle AiService-Instanz verworfen 
+     *
+     * <p>Bei Änderung des Modus wird die aktuelle AiService-Instanz verworfen
      * und beim nächsten Aufruf von {@link #getAiService()} neu erstellt.</p>
-     * 
+     *
      * <p><b>Verfügbare Modi:</b></p>
      * <ul>
      *   <li>{@link AiMode#LOCAL} - Verwendet nur lokale Pattern-basierte KI</li>
      *   <li>{@link AiMode#HYBRID} - Kombiniert HuggingFace-API mit lokalem Fallback</li>
      *   <li>{@link AiMode#AUTO} - Erkennt automatisch den besten verfügbaren Service</li>
      * </ul>
-     * 
+     *
      * @param mode der neue AI-Modus
      * @see AiMode
      * @see #getAiService()
@@ -366,7 +365,7 @@ public final class ServiceFactory {
 
     /**
      * Erstellt eine {@link AiService}-Instanz basierend auf dem aktuellen Modus.
-     * 
+     *
      * @return eine neue AiService-Instanz entsprechend {@link #currentAiMode}
      * @see AiMode
      */
@@ -380,13 +379,13 @@ public final class ServiceFactory {
 
     /**
      * Erkennt automatisch den besten verfügbaren {@link AiService}.
-     * 
+     *
      * <p>Testet zunächst die Verfügbarkeit von HuggingFace (mit 2 Sekunden Timeout).
-     * Bei Erreichbarkeit wird {@link HybridAiService} zurückgegeben, 
+     * Bei Erreichbarkeit wird {@link HybridAiService} zurückgegeben,
      * andernfalls {@link LocalAiServiceImpl}.</p>
-     * 
+     *
      * <p>Diese Methode wird nur im {@link AiMode#AUTO}-Modus verwendet.</p>
-     * 
+     *
      * @return HybridAiService wenn HuggingFace erreichbar ist, sonst LocalAiServiceImpl
      */
     private static AiService detectBestAiService() {
@@ -406,32 +405,38 @@ public final class ServiceFactory {
 
     /**
      * Aufzählung der verfügbaren AI-Modi.
-     * 
+     *
      * <p>Jeder Modus definiert, welche KI-Service-Implementierung verwendet wird:</p>
      * <ul>
      *   <li><b>LOCAL</b> - Nur lokale, offline verfügbare KI ohne externe Abhängigkeiten</li>
      *   <li><b>HYBRID</b> - Kombiniert externe API (HuggingFace) mit lokalem Fallback</li>
      *   <li><b>AUTO</b> - Wählt automatisch zwischen LOCAL und HYBRID basierend auf Netzwerkverfügbarkeit</li>
      * </ul>
-     * 
+     *
      * @see ServiceFactory#setAiMode(AiMode)
      * @see ServiceFactory#getAiService()
      */
     public enum AiMode {
-        /** Lokaler Pattern-basierter Service (offline verfügbar) */
+        /**
+         * Lokaler Pattern-basierter Service (offline verfügbar)
+         */
         LOCAL("Lokaler Pattern-Service"),
-        
-        /** Hybrid-Service: HuggingFace + Lokaler Fallback */
+
+        /**
+         * Hybrid-Service: HuggingFace + Lokaler Fallback
+         */
         HYBRID("Hybrid HF+Lokal"),
-        
-        /** Automatische Erkennung basierend auf Netzwerkverfügbarkeit */
+
+        /**
+         * Automatische Erkennung basierend auf Netzwerkverfügbarkeit
+         */
         AUTO("Automatische Erkennung");
 
         private final String description;
 
         /**
          * Konstruktor für AiMode.
-         * 
+         *
          * @param description Beschreibung des Modus für UI-Anzeige
          */
         AiMode(String description) {
@@ -440,7 +445,7 @@ public final class ServiceFactory {
 
         /**
          * Liefert die Beschreibung des Modus.
-         * 
+         *
          * @return die Beschreibung
          */
         public String getDescription() {
@@ -457,18 +462,18 @@ public final class ServiceFactory {
 
 /**
  * Hybrid AI Service - Kombiniert HuggingFace-API mit lokalem Fallback.
- * 
+ *
  * <p>Diese Implementierung delegiert alle Anfragen an den lokalen Service.
- * In zukünftigen Versionen kann hier die Integration mit der HuggingFace-API 
+ * In zukünftigen Versionen kann hier die Integration mit der HuggingFace-API
  * für erweiterte KI-Funktionen erfolgen.</p>
- * 
+ *
  * <p>Der Service wird nur verwendet, wenn:</p>
  * <ul>
  *   <li>Der AI-Modus auf {@link ServiceFactory.AiMode#HYBRID} gesetzt ist, oder</li>
- *   <li>Der AI-Modus auf {@link ServiceFactory.AiMode#AUTO} gesetzt ist und 
+ *   <li>Der AI-Modus auf {@link ServiceFactory.AiMode#AUTO} gesetzt ist und
  *       HuggingFace über das Netzwerk erreichbar ist</li>
  * </ul>
- * 
+ *
  * @see AiService
  * @see LocalAiServiceImpl
  * @see ServiceFactory.AiMode

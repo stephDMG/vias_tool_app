@@ -12,7 +12,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Gruppierter XLSX-Writer (Kolonnen-Ansicht / Typ 2).
- *
+ * <p>
  * - Jede Gruppierungsebene bekommt eine Gruppen-Zeile in der passenden Spalte.
  * - Datenzeilen folgen mit optionaler Einrückung (über Indention) und Excel-Gruppierung (+/-).
  *
@@ -27,8 +27,11 @@ public class GroupedXlsxWriter {
     private static final AtomicBoolean LOGGED_KEYS = new AtomicBoolean(false);
     private static final boolean COLLAPSE_GROUPS_BY_DEFAULT = true;
 
-    /** Mapping der UI-Gruppierlabels auf die tatsächlichen Keys in RowData.getValues() */
+    /**
+     * Mapping der UI-Gruppierlabels auf die tatsächlichen Keys in RowData.getValues()
+     */
     private static final Map<String, String> UI_TO_DATA_KEY_MAP;
+
     static {
         Map<String, String> map = new HashMap<>();
         // Komponierte Keys
@@ -49,9 +52,9 @@ public class GroupedXlsxWriter {
     /**
      * Hauptmethode: schreibt XLSX gruppiert oder flach.
      *
-     * @param rows         Datenzeilen (RowData.values() = Map<String,String>)
-     * @param groupByKeys  UI-Labels der Gruppierung (null/leer -> flach)
-     * @param outputPath   Zielpfad
+     * @param rows        Datenzeilen (RowData.values() = Map<String,String>)
+     * @param groupByKeys UI-Labels der Gruppierung (null/leer -> flach)
+     * @param outputPath  Zielpfad
      */
     public void writeGrouped(List<RowData> rows, List<String> groupByKeys, String outputPath) throws Exception {
 
@@ -254,7 +257,9 @@ public class GroupedXlsxWriter {
         return rowIndex;
     }
 
-    /** Mappt UI-Labels auf Werte aus RowData und baut den Pfad (ein Segment pro Ebene). */
+    /**
+     * Mappt UI-Labels auf Werte aus RowData und baut den Pfad (ein Segment pro Ebene).
+     */
     private List<String> buildPathFromKeys(RowData row, List<String> keys) {
         List<String> path = new ArrayList<>();
         Map<String, String> rowValues = row.getValues();
@@ -276,7 +281,9 @@ public class GroupedXlsxWriter {
         return path;
     }
 
-    /** Erste Ebene ab der sich Pfade unterscheiden. */
+    /**
+     * Erste Ebene ab der sich Pfade unterscheiden.
+     */
     private int findChangeLevel(List<String> oldPath, List<String> newPath) {
         int min = Math.min(oldPath.size(), newPath.size());
         for (int i = 0; i < min; i++) {
@@ -285,7 +292,9 @@ public class GroupedXlsxWriter {
         return min;
     }
 
-    /** Schließt Excel-Gruppen ab fromLevel (inkl.) bis Ende. */
+    /**
+     * Schließt Excel-Gruppen ab fromLevel (inkl.) bis Ende.
+     */
     private void closeGroupsFromLevel(Sheet sheet,
                                       Map<String, Integer> groupStartRows,
                                       List<String> path,
@@ -375,9 +384,13 @@ public class GroupedXlsxWriter {
         }
     }
 
-    private String safe(String s) { return s == null ? "" : s; }
+    private String safe(String s) {
+        return s == null ? "" : s;
+    }
 
-    /** Wirft eine klare Exception, wenn UI-Keys nicht auf existierende Header mappen. */
+    /**
+     * Wirft eine klare Exception, wenn UI-Keys nicht auf existierende Header mappen.
+     */
     private void validateGroupByKeys(List<String> headers, List<String> groupByKeys) {
         List<String> missing = new ArrayList<>();
         for (String uiKey : groupByKeys) {

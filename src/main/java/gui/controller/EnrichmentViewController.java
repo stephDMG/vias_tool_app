@@ -87,7 +87,6 @@ public class EnrichmentViewController implements Initializable {
     }
 
 
-
     @FXML
     private void selectSourceFile() {
         FileChooser fileChooser = new FileChooser();

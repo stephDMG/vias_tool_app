@@ -36,7 +36,7 @@ public interface ColumnLayoutPersistence {
      *                         für das neu erzeugte Modell verwendet werden soll,
      *                         falls die Persistenzschicht diesen benötigt
      * @return {@link Optional} mit einem geladenen Layout; {@link Optional#empty()},
-     *         wenn kein Layout gefunden wurde
+     * wenn kein Layout gefunden wurde
      */
     Optional<ColumnLayoutModel> loadLayout(String username,
                                            String layoutId,

@@ -20,7 +20,6 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import model.RowData;
-
 import service.op.repository.OpRepository;
 
 import java.util.List;
@@ -47,8 +46,10 @@ public class OpListViewerController {
     private Label countLabel;
     @FXML
     private TextField policyFilterField;
-    @FXML private StackPane resultsStack;
-    @FXML private VBox tableHost, treeHost;
+    @FXML
+    private StackPane resultsStack;
+    @FXML
+    private VBox tableHost, treeHost;
 
     private OpRepository opRepository;
     private OpListeFormatter formatter;
@@ -70,7 +71,7 @@ public class OpListViewerController {
     private void initialize() {
 
         formatter = new OpListeFormatter();
-        opRepository =  service.ServiceFactory.getOpRepository();
+        opRepository = service.ServiceFactory.getOpRepository();
         //opRepository = new OpRepository(ServiceFactory.getDatabaseService(), formatter);
 
 
@@ -79,7 +80,7 @@ public class OpListViewerController {
         loadDataAsync();
     }
 
-    private void setupTable(){
+    private void setupTable() {
         TableViewBuilder builder = TableViewBuilder.create()
                 .withFeatures(
                         TableViewBuilder.Feature.SELECTION,

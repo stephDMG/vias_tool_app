@@ -12,6 +12,7 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
+
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
@@ -26,7 +27,7 @@ public class TableViewBuilder {
     private final TextField searchField;
     private final Pagination pagination;
     private final Label resultsCountLabel;
-    private final Button exportCsvButton, exportXlsxButton,  cleanColumnsButton, deleteColumnsButton ;
+    private final Button exportCsvButton, exportXlsxButton, cleanColumnsButton, deleteColumnsButton;
     private final TableView<ObservableList<String>> tableView;
 
     private boolean optGroupStriping = false;
@@ -51,8 +52,8 @@ public class TableViewBuilder {
         this.cleanColumnsButton = (Button) tableContainer.lookup("#cleanColumnsButton");
 
         alignHBox("actionsSection", Pos.CENTER_RIGHT);
-        alignHBox("exportSection",  Pos.CENTER_RIGHT);
-        alignHBox("searchSection",  Pos.CENTER_LEFT);
+        alignHBox("exportSection", Pos.CENTER_RIGHT);
+        alignHBox("searchSection", Pos.CENTER_LEFT);
 
         if (this.tableView != null) {
             this.tableView.setPrefHeight(Region.USE_COMPUTED_SIZE);
@@ -61,17 +62,17 @@ public class TableViewBuilder {
         }
     }
 
-    private void alignHBox(String id, Pos pos) {
-        Node n = tableContainer.lookup("#" + id);
-        if (n instanceof HBox box) box.setAlignment(pos);
-    }
-
     public static TableViewBuilder create() {
         try {
             return new TableViewBuilder();
         } catch (IOException e) {
             throw new RuntimeException("Could not load UniversalTableView.fxml", e);
         }
+    }
+
+    private void alignHBox(String id, Pos pos) {
+        Node n = tableContainer.lookup("#" + id);
+        if (n instanceof HBox box) box.setAlignment(pos);
     }
 
     public TableViewBuilder withModels(ColumnStateModel csm, ResultContextModel rcm, TableStateModel tsm) {
@@ -121,11 +122,11 @@ public class TableViewBuilder {
 
         if (columnStateModel != null || resultContextModel != null || tableStateModel != null) {
             manager = new EnhancedTableManager(
-                                tableView,
-                                searchField,
-                                deleteColumnsButton,
-                                pagination,
-                                resultsCountLabel,
+                    tableView,
+                    searchField,
+                    deleteColumnsButton,
+                    pagination,
+                    resultsCountLabel,
                     tableStateModel,
                     columnStateModel,
                     resultContextModel);
@@ -144,21 +145,47 @@ public class TableViewBuilder {
         }
 
         if (cleanColumnsButton != null) manager.setCleanButton(cleanColumnsButton);
-        if (exportCsvButton  != null) manager.setExportCsvButton(exportCsvButton);
+        if (exportCsvButton != null) manager.setExportCsvButton(exportCsvButton);
         if (exportXlsxButton != null) manager.setExportXlsxButton(exportXlsxButton);
 
         return manager;
     }
 
-    public VBox getTableContainer() { return tableContainer; }
-    public TableView<ObservableList<String>> getTableView() { return tableView; }
-    public TextField getSearchField() { return searchField; }
-    public Button getDeleteColumnsButton() { return deleteColumnsButton; }
-    public Pagination getPagination() { return pagination; }
-    public Label getResultsCountLabel() { return resultsCountLabel; }
-    public Button getExportCsvButton() { return exportCsvButton; }
-    public Button getExportXlsxButton() { return exportXlsxButton; }
-    public Button getCleanColumnsButton() { return cleanColumnsButton; }
+    public VBox getTableContainer() {
+        return tableContainer;
+    }
 
-    public enum Feature { SEARCH, SELECTION, PAGINATION, EXPORT }
+    public TableView<ObservableList<String>> getTableView() {
+        return tableView;
+    }
+
+    public TextField getSearchField() {
+        return searchField;
+    }
+
+    public Button getDeleteColumnsButton() {
+        return deleteColumnsButton;
+    }
+
+    public Pagination getPagination() {
+        return pagination;
+    }
+
+    public Label getResultsCountLabel() {
+        return resultsCountLabel;
+    }
+
+    public Button getExportCsvButton() {
+        return exportCsvButton;
+    }
+
+    public Button getExportXlsxButton() {
+        return exportXlsxButton;
+    }
+
+    public Button getCleanColumnsButton() {
+        return cleanColumnsButton;
+    }
+
+    public enum Feature {SEARCH, SELECTION, PAGINATION, EXPORT}
 }

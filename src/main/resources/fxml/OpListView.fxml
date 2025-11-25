@@ -1,63 +1,74 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.geometry.*?>
+<?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
-<?import javafx.scene.text.*?>
-
-<BorderPane xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.controller.OpListTableViewController">
+<?import javafx.scene.text.Font?>
+<BorderPane xmlns:fx="http://javafx.com/fxml/1" xmlns="http://javafx.com/javafx/17.0.12"
+            fx:controller="gui.controller.OpListTableViewController">
 
     <padding>
-        <Insets bottom="20" left="20" right="20" top="20" />
+        <Insets bottom="20" left="20" right="20" top="20"/>
     </padding>
 
     <center>
         <VBox alignment="TOP_CENTER" spacing="10.0">
 
             <VBox alignment="CENTER" spacing="10">
-                <Label alignment="CENTER" maxWidth="Infinity" style="-fx-font-size: 20px; -fx-font-weight: bold;" text="OP-Listen Export" />
+                <Label alignment="CENTER" maxWidth="Infinity" style="-fx-font-size: 20px; -fx-font-weight: bold;"
+                       text="OP-Listen Export"/>
                 <HBox alignment="CENTER" prefHeight="36.0" prefWidth="657.0" spacing="20">
                     <HBox alignment="CENTER" spacing="20">
-                        <Label text="Filter:" />
-                        <ComboBox fx:id="filterComboBox" prefWidth="150" />
-                        <ComboBox fx:id="kundeComboBox" managed="false" prefWidth="150" visible="false" />
+                        <Label text="Filter:"/>
+                        <ComboBox fx:id="filterComboBox" prefWidth="150"/>
+                        <ComboBox fx:id="kundeComboBox" managed="false" prefWidth="150" visible="false"/>
                     </HBox>
 
 
-                    <Label text="Sprache:" />
-                    <RadioButton fx:id="deRadioButton" text="DE" />
-                    <RadioButton fx:id="enRadioButton" text="EN" />
-                    <Label text="Format:" />
-                    <RadioButton fx:id="excelRadioButton" text="Excel" />
-                    <RadioButton fx:id="pdfRadioButton" text="PDF" />
+                    <Label text="Sprache:"/>
+                    <RadioButton fx:id="deRadioButton" text="DE"/>
+                    <RadioButton fx:id="enRadioButton" text="EN"/>
+                    <Label text="Format:"/>
+                    <RadioButton fx:id="excelRadioButton" text="Excel"/>
+                    <RadioButton fx:id="pdfRadioButton" text="PDF"/>
                 </HBox>
             </VBox>
 
             <VBox alignment="CENTER" prefHeight="516.0" prefWidth="657.0" spacing="10.0" VBox.vgrow="ALWAYS">
-                <HBox prefHeight="26.0" prefWidth="657.0" />
+                <HBox prefHeight="26.0" prefWidth="657.0"/>
 
-                <Button fx:id="loadOnlyButton" onAction="#loadOnly" prefHeight="45.0" prefWidth="272.0" style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-background-color: #546E7A; -fx-text-fill: white; -fx-padding: 10 20; -fx-background-radius: 50; -fx-border-radius: 50;" text="⏬ Nur laden (ohne Export)" />
-                <Label alignment="BOTTOM_CENTER" prefHeight="23.0" prefWidth="64.0" style="-fx-font-style: italic;" text="Oder">
+                <Button fx:id="loadOnlyButton" onAction="#loadOnly" prefHeight="45.0" prefWidth="272.0"
+                        style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-background-color: #546E7A; -fx-text-fill: white; -fx-padding: 10 20; -fx-background-radius: 50; -fx-border-radius: 50;"
+                        text="⏬ Nur laden (ohne Export)"/>
+                <Label alignment="BOTTOM_CENTER" prefHeight="23.0" prefWidth="64.0" style="-fx-font-style: italic;"
+                       text="Oder">
                     <font>
-                        <Font name="Bell MT Italic" size="10.0" />
+                        <Font name="Bell MT Italic" size="10.0"/>
                     </font>
                 </Label>
 
                 <HBox alignment="CENTER" prefHeight="131.0" prefWidth="657.0" spacing="15">
                     <VBox alignment="CENTER" prefHeight="110.0" prefWidth="265.0">
-                        <Label alignment="BOTTOM_CENTER" prefHeight="7.0" prefWidth="64.0" style="-fx-font-size: 18px; -fx-font-weight: bold;" text="Prozess" />
+                        <Label alignment="BOTTOM_CENTER" prefHeight="7.0" prefWidth="64.0"
+                               style="-fx-font-size: 18px; -fx-font-weight: bold;" text="Prozess"/>
                         <HBox alignment="CENTER" prefHeight="100.0" prefWidth="200.0">
-                            <Button fx:id="startButton" contentDisplay="CENTER" onAction="#startExportProcess" prefHeight="45.0" prefWidth="110.0" style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-background-color: #4CAF50; -fx-text-fill: white; -fx-padding: 10 20; -fx-border-radius: 50; -fx-background-radius: 50;" text="▶ starten" />
-                            <VBox prefHeight="83.0" prefWidth="30.0" />
-                            <Button fx:id="stopButton" contentDisplay="CENTER" disable="true" onAction="#stopExportProcess" prefHeight="45.0" prefWidth="108.0" style="-fx-font-size: 16px; -fx-background-color: #F44336; -fx-text-fill: white; -fx-padding: 10 20; -fx-background-radius: 50; -fx-border-radius: 50;" text="⏹ Stop" />
+                            <Button fx:id="startButton" contentDisplay="CENTER" onAction="#startExportProcess"
+                                    prefHeight="45.0" prefWidth="110.0"
+                                    style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-background-color: #4CAF50; -fx-text-fill: white; -fx-padding: 10 20; -fx-border-radius: 50; -fx-background-radius: 50;"
+                                    text="▶ starten"/>
+                            <VBox prefHeight="83.0" prefWidth="30.0"/>
+                            <Button fx:id="stopButton" contentDisplay="CENTER" disable="true"
+                                    onAction="#stopExportProcess" prefHeight="45.0" prefWidth="108.0"
+                                    style="-fx-font-size: 16px; -fx-background-color: #F44336; -fx-text-fill: white; -fx-padding: 10 20; -fx-background-radius: 50; -fx-border-radius: 50;"
+                                    text="⏹ Stop"/>
                         </HBox>
                     </VBox>
                 </HBox>
 
                 <VBox alignment="CENTER" prefHeight="84.0" prefWidth="657.0" spacing="10" VBox.vgrow="ALWAYS">
-                    <ProgressBar fx:id="progressBar" prefWidth="300" visible="false" />
-                    <Label fx:id="statusLabel" style="-fx-font-style: italic;" text="Bereit zum Start" />
-                    <ListView fx:id="stepsListView" prefHeight="119.0" prefWidth="657.0" VBox.vgrow="ALWAYS" />
+                    <ProgressBar fx:id="progressBar" prefWidth="300" visible="false"/>
+                    <Label fx:id="statusLabel" style="-fx-font-style: italic;" text="Bereit zum Start"/>
+                    <ListView fx:id="stepsListView" prefHeight="119.0" prefWidth="657.0" VBox.vgrow="ALWAYS"/>
                 </VBox>
             </VBox>
         </VBox>
@@ -65,7 +76,9 @@
 
     <bottom>
         <HBox alignment="CENTER_RIGHT" spacing="10">
-            <Button fx:id="showTableButton" disable="true" onAction="#showOpListTable" style="-fx-font-size: 14px; -fx-background-color: #2196F3; -fx-text-fill: white;" text="OP-Liste anschauen" />
+            <Button fx:id="showTableButton" disable="true" onAction="#showOpListTable"
+                    style="-fx-font-size: 14px; -fx-background-color: #2196F3; -fx-text-fill: white;"
+                    text="OP-Liste anschauen"/>
         </HBox>
     </bottom>
 

@@ -1,6 +1,7 @@
 package gui;
 
 
+import atlantafx.base.theme.NordLight;
 import atlantafx.base.theme.PrimerLight;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;

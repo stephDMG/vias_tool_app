@@ -5,7 +5,6 @@ import gui.controller.manager.*;
 import gui.controller.model.ColumnStateModel;
 import gui.controller.model.ResultContextModel;
 import gui.controller.model.TableStateModel;
-
 import gui.controller.service.FormatterService;
 import javafx.animation.PauseTransition;
 import javafx.application.Platform;
@@ -16,9 +15,10 @@ import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
-import javafx.scene.input.*;
+import javafx.scene.input.ClipboardContent;
+import javafx.scene.input.Dragboard;
+import javafx.scene.input.TransferMode;
 import javafx.scene.layout.HBox;
-import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
@@ -26,14 +26,11 @@ import javafx.scene.shape.Circle;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.util.Duration;
-
 import model.RowData;
 import model.contract.filters.CoverFilter;
 import model.enums.ExportFormat;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import service.ServiceFactory;
 import service.contract.CoverService;
 import service.rbac.LoginService;
@@ -52,59 +49,16 @@ import static gui.controller.service.FormatterService.exportWithFormat;
 
 public class CoverDomainController {
     private static final Logger log = LoggerFactory.getLogger(CoverDomainController.class);
-
+    // Ladevorgang
+    private static final ExecutorService EXECUTOR = Executors.newCachedThreadPool();
     // --- ÉTAT GLOBAL PARTAGÉ ENTRE TABLE & TREE ---
     private final TableStateModel tableStateModel = new TableStateModel();
     private final ColumnStateModel columnStateModel = new ColumnStateModel();
-    private final ResultContextModel resultContextModel = new ResultContextModel();
     // ----------------------------------------------
-
-    // UI
-    @FXML private Label domainTitle, bastandSelectedLabel, vertragsstandSelectedLabel, messageLabel;
-    @FXML private ChoiceBox<String> kernfrageChoice;
-    @FXML private ListView<String> vertragsstandList;
-    @FXML private ListView<String> bearbeitungsstandList;
-    @FXML private VBox resultsContainer;
-    @FXML private HBox parameter, dateBox;
-    @FXML private DatePicker abDatePicker, bisDatePicker;
-    @FXML private Button ausfuehrenButton;
-
-    // Gruppierung
-    @FXML private ListView<String> groupByList;
-    @FXML private Label groupBySelectedLabel;
-    @FXML private CheckBox groupByAllCheck;
-
-    // Stornogründe
-    @FXML private VBox stornoGrundFilterBox;
-    @FXML private ListView<String> stornoGrundList;
-
-    @FXML private StackPane resultsStack;
-    @FXML private VBox tableHost, treeHost;
-    @FXML private ToggleButton toggleTreeView;
-    @FXML private ToggleButton toggleVersionView;
-    @FXML private ToggleButton toggleFullName;
-
-    private EnhancedTableManager tableManager;
-    private TreeTableManager treeManager;
-    private TreeTableViewBuilder treeBuilder;
-
-    private CoverService coverService;
-    private String username;
-    private String currentDomain;
-    private ProgressIndicator busy;
-
-    private Map<String, String> dictSta;
-    private Map<String, String> dictBastand;
-
-    // Export-Buttons
-    private Button exportCsvButton;
-    private Button exportXlsxButton;
-
+    private final ResultContextModel resultContextModel = new ResultContextModel();
     // Gemeinsame Map für Spalten-Anzeigenamen (Key = technischer Spaltenname)
     private final ObservableMap<String, String> sharedColumnDisplayNames =
-          FXCollections.observableHashMap();
-
-
+            FXCollections.observableHashMap();
     // Storno Key→Value
     private final Map<String, String> hardcodedStornoReasons = Map.ofEntries(
             Map.entry("005", "Ab Beginn aufgehoben"),
@@ -139,7 +93,6 @@ public class CoverDomainController {
             Map.entry("315", "Vertrag wurde nicht prolongiert"),
             Map.entry("325", "Zusammenarbeit mit Makler beendet")
     );
-
     // Gruppierung-Optionen
     private final List<String> groupByOptions = List.of(
             "Cover Art", "Makler", "Gesellschaft", "Versicherungsart",
@@ -147,18 +100,64 @@ public class CoverDomainController {
             "Sachbearbeiter (Vertrag)", "Sachbearbeiter (Schaden)",
             "Versicherungsschein Nr", "Versicherungsnehmer"
     );
-
     // Persistenz: Gruppierung pro Kernfrage
     private final Map<String, List<String>> groupByMemory = new HashMap<>();
-    private Map<String,String> sbDict = Map.of();
-
-    // Ladevorgang
-    private static final ExecutorService EXECUTOR = Executors.newCachedThreadPool();
-    private volatile boolean dictionariesLoaded = false;
-    private String pendingKernfrage = null;
-
     private final DateTimeFormatter displayFormatter =
             DateTimeFormatter.ofPattern("dd.MM.yyyy").withResolverStyle(ResolverStyle.STRICT);
+    // UI
+    @FXML
+    private Label domainTitle, bastandSelectedLabel, vertragsstandSelectedLabel, messageLabel;
+    @FXML
+    private ChoiceBox<String> kernfrageChoice;
+    @FXML
+    private ListView<String> vertragsstandList;
+    @FXML
+    private ListView<String> bearbeitungsstandList;
+    @FXML
+    private VBox resultsContainer;
+    @FXML
+    private HBox parameter, dateBox;
+    @FXML
+    private DatePicker abDatePicker, bisDatePicker;
+    @FXML
+    private Button ausfuehrenButton;
+    // Gruppierung
+    @FXML
+    private ListView<String> groupByList;
+    @FXML
+    private Label groupBySelectedLabel;
+    @FXML
+    private CheckBox groupByAllCheck;
+    // Stornogründe
+    @FXML
+    private VBox stornoGrundFilterBox;
+    @FXML
+    private ListView<String> stornoGrundList;
+    @FXML
+    private StackPane resultsStack;
+    @FXML
+    private VBox tableHost, treeHost;
+    @FXML
+    private ToggleButton toggleTreeView;
+    @FXML
+    private ToggleButton toggleVersionView;
+    @FXML
+    private ToggleButton toggleFullName;
+    private EnhancedTableManager tableManager;
+    private TreeTableManager treeManager;
+    private TreeTableViewBuilder treeBuilder;
+    private CoverService coverService;
+    private String username;
+    private String currentDomain;
+    private ProgressIndicator busy;
+    private Map<String, String> dictSta;
+    private Map<String, String> dictBastand;
+    // Export-Buttons
+    private Button exportCsvButton;
+    private Button exportXlsxButton;
+    private Map<String, String> sbDict = Map.of();
+    private volatile boolean dictionariesLoaded = false;
+    private String pendingKernfrage = null;
 
     // =========================
     // INIT
@@ -217,7 +216,7 @@ public class CoverDomainController {
         }
 
         installToggleWithDot(toggleFullName, "Voll. Namen");
-        toggleFullName.selectedProperty().addListener((o,ov,nv) -> {
+        toggleFullName.selectedProperty().addListener((o, ov, nv) -> {
             resultContextModel.setFullNameMode(nv);
             tableManager.rebuildView();
             treeManager.rebuildView();
@@ -238,7 +237,7 @@ public class CoverDomainController {
     private void loadSbDictOnce() {
         EXECUTOR.submit(() -> {
             try {
-                Map<String,String> dict = coverService.getDictionary(username, "SACHBEA_FULL");
+                Map<String, String> dict = coverService.getDictionary(username, "SACHBEA_FULL");
                 Platform.runLater(() -> {
                     ColumnValueFormatter.setSbDictionary(dict == null ? Map.of() : dict);
 
@@ -255,7 +254,7 @@ public class CoverDomainController {
     private void initFullNameToggle() {
         installToggleWithDot(toggleFullName, "Voll. Namen");
         ColumnValueFormatter.bindFullNameMode(resultContextModel.fullNameModeProperty());
-        toggleFullName.selectedProperty().addListener((o,ov,nv) -> {
+        toggleFullName.selectedProperty().addListener((o, ov, nv) -> {
             resultContextModel.setFullNameMode(nv);
             // simple repaint
             tableManager.requestRefresh();
@@ -263,7 +262,9 @@ public class CoverDomainController {
         });
     }
 
-    /** Appelée depuis le Dashboard après le chargement du FXML. */
+    /**
+     * Appelée depuis le Dashboard après le chargement du FXML.
+     */
     public void initDomain(String domain) {
         this.currentDomain = domain == null ? "" : domain;
 
@@ -337,8 +338,13 @@ public class CoverDomainController {
         busy.setMouseTransparent(true);
     }
 
-    private void showBusy()  { resultContextModel.setLoading(true);  }
-    private void hideBusy()  { resultContextModel.setLoading(false); }
+    private void showBusy() {
+        resultContextModel.setLoading(true);
+    }
+
+    private void hideBusy() {
+        resultContextModel.setLoading(false);
+    }
 
     // =========================
     // GROUPING
@@ -506,7 +512,6 @@ public class CoverDomainController {
     }
 
 
-
     /**
      * Richtet einen vereinheitlichten Server-Such-Handler ein.
      * Wird von beiden Managern (Table/Tree) aufgerufen.
@@ -598,6 +603,7 @@ public class CoverDomainController {
                 getClass().getSimpleName() + "#Tree"
         );
 
+
         //treeManager.withAutoRowsPerPage(treeHost);
 
         Platform.runLater(() -> {
@@ -674,7 +680,7 @@ public class CoverDomainController {
         });
 
 
-        exportCsvButton  = builder.getExportCsvButton();
+        exportCsvButton = builder.getExportCsvButton();
         exportXlsxButton = builder.getExportXlsxButton();
 
         if (exportCsvButton != null && exportXlsxButton != null) {
@@ -759,13 +765,17 @@ public class CoverDomainController {
         if ("Unbearbeitete Angebote".equals(kf)) {
             selectListByIds(vertragsstandList, nonNullList(findIdByText(dictSta, "Angebot")));
             selectListByIds(bearbeitungsstandList, List.of("0", "1"));
-            dateBox.setVisible(false); dateBox.setManaged(false);
-            stornoGrundFilterBox.setVisible(false); stornoGrundFilterBox.setManaged(false);
+            dateBox.setVisible(false);
+            dateBox.setManaged(false);
+            stornoGrundFilterBox.setVisible(false);
+            stornoGrundFilterBox.setManaged(false);
         } else if ("Angenommene Angebote (werden policiert)".equals(kf)) {
             selectListByIds(vertragsstandList, nonNullList(findIdByText(dictSta, "Aktiv")));
             selectListByIds(bearbeitungsstandList, List.of("2", "4", "5"));
-            dateBox.setVisible(true); dateBox.setManaged(true);
-            stornoGrundFilterBox.setVisible(false); stornoGrundFilterBox.setManaged(false);
+            dateBox.setVisible(true);
+            dateBox.setManaged(true);
+            stornoGrundFilterBox.setVisible(false);
+            stornoGrundFilterBox.setManaged(false);
         } else if ("Abgelehnte/Storno Angebote".equals(kf)) {
             String oId = findIdByText(dictSta, "Angebot abgelehnt");
             String sId = findIdByText(dictSta, "Beendet");
@@ -773,15 +783,21 @@ public class CoverDomainController {
             if (oId != null) ids.add(oId);
             if (sId != null) ids.add(sId);
             selectListByIds(vertragsstandList, ids);
-            dateBox.setVisible(true); dateBox.setManaged(true);
-            stornoGrundFilterBox.setVisible(true); stornoGrundFilterBox.setManaged(true);
+            dateBox.setVisible(true);
+            dateBox.setManaged(true);
+            stornoGrundFilterBox.setVisible(true);
+            stornoGrundFilterBox.setManaged(true);
         } else {
-            dateBox.setVisible(false); dateBox.setManaged(false);
-            stornoGrundFilterBox.setVisible(false); stornoGrundFilterBox.setManaged(false);
+            dateBox.setVisible(false);
+            dateBox.setManaged(false);
+            stornoGrundFilterBox.setVisible(false);
+            stornoGrundFilterBox.setManaged(false);
         }
     }
 
-    /** Construit le CoverFilter à partir de l'état de l'UI. */
+    /**
+     * Construit le CoverFilter à partir de l'état de l'UI.
+     */
     private CoverFilter buildFilterFromUI() {
         CoverFilter filter = new CoverFilter();
 
@@ -827,7 +843,10 @@ public class CoverDomainController {
 
         CoverFilter filter = buildFilterFromUI();
         String selectedKF = kernfrageChoice.getSelectionModel().getSelectedItem();
-        if (selectedKF == null) { hideBusy(); return; }
+        if (selectedKF == null) {
+            hideBusy();
+            return;
+        }
 
         groupByMemory.put(selectedKF, new ArrayList<>(groupByList.getSelectionModel().getSelectedItems()));
 
@@ -889,10 +908,10 @@ public class CoverDomainController {
 
         if (isTreeView) {
             displayHeaders = treeManager.getDisplayHeaders();
-            originalKeys   = treeManager.getOriginalKeys();
+            originalKeys = treeManager.getOriginalKeys();
         } else {
             displayHeaders = tableManager.getDisplayHeaders();
-            originalKeys   = tableManager.getOriginalKeys();
+            originalKeys = tableManager.getOriginalKeys();
         }
 
         String kf = (kernfrageChoice.getSelectionModel().getSelectedItem() == null)
@@ -907,7 +926,8 @@ public class CoverDomainController {
                 int idx = id.indexOf(" - ");
                 staSuffix = "_Sta_" + (idx > 0 ? id.substring(0, idx) : id);
             }
-        } catch (Exception ignore) {}
+        } catch (Exception ignore) {
+        }
         String baseName = kf + groupSuffix + versionSuffix + staSuffix;
 
         FileChooser fileChooser = new FileChooser();
@@ -918,7 +938,9 @@ public class CoverDomainController {
         );
 
         File file = fileChooser.showSaveDialog(ausfuehrenButton.getScene().getWindow());
-        if (file == null) { return; }
+        if (file == null) {
+            return;
+        }
 
         if (file.exists()) {
             Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
@@ -1081,7 +1103,8 @@ public class CoverDomainController {
     private void makeListViewReorderable(ListView<String> listView) {
         listView.setCellFactory(lv -> {
             ListCell<String> cell = new ListCell<>() {
-                @Override protected void updateItem(String item, boolean empty) {
+                @Override
+                protected void updateItem(String item, boolean empty) {
                     super.updateItem(item, empty);
                     setText(empty ? null : item);
                 }
@@ -1138,10 +1161,13 @@ public class CoverDomainController {
                         : java.time.format.DateTimeFormatter.ISO_LOCAL_DATE.withLocale(locale == null ? Locale.getDefault() : locale);
 
         picker.setConverter(new javafx.util.StringConverter<java.time.LocalDate>() {
-            @Override public String toString(java.time.LocalDate date) {
+            @Override
+            public String toString(java.time.LocalDate date) {
                 return (date == null) ? "" : displayFmt.format(date);
             }
-            @Override public java.time.LocalDate fromString(String text) {
+
+            @Override
+            public java.time.LocalDate fromString(String text) {
                 if (text == null) return null;
                 String s = text.trim();
                 if (s.isEmpty()) return null;
@@ -1151,7 +1177,8 @@ public class CoverDomainController {
                                 .withResolverStyle(ResolverStyle.SMART)
                                 .withLocale(locale == null ? Locale.getDefault() : locale);
                         return java.time.LocalDate.parse(s, f);
-                    } catch (Exception ignore) {}
+                    } catch (Exception ignore) {
+                    }
                 }
                 try {
                     return java.time.LocalDate.parse(s, java.time.format.DateTimeFormatter.ISO_LOCAL_DATE);
@@ -1170,18 +1197,20 @@ public class CoverDomainController {
     }
 
 
-
     // ----- helpers de grouping pour Tree -----
-    /** Mappt den sichtbaren Gruppen-Namen auf den Header-Alias der SB-Spalte. */
+
+    /**
+     * Mappt den sichtbaren Gruppen-Namen auf den Header-Alias der SB-Spalte.
+     */
     private String resolveGroupingHeaderKey(String groupLabel) {
         if (groupLabel == null) return null;
         return switch (groupLabel) {
-            case "Sachbearbeiter (Vertrag)"   -> "SB_Vertr";
-            case "Sachbearbeiter (Schaden)"   -> "SB_Schad";
-            case "Sachbearbeiter (Rechnung)"  -> "SB_Rechnung";
+            case "Sachbearbeiter (Vertrag)" -> "SB_Vertr";
+            case "Sachbearbeiter (Schaden)" -> "SB_Schad";
+            case "Sachbearbeiter (Rechnung)" -> "SB_Rechnung";
             case "SB GL/Prokurist", "Sachbearbeiter (GL/Prokurist)" -> "GL_Prokurist";
-            case "Sachbearbeiter (Doku)"      -> "SB_Doku";
-            case "Sachbearbeiter (BuHa)"      -> "SB_BuHa";
+            case "Sachbearbeiter (Doku)" -> "SB_Doku";
+            case "Sachbearbeiter (BuHa)" -> "SB_BuHa";
             default -> null; // andere Gruppen (Makler, Gesellschaft, …) → kein SB-Mapping
         };
     }
@@ -1192,16 +1221,17 @@ public class CoverDomainController {
         for (String g : groupSnapshot) {
             switch (g) {
                 case "Versicherungsschein Nr" -> path.add(v.getOrDefault("Versicherungsschein_Nr", ""));
-                case "Versicherungsnehmer"   -> path.add(v.getOrDefault("Versicherungsnehmer_Name", ""));
-                case "Makler"                -> path.add(v.getOrDefault("Makler", ""));
-                case "Gesellschaft"          -> path.add(v.getOrDefault("Gesellschaft_Name", ""));
-                case "Versicherungsart"      -> path.add(v.getOrDefault("Versicherungsart_Text", ""));
-                case "Beteiligungsform"      -> path.add(v.getOrDefault("Beteiligungsform_Text", ""));
+                case "Versicherungsnehmer" -> path.add(v.getOrDefault("Versicherungsnehmer_Name", ""));
+                case "Makler" -> path.add(v.getOrDefault("Makler", ""));
+                case "Gesellschaft" -> path.add(v.getOrDefault("Gesellschaft_Name", ""));
+                case "Versicherungsart" -> path.add(v.getOrDefault("Versicherungsart_Text", ""));
+                case "Beteiligungsform" -> path.add(v.getOrDefault("Beteiligungsform_Text", ""));
                 case "Sachbearbeiter (Vertrag)" -> path.add(v.getOrDefault("SB_Vertr", ""));
                 case "Sachbearbeiter (Schaden)" -> path.add(v.getOrDefault("SB_Schad", ""));
-                case "Cover Art"             -> path.add(v.getOrDefault("Vertragsparte_Text", ""));
-                case "Versicherungssparte"   -> path.add("COVER");
-                default -> {}
+                case "Cover Art" -> path.add(v.getOrDefault("Vertragsparte_Text", ""));
+                case "Versicherungssparte" -> path.add("COVER");
+                default -> {
+                }
             }
         }
         if (path.isEmpty()) path.add("Alle");

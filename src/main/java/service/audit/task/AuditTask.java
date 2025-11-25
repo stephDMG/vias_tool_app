@@ -4,10 +4,10 @@ package service.audit.task;
 
 import javafx.concurrent.Task;
 import model.op.kunde.ExecutionResult;
-import service.audit.AuditService;
-import service.interfaces.ProgressReporter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import service.audit.AuditService;
+import service.interfaces.ProgressReporter;
 
 /**
  * JavaFX-Task zur asynchronen Durchführung des Audits.

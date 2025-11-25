@@ -8,7 +8,9 @@ import gui.controller.model.ResultContextModel;
 import gui.controller.model.TableStateModel;
 import javafx.animation.PauseTransition;
 import javafx.application.Platform;
-import javafx.beans.property.*;
+import javafx.beans.property.BooleanProperty;
+import javafx.beans.property.ReadOnlyBooleanProperty;
+import javafx.beans.property.SimpleBooleanProperty;
 import javafx.scene.Node;
 import javafx.scene.control.Label;
 import javafx.scene.control.Pagination;
@@ -36,9 +38,8 @@ import java.util.function.Consumer;
  */
 public abstract class AbstractTableManager {
 
-    private static final Logger log = LoggerFactory.getLogger(AbstractTableManager.class);
     protected static final ExecutorService EXECUTOR = Executors.newFixedThreadPool(4);
-
+    private static final Logger log = LoggerFactory.getLogger(AbstractTableManager.class);
     // Zustand (Models)
     protected final TableStateModel stateModel;
     protected final ColumnStateModel columnModel;
@@ -48,26 +49,19 @@ public abstract class AbstractTableManager {
     protected final TextField searchField;
     protected final Pagination pagination;
     protected final Label resultsCountLabel;
-
+    // Status
+    protected final BooleanProperty hasData = new SimpleBooleanProperty(false);
+    private final BooleanProperty isUpdatingSearchField = new SimpleBooleanProperty(false);
     // Datenhaltung
     protected List<RowData> filteredData = new ArrayList<>();
     protected List<String> currentHeaders = new ArrayList<>();
-
     // Suche/Pagination-Status
     protected boolean searchEnabled = false;
     protected boolean paginationEnabled = false;
     protected boolean serverPaginationEnabled = false;
     protected Consumer<String> onServerSearch = null;
     protected int totalCount = 0;
-
-
-
-    // Status
-    protected final BooleanProperty hasData = new SimpleBooleanProperty(false);
     protected PauseTransition searchDebounce = new PauseTransition(Duration.millis(400)); // NEU: 300ms Verzögerung
-    private final BooleanProperty isUpdatingSearchField = new SimpleBooleanProperty(false);
-
-
     protected int groupColIndex = -1;
     protected List<Boolean> stripeIsA = new ArrayList<>();
     protected Color groupColorA = null;
@@ -114,8 +108,10 @@ public abstract class AbstractTableManager {
         }
     }
 
-    /** Startet den Suchvorgang oder kehrt zur Kernfrage zurück.
-     * DIESE Methode wird NACH dem Debounce aufgerufen. */
+    /**
+     * Startet den Suchvorgang oder kehrt zur Kernfrage zurück.
+     * DIESE Methode wird NACH dem Debounce aufgerufen.
+     */
     private void startSearchOrReturnToKF(String q) {
         final boolean active = !q.isEmpty();
 
@@ -167,8 +163,13 @@ public abstract class AbstractTableManager {
 
     // ---------- Öffentliche gemeinsame API ----------
 
-    public ReadOnlyBooleanProperty hasDataProperty() { return hasData; }
-    public boolean hasData() { return hasData.get(); }
+    public ReadOnlyBooleanProperty hasDataProperty() {
+        return hasData;
+    }
+
+    public boolean hasData() {
+        return hasData.get();
+    }
 
     public AbstractTableManager enableSearch() {
         if (searchField == null) return this;
@@ -238,7 +239,7 @@ public abstract class AbstractTableManager {
             }
 
             int rowsPerPage = Math.max(1, stateModel.getRowsPerPage());
-            int pageCount   = Math.max(1, (int) Math.ceil((double) totalCount / rowsPerPage));
+            int pageCount = Math.max(1, (int) Math.ceil((double) totalCount / rowsPerPage));
 
             // targetIndex ist 0, da der Controller (applyResultContext) setCurrentPageIndex(0) aufruft
             int targetIndex = 0;
@@ -255,7 +256,6 @@ public abstract class AbstractTableManager {
             loadServerPageData(targetIndex);
         });
     }
-
 
 
     public AbstractTableManager setOnServerSearch(Consumer<String> handler) {
@@ -308,7 +308,9 @@ public abstract class AbstractTableManager {
     }
 
     /** Bereinigt alle Spalten, die auf ALLEN Seiten leer sind (1-a). */
-    /** Bereinigt alle Spalten, die auf ALLEN Seiten leer sind (1-a). */
+    /**
+     * Bereinigt alle Spalten, die auf ALLEN Seiten leer sind (1-a).
+     */
     public void cleanColumnsAllPages() {
         if (!hasData()) {
             Dialog.showInfoDialog("Bereinigen", "Keine Daten vorhanden.");
@@ -474,7 +476,9 @@ public abstract class AbstractTableManager {
         });
     }
 
-    /** Aligne la Pagination locale sur l'index mémorisé dans TableStateModel (sans recharger toute la KF). */
+    /**
+     * Aligne la Pagination locale sur l'index mémorisé dans TableStateModel (sans recharger toute la KF).
+     */
     public void syncToModelPage() {
         if (!serverPaginationEnabled || pagination == null) return;
         int idx = Math.min(Math.max(0, stateModel.getCurrentPageIndex()),
@@ -485,7 +489,6 @@ public abstract class AbstractTableManager {
             loadServerPageData(idx);
         }
     }
-
 
 
     protected void recomputeGroupStripes() {
@@ -556,23 +559,33 @@ public abstract class AbstractTableManager {
     }
 
 
-
     // ---------- Abstrakte Hooks (UI-spezifisch) ----------
 
-    /** Liefert die Datenbasis (alle Daten) für den Client-Filter. */
+    /**
+     * Liefert die Datenbasis (alle Daten) für den Client-Filter.
+     */
     protected abstract List<RowData> getOriginalDataForClientFilter();
 
     protected abstract void configureSearchSection(boolean visible);
+
     protected abstract List<String> currentHeaders();
+
     protected abstract int getVisibleRowCount();
+
     protected abstract String getVisibleCellValue(int rowIndex, int columnIndex);
+
     protected abstract void installGroupRowFactory();
+
     protected abstract void refreshView();
+
     protected abstract void updateResultsCount();
+
     protected abstract void clearView();
+
     protected abstract void requestRefresh();
 
     public abstract List<String> getDisplayHeaders();
+
     public abstract List<String> getOriginalKeys();
 
 }

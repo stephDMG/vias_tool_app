@@ -12,7 +12,7 @@ import java.util.Set;
  * <p>
  * - Behält bestehende Formatierung für Datum/Geldfelder bei.<br>
  * - Optionaler Modus "Voll. Name": zeigt für SB-Codes (z.B. NKI, CKÜ) den
- *   vollständigen Namen aus dem SACHBEA-Dictionary an (Vorname + Nachname).
+ * vollständigen Namen aus dem SACHBEA-Dictionary an (Vorname + Nachname).
  * </p>
  *
  * <p><b>Nutzung:</b></p>
@@ -29,13 +29,10 @@ import java.util.Set;
  */
 public class ColumnValueFormatter {
 
-    /** Globaler Toggle für "Voll. Name"-Anzeige (per Controller gebunden). */
+    /**
+     * Globaler Toggle für "Voll. Name"-Anzeige (per Controller gebunden).
+     */
     private static final BooleanProperty FULL_NAME_MODE = new SimpleBooleanProperty(false);
-
-    /** Dictionary: SB-Code (LU_SB_KURZ) -> "Vorname Nachname". */
-    private static Map<String, String> SB_DICT = Map.of();
-    private static Set<String> ADDITIONAL_SB_HEADERS = Set.of();
-
     /**
      * Spalten, die SB-Codes enthalten und bei "Voll. Name" in Klarnamen
      * aufgelöst werden sollen. <br>
@@ -54,6 +51,15 @@ public class ColumnValueFormatter {
             "Grund_durch",
             "Veranlasst_durch"
     );
+    /**
+     * Dictionary: SB-Code (LU_SB_KURZ) -> "Vorname Nachname".
+     */
+    private static Map<String, String> SB_DICT = Map.of();
+    private static Set<String> ADDITIONAL_SB_HEADERS = Set.of();
+
+    // Utility-Konstruktor verhindern
+    private ColumnValueFormatter() {
+    }
 
     /**
      * Bindet den globalen "Voll. Name"-Modus an eine UI-Property
@@ -78,7 +84,7 @@ public class ColumnValueFormatter {
 
     /**
      * Setzt das SB-Dictionary (Code → "Vorname Nachname").
-     /**
+     * /**
      * Setzt das SB-Dictionary (Code → "Vorname Nachname").
      *
      * @param dict Map mit Schlüsseln = LU_SB_KURZ, Werten = "Vorname Nachname".
@@ -129,8 +135,4 @@ public class ColumnValueFormatter {
         }
         return raw;
     }
-
-
-    // Utility-Konstruktor verhindern
-    private ColumnValueFormatter() {}
 }

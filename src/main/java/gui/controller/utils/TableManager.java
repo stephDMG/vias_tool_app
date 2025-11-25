@@ -1,9 +1,6 @@
 package gui.controller.utils;
 
-import formatter.ColumnValueFormatter;
 import gui.controller.dialog.Dialog;
-import javafx.beans.property.SimpleStringProperty;
-import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
 import javafx.scene.control.*;
@@ -11,7 +8,6 @@ import model.RowData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -45,7 +41,6 @@ public class TableManager {
             deleteColumnsButton.setDisable(previewTableView.getSelectionModel().getSelectedCells().isEmpty());
         });
     }
-
 
 
     /**

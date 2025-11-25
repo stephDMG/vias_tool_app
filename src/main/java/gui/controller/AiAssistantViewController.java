@@ -8,14 +8,14 @@ import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.*;
 import javafx.scene.input.KeyCode;
-import javafx.scene.layout.*;
+import javafx.scene.layout.FlowPane;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import model.RowData;
 import model.enums.ExportFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-
 
 import java.io.File;
 import java.net.URL;
@@ -124,7 +124,7 @@ public class AiAssistantViewController implements Initializable {
         logger.info("Initialisiere AiAssistantViewController mit verbesserter Tabellenverwaltung");
 
         // Service-Injection
-        this.aiService =  service.ServiceFactory.getAiService();
+        this.aiService = service.ServiceFactory.getAiService();
         this.databaseService = service.ServiceFactory.getDatabaseService();
 
         // === Erweiterte Tabellenverwaltung Setup ===

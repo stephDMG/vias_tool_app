@@ -12,6 +12,7 @@ public interface AuditRepository {
 
     /**
      * Führt eine Abfrage für Dokumente basierend auf einer Liste von Policennummern durch.
+     *
      * @param policeNrs Eine Liste von Policennummern, für die Dokumente gesucht werden.
      * @return Eine Liste von CoverAuditRecord-Objekten.
      * @throws Exception bei Datenbankfehlern.
@@ -20,6 +21,7 @@ public interface AuditRepository {
 
     /**
      * Führt eine Abfrage für Dokumente basierend auf einer Liste von VSN-Nummern (Schaden) durch.
+     *
      * @param vsnNrs Eine Liste von VSN-Nummern (Schaden-Nummern), für die Dokumente gesucht werden.
      * @return Eine Liste von VsnAuditRecord-Objekten.
      * @throws Exception bei Datenbankfehlern.

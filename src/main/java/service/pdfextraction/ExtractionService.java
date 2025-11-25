@@ -40,11 +40,21 @@ public class ExtractionService {
     private final ProtocolExporter protocolExporter;
 
 
+    public ExtractionService(FileService fileService) {
+        this.fileService = fileService;
+        this.validationService = new ValidationService();
+        this.availableExtractors = List.of(
+                new VersicherungsExtractor(),
+                new SchadenregulierungExtractor()
+        );
+        this.protocolExporter = new ProtocolExporter(fileService);
+    }
 
     /**
      * Hauptprozess für Extraktion und Export.
      * Findet den passenden Extraktor, führt den entsprechenden Workflow aus und
      * exportiert die resultierenden Daten.
+     *
      * @return True, wenn ein Export durchgeführt wurde, sonst False.
      */
     public boolean extractAndExport(String pdfPath, String outputPath, ExportFormat format) {
@@ -124,6 +134,8 @@ public class ExtractionService {
     }
 
 
+    // --- HILFSMETHODEN ---
+
     // --- NEUER WORKFLOW FÜR 'SCHADENREGULIERUNG' ---
     private void exportSchadenregulierungData(List<SchadenregulierungData> data, String outputPath, ExportFormat format) {
         System.out.println(data);
@@ -132,9 +144,6 @@ public class ExtractionService {
         fileService.writeFileWithHeaders(rows, headers, outputPath, format);
         logger.info("📝 Export für Schadenregulierungen abgeschlossen: {} Zeilen.", rows.size());
     }
-
-
-    // --- HILFSMETHODEN ---
 
     /**
      * Findet den ersten verfügbaren Extraktor, der die Datei verarbeiten kann.
@@ -172,16 +181,6 @@ public class ExtractionService {
         } catch (Exception e) {
             return dataOutputPath + (preferXlsx ? ".protocol.xlsx" : ".protocol.csv");
         }
-    }
-
-    public ExtractionService(FileService fileService) {
-        this.fileService = fileService;
-        this.validationService = new ValidationService();
-        this.availableExtractors = List.of(
-                new VersicherungsExtractor(),
-                new SchadenregulierungExtractor()
-        );
-        this.protocolExporter = new ProtocolExporter(fileService);
     }
 
     private void maybeExportProtocol(Object extractor, String dataOutputPath, ExportFormat format) {

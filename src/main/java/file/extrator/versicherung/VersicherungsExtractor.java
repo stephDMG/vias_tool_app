@@ -20,7 +20,7 @@ public class VersicherungsExtractor implements DataExtractor<VersicherungsData>,
     private static final Logger logger = LoggerFactory.getLogger(VersicherungsExtractor.class);
 
     private static final Pattern VSN_FILENAME = Pattern.compile("(\\d+)_.*\\.pdf", Pattern.CASE_INSENSITIVE);
-    private static final Pattern VSN_CONTENT  = Pattern.compile("Versicherungsschein Nr\\.?:\\s*(\\S+)");
+    private static final Pattern VSN_CONTENT = Pattern.compile("Versicherungsschein Nr\\.?:\\s*(\\S+)");
 
     private final PdfReader pdfReader;
 

@@ -11,6 +11,7 @@ public class ExecutionResult {
     private final String message;
     private final String outputPath; // Chemin du fichier exporté
     private final int rowCount;      // Nombre de lignes exportées
+
     /**
      * Konstruktor für ein einfaches Ergebnis ohne zusätzliche Daten.
      */

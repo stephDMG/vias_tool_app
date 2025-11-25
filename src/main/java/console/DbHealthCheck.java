@@ -7,13 +7,13 @@ import java.sql.Connection;
 /**
  * Kleines Konsolenprogramm, um die Erreichbarkeit der in DatabaseConfig hinterlegten
  * Datenbank zu prüfen. Gibt einen klaren Statuscode und eine Meldung aus.
- *
+ * <p>
  * Aufruf:
- *   mvn exec:java -Dexec.mainClass=console.DbHealthCheck
- *
+ * mvn exec:java -Dexec.mainClass=console.DbHealthCheck
+ * <p>
  * Exit-Codes:
- *   0 = Verbindung erfolgreich
- *   1 = Verbindung fehlgeschlagen
+ * 0 = Verbindung erfolgreich
+ * 1 = Verbindung fehlgeschlagen
  */
 public class DbHealthCheck {
     public static void main(String[] args) {

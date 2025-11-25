@@ -1,7 +1,6 @@
 package gui.controller.manager;
 
 import javafx.application.Platform;
-import javafx.scene.control.TableView;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import org.slf4j.Logger;

@@ -1,5 +1,6 @@
 package gui.controller.manager;
 
+import atlantafx.base.theme.NordLight;
 import formatter.ColumnValueFormatter;
 import gui.controller.dialog.Dialog;
 import gui.controller.manager.base.AbstractTableManager;
@@ -7,6 +8,7 @@ import gui.controller.model.ColumnStateModel;
 import gui.controller.model.ResultContextModel;
 import gui.controller.model.TableStateModel;
 import gui.controller.service.FormatterService;
+import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
@@ -14,7 +16,6 @@ import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
 import javafx.scene.Node;
 import javafx.scene.control.*;
-import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.scene.layout.Region;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Text;
@@ -126,6 +127,13 @@ public class EnhancedTableManager extends AbstractTableManager {
                         : new ResultContextModel());
     }
 
+    /**
+     * Minimal-Konstruktor nur mit TableView (hauptsächlich für Tests).
+     */
+    public EnhancedTableManager(TableView<ObservableList<String>> tableView) {
+        this(tableView, null, null, null, null);
+    }
+
     // Ajouter cette méthode
     public void resizeColumnsToFitContent() {
         if (tableView.getItems().isEmpty()) return;
@@ -151,13 +159,6 @@ public class EnhancedTableManager extends AbstractTableManager {
             column.setPrefWidth(Math.min(maxWidth, 300));
             column.setMinWidth(80);  // Largeur minimale pour éviter tronquage
         }
-    }
-
-    /**
-     * Minimal-Konstruktor nur mit TableView (hauptsächlich für Tests).
-     */
-    public EnhancedTableManager(TableView<ObservableList<String>> tableView) {
-        this(tableView, null, null, null, null);
     }
 
     // -------------------------------------------------------------------------
@@ -218,7 +219,6 @@ public class EnhancedTableManager extends AbstractTableManager {
         super.bindAutoRowsPerPage(observedRegion);
         return this;
     }
-
 
 
     public EnhancedTableManager setOnServerSearch(Consumer<String> searchHandler) {
@@ -338,7 +338,6 @@ public class EnhancedTableManager extends AbstractTableManager {
     }
 
 
-
     private void deleteColumns(List<TableColumn<?, ?>> columnsToDelete) {
         Set<String> originalKeysToDelete = columnsToDelete.stream()
                 .map(col -> String.valueOf(col.getUserData()))
@@ -398,7 +397,6 @@ public class EnhancedTableManager extends AbstractTableManager {
     }
 
 
-
     private void addContextMenuToColumn(TableColumn<ObservableList<String>, String> column) {
         MenuItem renameItem = new MenuItem("Spalte umbenennen");
         MenuItem deleteItem = new MenuItem("Spalte löschen");
@@ -406,14 +404,14 @@ public class EnhancedTableManager extends AbstractTableManager {
         // ➜ NEU: Format-Untermenü
         Menu formatMenu = new Menu("Spalte formatieren");
         MenuItem moneyItem = new MenuItem("Währung (€)");
-        MenuItem dateItem  = new MenuItem("Datum");
-        MenuItem sbItem    = new MenuItem("SB (Voll. Name)");
-        MenuItem noneItem  = new MenuItem("Kein Format");
+        MenuItem dateItem = new MenuItem("Datum");
+        MenuItem sbItem = new MenuItem("SB (Voll. Name)");
+        MenuItem noneItem = new MenuItem("Kein Format");
 
         moneyItem.setOnAction(e -> applyFormatAndPersist(column, "MONEY"));
-        dateItem.setOnAction(e  -> applyFormatAndPersist(column, "DATE"));
-        sbItem.setOnAction(e    -> applyFormatAndPersist(column, "SB"));
-        noneItem.setOnAction(e  -> applyFormatAndPersist(column, "NONE"));
+        dateItem.setOnAction(e -> applyFormatAndPersist(column, "DATE"));
+        sbItem.setOnAction(e -> applyFormatAndPersist(column, "SB"));
+        noneItem.setOnAction(e -> applyFormatAndPersist(column, "NONE"));
 
         renameItem.setOnAction(e -> renameColumn(column));
         deleteItem.setOnAction(e -> deleteColumn(column));
@@ -430,7 +428,7 @@ public class EnhancedTableManager extends AbstractTableManager {
 
     private void applyFormatAndPersist(TableColumn<ObservableList<String>, String> column, String type) {
         String originalKey = String.valueOf(column.getUserData());
-        String headerText  = column.getText();
+        String headerText = column.getText();
         try {
             FormatterService.setColumnFormat(originalKey, headerText, type);
             // Recharger la config dans les singletons et rafraîchir l’UI
@@ -442,7 +440,6 @@ public class EnhancedTableManager extends AbstractTableManager {
             Dialog.showErrorDialog("Format speichern", "Konnte Format nicht speichern: " + ex.getMessage());
         }
     }
-
 
 
     private void renameColumn(TableColumn<ObservableList<String>, String> column) {

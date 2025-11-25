@@ -23,16 +23,11 @@ import java.util.List;
 public class AuditRepositoryImpl implements AuditRepository {
 
     private static final Logger logger = LoggerFactory.getLogger(AuditRepositoryImpl.class);
-    private final DatabaseService databaseService;
-
     // --- NEUE FORMATTER FÜR ROHDATEN (VIAS) ---
     // Format für reine Datumsfelder (z.B. 20250807)
     private static final DateTimeFormatter VIAS_DATE_INPUT_FMT = DateTimeFormatter.ofPattern("yyyyMMdd");
     // Format für reine Uhrzeitfelder (z.B. 114448)
     private static final DateTimeFormatter VIAS_TIME_INPUT_FMT = DateTimeFormatter.ofPattern("HHmmss");
-
-    // --- SQL-Abfragen (Unverändert gelassen, wie gewünscht) ---
-
     private static final String COVER_AUDIT_SQL = """
             SELECT
                 SAB.LU_SB_NAM AS "Nachname",
@@ -55,6 +50,7 @@ public class AuditRepositoryImpl implements AuditRepository {
               AND DC2.Vorgang <> ''
             """;
 
+    // --- SQL-Abfragen (Unverändert gelassen, wie gewünscht) ---
     private static final String SCHADEN_AUDIT_SQL = """
             SELECT
                 SAB.LU_SB_VOR AS "Vorname",
@@ -75,6 +71,7 @@ public class AuditRepositoryImpl implements AuditRepository {
               AND DC2.Vorgang IS NOT NULL
               AND DC2.Vorgang <> ''
             """;
+    private final DatabaseService databaseService;
 
 
     public AuditRepositoryImpl(DatabaseService databaseService) {

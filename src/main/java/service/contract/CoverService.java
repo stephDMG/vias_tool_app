@@ -1,7 +1,7 @@
 package service.contract;
 
 import formatter.contract.CoverFormatter;
-import gui.cover.CoverDomainController;
+import gui.controller.manager.DataLoader;
 import model.GroupingUtil;
 import model.RowData;
 import model.contract.CoverDetails;
@@ -14,7 +14,6 @@ import service.cache.CoverCacheService;
 import service.contract.rbac.CoverAccessGuard;
 import service.contract.repository.CoverDetailsRepository;
 import service.contract.repository.CoverRepository;
-import gui.controller.manager.DataLoader;
 
 import java.util.ArrayList;
 import java.util.List;
