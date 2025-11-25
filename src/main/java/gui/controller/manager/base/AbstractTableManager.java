@@ -93,6 +93,10 @@ public abstract class AbstractTableManager {
         stateModel.rowsPerPageProperty().addListener((obs, oldV, newV) -> setRowsPerPage(newV.intValue()));
         columnModel.cleanedProperty().addListener((obs, oldV, newV) -> refreshView());
 
+        columnModel.getHiddenKeys().addListener(
+                (javafx.collections.SetChangeListener<String>) change -> refreshView()
+        );
+
 
         if (searchField != null) {
             // 1. Synchronisation der UI-Eingabe zum Modell (Saisie Utilisateur)
@@ -125,6 +129,41 @@ public abstract class AbstractTableManager {
             filterData(q);
         }
     }
+
+    /**
+     * Zeigt einen einheitlichen Bestätigungsdialog für das Löschen von Spalten an.
+     *
+     * @param headerNames Liste der Spalten-Anzeigenamen (kann leer sein)
+     * @param count       Anzahl der zu löschenden Spalten
+     * @return {@code true}, wenn der Benutzer die Löschung bestätigt hat, sonst {@code false}.
+     */
+    protected boolean confirmDeleteColumns(Collection<String> headerNames, int count) {
+        if (count <= 0) {
+            return false;
+        }
+
+        List<String> names = (headerNames == null)
+                ? List.of()
+                : headerNames.stream()
+                .filter(Objects::nonNull)
+                .filter(s -> !s.isBlank())
+                .toList();
+
+        String message;
+        if (count == 1) {
+            String name = names.isEmpty() ? "1 Spalte" : "'" + names.get(0) + "'";
+            message = "Möchten Sie die Spalte " + name + " wirklich löschen?";
+        } else {
+            String list = names.isEmpty()
+                    ? ""
+                    : "\n\n" + String.join(", ", names);
+            message = "Möchten Sie die ausgewählten " + count
+                    + " Spalten wirklich löschen?" + list;
+        }
+
+        return gui.controller.dialog.Dialog.showWarningDialog("Spalten löschen", message);
+    }
+
 
     // ---------- Öffentliche gemeinsame API ----------
 
@@ -269,6 +308,7 @@ public abstract class AbstractTableManager {
     }
 
     /** Bereinigt alle Spalten, die auf ALLEN Seiten leer sind (1-a). */
+    /** Bereinigt alle Spalten, die auf ALLEN Seiten leer sind (1-a). */
     public void cleanColumnsAllPages() {
         if (!hasData()) {
             Dialog.showInfoDialog("Bereinigen", "Keine Daten vorhanden.");
@@ -280,31 +320,43 @@ public abstract class AbstractTableManager {
         }
 
         if (!Dialog.showWarningDialog("Global Bereinigen",
-                "Es werden Spalten entfernt, die im GESAMTEN Ergebnis leer sind. Dies kann bei großen Datenmengen einen Moment dauern. Fortfahren?")) {
+                "Es werden Spalten entfernt, die im GESAMTEN Ergebnis leer sind. "
+                        + "Dies kann bei großen Datenmengen einen Moment dauern. Fortfahren?")) {
             return;
         }
 
-        // Deaktiviert den Button während des Jobs (löst Problem 2-a)
+        resultModel.setLoading(true);
+
+        // Während des Jobs: Button via Listener deaktivieren
         Platform.runLater(() -> columnModel.getHiddenKeys().addListener(this::disableCleanButtonOnCleaned));
 
         EXECUTOR.submit(() -> {
             try {
-                // 1. Alle Daten vom Server/lokal laden
-                List<RowData> allRows = loadAllData();
-                if (allRows.isEmpty()) {
+                // === AJOUT IMPORTANT : choisir la base de données la plus rapide ===
+                // Si une recherche est active et que filteredData est déjà disponible,
+                // on l’utilise directement (p.ex. 107 lignes) au lieu de recharger toutes les pages.
+                final List<RowData> basis;
+                if (stateModel.isSearchActive() && filteredData != null && !filteredData.isEmpty()) {
+                    basis = new ArrayList<>(filteredData);
+                } else {
+                    // Chemin existant : tout charger depuis le serveur
+                    basis = loadAllData(); // ta méthode utilitaire existante
+                }
+
+                if (basis.isEmpty()) {
                     Platform.runLater(() -> Dialog.showInfoDialog("Bereinigen", "Keine Daten zum Bereinigen verfügbar."));
                     return;
                 }
 
-                // 2. Original-Keys bestimmen (könnte leer sein, wenn nur 1 Spalte übrig ist)
-                Set<String> allKeys = allRows.get(0).getValues().keySet();
+                // 2. Original-Keys bestimmen
+                Set<String> allKeys = basis.get(0).getValues().keySet();
                 if (allKeys.isEmpty()) return;
 
                 // 3. Spalten identifizieren, die komplett leer sind
                 Set<String> keysToRemove = new HashSet<>();
                 for (String key : allKeys) {
                     boolean allEmpty = true;
-                    for (RowData row : allRows) {
+                    for (RowData row : basis) {
                         String value = ColumnValueFormatter.format(row, key);
                         if (value != null && !value.trim().isEmpty()) {
                             allEmpty = false;
@@ -314,24 +366,27 @@ public abstract class AbstractTableManager {
                     if (allEmpty) keysToRemove.add(key);
                 }
 
-                // 4. Update des globalen Zustands
+                // 4. Update des globalen Zustands + Feedback
                 Platform.runLater(() -> {
                     if (keysToRemove.isEmpty()) {
                         Dialog.showInfoDialog("Bereinigen", "Es gibt keine vollständig leeren Spalten im gesamten Ergebnis.");
                     } else {
-                        // Wichtig: ColumnStateModel aktualisieren
                         columnModel.replaceHiddenKeys(keysToRemove);
-                        stateModel.setCleaningApplied(true); // Status setzen (4-a)
+                        stateModel.setCleaningApplied(true);
                         Dialog.showInfoDialog("Bereinigen", keysToRemove.size() + " Spalte(n) wurden global ausgeblendet.");
                     }
                 });
 
             } catch (Exception ex) {
                 log.error("Global Bereinigen fehlgeschlagen", ex);
-                Platform.runLater(() -> Dialog.showErrorDialog("Bereinigen Fehler", "Fehler beim Laden aller Daten: " + ex.getMessage()));
+                Platform.runLater(() -> Dialog.showErrorDialog("Bereinigen Fehler",
+                        "Fehler beim globalen Bereinigen: " + ex.getMessage()));
             } finally {
-                // Entfernt den Listener nach dem Job (oder sollte im Sub-Manager bleiben)
-                Platform.runLater(() -> columnModel.getHiddenKeys().removeListener(this::disableCleanButtonOnCleaned));
+                // Toujours retirer le listener et remettre le busy à false
+                Platform.runLater(() -> {
+                    columnModel.getHiddenKeys().removeListener(this::disableCleanButtonOnCleaned);
+                    resultModel.setLoading(false);
+                });
             }
         });
     }

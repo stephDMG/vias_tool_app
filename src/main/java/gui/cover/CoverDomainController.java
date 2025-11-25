@@ -1,10 +1,12 @@
 package gui.cover;
 
+import formatter.ColumnValueFormatter;
 import gui.controller.manager.*;
 import gui.controller.model.ColumnStateModel;
 import gui.controller.model.ResultContextModel;
 import gui.controller.model.TableStateModel;
 
+import gui.controller.service.FormatterService;
 import javafx.animation.PauseTransition;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -16,6 +18,7 @@ import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.input.*;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
@@ -79,6 +82,7 @@ public class CoverDomainController {
     @FXML private VBox tableHost, treeHost;
     @FXML private ToggleButton toggleTreeView;
     @FXML private ToggleButton toggleVersionView;
+    @FXML private ToggleButton toggleFullName;
 
     private EnhancedTableManager tableManager;
     private TreeTableManager treeManager;
@@ -146,6 +150,7 @@ public class CoverDomainController {
 
     // Persistenz: Gruppierung pro Kernfrage
     private final Map<String, List<String>> groupByMemory = new HashMap<>();
+    private Map<String,String> sbDict = Map.of();
 
     // Ladevorgang
     private static final ExecutorService EXECUTOR = Executors.newCachedThreadPool();
@@ -170,11 +175,13 @@ public class CoverDomainController {
         initBusyOverlay();
         showBusy();
 
-        setupGroupBy();
+
         setupParams();
         setupTable();
         setupTree();
         setupUnifiedSearchHandler();
+
+        setupGroupBy();
 
         installToggleWithDot(toggleTreeView, "Baumansicht");
         toggleTreeView.selectedProperty().addListener((obs, wasTree, isTree) -> {
@@ -209,9 +216,51 @@ public class CoverDomainController {
             });
         }
 
+        installToggleWithDot(toggleFullName, "Voll. Namen");
+        toggleFullName.selectedProperty().addListener((o,ov,nv) -> {
+            resultContextModel.setFullNameMode(nv);
+            tableManager.rebuildView();
+            treeManager.rebuildView();
+        });
+
         setupBindings();
+        ColumnValueFormatter.bindFullNameMode(resultContextModel.fullNameModeProperty());
+        loadSbDictOnce();
+        initFullNameToggle();
         setupKernfragenChoice();
+        FormatterService.reloadRuntimeConfig();
+
+        applyGroupingHeaderKeysFromSelection();
+
         showMessage("Bitte wählen Sie eine Kernfrage aus.");
+    }
+
+    private void loadSbDictOnce() {
+        EXECUTOR.submit(() -> {
+            try {
+                Map<String,String> dict = coverService.getDictionary(username, "SACHBEA_FULL");
+                Platform.runLater(() -> {
+                    ColumnValueFormatter.setSbDictionary(dict == null ? Map.of() : dict);
+
+                    tableManager.rebuildView();
+                    treeManager.rebuildView();
+                });
+            } catch (Exception e) {
+                log.warn("SB-Dict nicht geladen", e);
+            }
+        });
+    }
+
+    // 2) Binder le toggle « Voll. Name »
+    private void initFullNameToggle() {
+        installToggleWithDot(toggleFullName, "Voll. Namen");
+        ColumnValueFormatter.bindFullNameMode(resultContextModel.fullNameModeProperty());
+        toggleFullName.selectedProperty().addListener((o,ov,nv) -> {
+            resultContextModel.setFullNameMode(nv);
+            // simple repaint
+            tableManager.requestRefresh();
+            treeManager.requestRefresh();
+        });
     }
 
     /** Appelée depuis le Dashboard après le chargement du FXML. */
@@ -301,12 +350,20 @@ public class CoverDomainController {
         groupByAllCheck.setSelected(true);
         updateGroupByLabel();
 
+        // ➜ initialiser la clé de groupe (all selected → pas de clé SB)
+        applyGroupingHeaderKeysFromSelection();
+
         groupByList.getSelectionModel().getSelectedItems().addListener(
                 (javafx.collections.ListChangeListener<String>) c -> {
                     updateGroupByLabel();
+                    // ➜ mise à jour clé SB lorsque la sélection change
+                    applyGroupingHeaderKeysFromSelection();
+                    treeManager.onGroupingChanged();
                     Platform.runLater(() -> {
                         boolean allSelected = groupByList.getSelectionModel().getSelectedItems().size() == groupByOptions.size();
+                        treeManager.requestRefresh();
                         groupByAllCheck.setSelected(allSelected);
+                        runKernfrage();
                     });
                 }
         );
@@ -316,11 +373,31 @@ public class CoverDomainController {
                 if (checked) groupByList.getSelectionModel().selectAll();
                 else groupByList.getSelectionModel().clearSelection();
                 updateGroupByLabel();
+                // ➜ recalculer la clé (si “Tous” → null)
+                applyGroupingHeaderKeysFromSelection();
+                treeManager.onGroupingChanged();
+                Platform.runLater(() -> {
+                    treeManager.requestRefresh();   // force repaint
+                });
+                // ➜ relancer
+                runKernfrage();
             });
         });
 
         makeListViewReorderable(groupByList);
+
+        // ⚠️ Si ton makeListViewReorderable réordonne vraiment les items,
+        // et que tu veux que le 1er niveau (sel.get(0)) suive l’ordre visuel
+        // après un drag&drop, ajoute un listener sur focus/mouse release:
+        groupByList.setOnMouseReleased(e -> {
+            // quand l’ordre change, la sélection reste; on réévalue juste la clé
+            applyGroupingHeaderKeysFromSelection();
+            // pas forcément besoin de relancer ici si tu relances déjà dans d’autres listeners,
+            // sinon décommente:
+            // runKernfrage();
+        });
     }
+
 
     private void updateGroupByLabel() {
         List<String> selected = new ArrayList<>(groupByList.getSelectionModel().getSelectedItems());
@@ -428,6 +505,8 @@ public class CoverDomainController {
                 isSearch ? "SUCHE" : "KF", total, isSearch, searchQuery);
     }
 
+
+
     /**
      * Richtet einen vereinheitlichten Server-Such-Handler ein.
      * Wird von beiden Managern (Table/Tree) aufgerufen.
@@ -512,6 +591,20 @@ public class CoverDomainController {
             messageLabel.managedProperty().bind(messageLabel.visibleProperty());
         }
 
+        VBox treeContainer = treeBuilder.getTreeContainer();
+        TableLayoutHelper.configureTableContainer(
+                treeHost,          // ✅ host de l’arbre
+                treeContainer,
+                getClass().getSimpleName() + "#Tree"
+        );
+
+        //treeManager.withAutoRowsPerPage(treeHost);
+
+        Platform.runLater(() -> {
+            var ttv = treeManager.getTreeTableView();
+            ttv.setColumnResizePolicy(TreeTableView.UNCONSTRAINED_RESIZE_POLICY);
+        });
+
         // Exports
         treeManager.setOnExportCsv(() -> exportFullReport(ExportFormat.CSV));
         treeManager.setOnExportXlsx(() -> exportFullReport(ExportFormat.XLSX));
@@ -521,6 +614,15 @@ public class CoverDomainController {
             resultContextModel.setTreeViewActive(isTree);
         });
     }
+
+    private void applyGroupingHeaderKeysFromSelection() {
+        if (treeManager == null) return;
+        var sel = groupByList.getSelectionModel().getSelectedItems();
+        List<String> keysPerLevel = (sel == null) ? List.of()
+                : sel.stream().map(this::resolveGroupingHeaderKey).toList(); // ex: ["SB_Vertr","SB_Schad", null, ...]
+        treeManager.setGroupingHeaderKeys(keysPerLevel);
+    }
+
 
     // =========================
     // TABLE
@@ -551,9 +653,26 @@ public class CoverDomainController {
         if (messageLabel != null) {
             messageLabel.visibleProperty().bind(tableStateModel.searchActiveProperty());
             messageLabel.managedProperty().bind(messageLabel.visibleProperty());
+
+
+            tableHost.getChildren().setAll(builder.getTableContainer());
         }
 
-        tableHost.getChildren().setAll(builder.getTableContainer());
+
+        VBox tableContainer = builder.getTableContainer();
+
+        TableLayoutHelper.configureTableContainer(
+                tableHost,         // ✅ parent = host de la table
+                tableContainer,
+                getClass().getSimpleName()
+        );
+        tableManager.withAutoRowsPerPage(tableHost);
+
+        Platform.runLater(() -> {
+            var ttv = tableManager.getTableView();
+            ttv.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
+        });
+
 
         exportCsvButton  = builder.getExportCsvButton();
         exportXlsxButton = builder.getExportXlsxButton();
@@ -846,11 +965,13 @@ public class CoverDomainController {
                                 List<String> groupKeys = groupByList.getSelectionModel().getSelectedItems();
                                 if (format == ExportFormat.CSV) {
                                     new file.writer.GroupedCsvWriter().writeGrouped(all, groupKeys, finalFile.getAbsolutePath());
+
                                 } else {
                                     new file.writer.GroupedXlsxWriter().writeGrouped(all, groupKeys, finalFile.getAbsolutePath());
                                 }
                             } else {
-                                exportWithFormat(all, finalDisplayHeaders, finalOriginalKeys, finalFile, format);
+                                boolean fullName = resultContextModel.fullNameModeProperty().get();
+                                exportWithFormat(all, finalDisplayHeaders, finalOriginalKeys, finalFile, format, fullName);
                             }
 
                             new Alert(Alert.AlertType.INFORMATION,
@@ -1048,7 +1169,23 @@ public class CoverDomainController {
         picker.setPromptText(prompt);
     }
 
+
+
     // ----- helpers de grouping pour Tree -----
+    /** Mappt den sichtbaren Gruppen-Namen auf den Header-Alias der SB-Spalte. */
+    private String resolveGroupingHeaderKey(String groupLabel) {
+        if (groupLabel == null) return null;
+        return switch (groupLabel) {
+            case "Sachbearbeiter (Vertrag)"   -> "SB_Vertr";
+            case "Sachbearbeiter (Schaden)"   -> "SB_Schad";
+            case "Sachbearbeiter (Rechnung)"  -> "SB_Rechnung";
+            case "SB GL/Prokurist", "Sachbearbeiter (GL/Prokurist)" -> "GL_Prokurist";
+            case "Sachbearbeiter (Doku)"      -> "SB_Doku";
+            case "Sachbearbeiter (BuHa)"      -> "SB_BuHa";
+            default -> null; // andere Gruppen (Makler, Gesellschaft, …) → kein SB-Mapping
+        };
+    }
+
     private List<String> buildPathFromSnapshot(RowData row, List<String> groupSnapshot) {
         Map<String, String> v = row.getValues();
         List<String> path = new ArrayList<>();

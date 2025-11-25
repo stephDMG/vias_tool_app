@@ -40,8 +40,7 @@
                    showRoot="false"
                    fixedCellSize="24.0"
                    editable="true"
-                   prefHeight="596.0"
-                   prefWidth="1955.0"
+                   VBox.vgrow="ALWAYS"
                    style="-fx-background-radius: 8; -fx-border-color: rgba(0,0,0,0.08); -fx-border-radius: 8;">
         <columnResizePolicy>
             <TreeTableView fx:constant="UNCONSTRAINED_RESIZE_POLICY"/>

@@ -28,7 +28,12 @@
             <Label fx:id="statusLabel" textFill="#666666" />
 
             <VBox fx:id="resultsContainer" spacing="10" VBox.vgrow="ALWAYS" />
+
         </VBox>
+
+
+
+
     </center>
 
     <bottom>

@@ -22,8 +22,7 @@
     <!-- Main Table -->
     <TableView fx:id="tableView"
                editable="true"
-               prefHeight="596.0"
-               prefWidth="1955.0"
+               VBox.vgrow="ALWAYS"
                style="-fx-background-radius: 8; -fx-border-color: rgba(0,0,0,0.08); -fx-border-radius: 8;">
         <columnResizePolicy>
             <TableView fx:constant="UNCONSTRAINED_RESIZE_POLICY" />
@@ -32,7 +31,7 @@
          <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
       </padding>
         <placeholder>
-            <Label text="Keine Daten geladen."/>
+            <Label fx:id="tableViewLabel" />
         </placeholder>
     </TableView>
 

@@ -5,6 +5,7 @@ import gui.controller.dialog.Dialog;
 import gui.controller.dialog.GroupingDialogController;
 import gui.controller.manager.EnhancedTableManager;
 import gui.controller.manager.TableViewBuilder;
+import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -12,7 +13,10 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Label;
 import javafx.scene.control.ProgressBar;
+import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import model.RowData;
@@ -43,6 +47,8 @@ public class OpListViewerController {
     private Label countLabel;
     @FXML
     private TextField policyFilterField;
+    @FXML private StackPane resultsStack;
+    @FXML private VBox tableHost, treeHost;
 
     private OpRepository opRepository;
     private OpListeFormatter formatter;
@@ -67,6 +73,13 @@ public class OpListViewerController {
         opRepository =  service.ServiceFactory.getOpRepository();
         //opRepository = new OpRepository(ServiceFactory.getDatabaseService(), formatter);
 
+
+        setupTable();
+        // Charger les données
+        loadDataAsync();
+    }
+
+    private void setupTable(){
         TableViewBuilder builder = TableViewBuilder.create()
                 .withFeatures(
                         TableViewBuilder.Feature.SELECTION,
@@ -83,15 +96,36 @@ public class OpListViewerController {
                 .enablePagination(100)
                 .enableSearch();
 
+
+        VBox tableContainer = builder.getTableContainer();
+
+        // ✅ ÉTAPE 1: Configurer le conteneur de la table
+        VBox.setVgrow(tableContainer, javafx.scene.layout.Priority.ALWAYS);
+        tableContainer.setMaxHeight(Double.MAX_VALUE);
+
+        // ✅ ÉTAPE 2: FORCER LE CONTENEUR PARENT (clé du problème 2)
+        resultsContainer.setMinHeight(400);  // Hauteur minimale OBLIGATOIRE
+        resultsContainer.setPrefHeight(Region.USE_COMPUTED_SIZE);  // Ne pas forcer 596px
+
+        // ✅ ÉTAPE 3: Ajouter et forcer le recalcul
         resultsContainer.getChildren().clear();
-        resultsContainer.getChildren().add(builder.getTableContainer());
+        resultsContainer.getChildren().add(tableContainer);
 
-        VBox.setVgrow(builder.getTableContainer(), javafx.scene.layout.Priority.ALWAYS);
+        // ✅ ÉTAPE 4: Recalcul implicite du layout
+        Platform.runLater(() -> {
+            resultsContainer.requestLayout();
+            tableContainer.requestLayout();
 
-        tableManager.bindAutoRowsPerPage((javafx.scene.layout.Region) builder.getTableContainer());
+            // ✅ ÉTAPE 5: Configurer les colonnes pour éviter tronquage
+            tableManager.getTableView().setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
+            tableManager.getTableView().getColumns().forEach(col -> {
+                col.setPrefWidth(150);
+                col.setMinWidth(80);
+            });
+        });
 
-        // Charger les données
-        loadDataAsync();
+        tableManager.bindAutoRowsPerPage((Region) builder.getTableContainer());
+
     }
 
     /**

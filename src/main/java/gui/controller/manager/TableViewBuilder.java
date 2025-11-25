@@ -9,8 +9,9 @@ import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
-
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
@@ -23,18 +24,14 @@ public class TableViewBuilder {
 
     private final VBox tableContainer;
     private final TextField searchField;
-    private final Button deleteColumnsButton;
     private final Pagination pagination;
     private final Label resultsCountLabel;
-    private final Button exportCsvButton;
-    private final Button exportXlsxButton;
-    private final Button cleanColumnsButton;
+    private final Button exportCsvButton, exportXlsxButton,  cleanColumnsButton, deleteColumnsButton ;
     private final TableView<ObservableList<String>> tableView;
 
     private boolean optGroupStriping = false;
     private String groupStripingHeader = null;
 
-    // Modelle d'état partagés (Maintenant 3)
     private ColumnStateModel columnStateModel = null;
     private ResultContextModel resultContextModel = null;
     private TableStateModel tableStateModel = null; // NOUVEAU
@@ -57,7 +54,11 @@ public class TableViewBuilder {
         alignHBox("exportSection",  Pos.CENTER_RIGHT);
         alignHBox("searchSection",  Pos.CENTER_LEFT);
 
-        if (this.tableView != null) this.tableView.setFixedCellSize(24);
+        if (this.tableView != null) {
+            this.tableView.setPrefHeight(Region.USE_COMPUTED_SIZE);
+            this.tableView.setFixedCellSize(24);
+            VBox.setVgrow(this.tableView, Priority.ALWAYS);
+        }
     }
 
     private void alignHBox(String id, Pos pos) {
@@ -73,11 +74,10 @@ public class TableViewBuilder {
         }
     }
 
-    // Signature MODIFIÉE pour accepter TableStateModel (résout l'erreur 478)
     public TableViewBuilder withModels(ColumnStateModel csm, ResultContextModel rcm, TableStateModel tsm) {
         this.columnStateModel = csm;
         this.resultContextModel = rcm;
-        this.tableStateModel = tsm; // NOUVEAU
+        this.tableStateModel = tsm;
         return this;
     }
 
@@ -119,7 +119,6 @@ public class TableViewBuilder {
     public EnhancedTableManager buildManager() {
         EnhancedTableManager manager;
 
-        // Utilise le constructeur complet si des modèles sont fournis
         if (columnStateModel != null || resultContextModel != null || tableStateModel != null) {
             manager = new EnhancedTableManager(
                                 tableView,
@@ -129,10 +128,8 @@ public class TableViewBuilder {
                                 resultsCountLabel,
                     tableStateModel,
                     columnStateModel,
-                    resultContextModel // NOUVEAU: Ajout du 3e modèle
-                        );
+                    resultContextModel);
         } else {
-            // Fallback pour la rétrocompatibilité (constructeur 5 arguments)
             manager = new EnhancedTableManager(
                     tableView,
                     searchField,
@@ -141,7 +138,6 @@ public class TableViewBuilder {
                     resultsCountLabel
             );
         }
-
 
         if (optGroupStriping && groupStripingHeader != null) {
             manager.enableGroupStripingByHeader(groupStripingHeader);
@@ -162,7 +158,7 @@ public class TableViewBuilder {
     public Label getResultsCountLabel() { return resultsCountLabel; }
     public Button getExportCsvButton() { return exportCsvButton; }
     public Button getExportXlsxButton() { return exportXlsxButton; }
-    public Button getCleanColumnsButton() { return cleanColumnsButton; } // Déjà présent
+    public Button getCleanColumnsButton() { return cleanColumnsButton; }
 
     public enum Feature { SEARCH, SELECTION, PAGINATION, EXPORT }
 }

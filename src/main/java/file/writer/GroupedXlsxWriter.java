@@ -54,6 +54,7 @@ public class GroupedXlsxWriter {
      * @param outputPath   Zielpfad
      */
     public void writeGrouped(List<RowData> rows, List<String> groupByKeys, String outputPath) throws Exception {
+
         if (rows == null || rows.isEmpty()) {
             logger.warn("Keine Daten zum Exportieren vorhanden");
             rows = Collections.emptyList();

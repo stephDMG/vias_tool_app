@@ -24,15 +24,21 @@
             <ToolBar style="-fx-background-insets: 0 0 1 0; -fx-padding: 6 12 6 12;">
                 <Button fx:id="ausfuehrenButton" disable="true" onAction="#runKernfrage" style="-fx-background-color: #15a66b; -fx-text-fill: white; -fx-background-radius: 8; -fx-padding: 8 14; -fx-font-weight: bold;" text="🔍 Ausführen" />
                 <Region prefHeight="31.0" prefWidth="400.0" HBox.hgrow="ALWAYS" />
+            <ToggleButton fx:id="toggleFullName" layoutX="620.0" layoutY="14.0" style="-fx-background-radius: 30;" text="Voll. Name">
+               <effect>
+                  <InnerShadow />
+               </effect>
+            </ToggleButton>
+            <Separator layoutX="708.0" layoutY="10.0" orientation="VERTICAL" prefHeight="31.0" prefWidth="29.0" />
                 <ToggleButton fx:id="toggleVersionView" mnemonicParsing="false" style="-fx-background-radius: 30;">
-                    <effect><InnerShadow/></effect>
+                    <effect><InnerShadow /></effect>
                 </ToggleButton>
-                <Region prefHeight="31.0" prefWidth="20.0" />
+            <Separator layoutX="708.0" layoutY="10.0" orientation="VERTICAL" prefHeight="31.0" prefWidth="29.0" />
                 <ToggleButton fx:id="toggleTreeView" style="-fx-background-radius: 30;" text="Baumansicht">
-                    <effect><InnerShadow/></effect>
+                    <effect><InnerShadow /></effect>
                 </ToggleButton>
 
-                <Separator orientation="VERTICAL" />
+                <Separator orientation="VERTICAL" prefHeight="31.0" prefWidth="29.0" />
                 <Label style="-fx-font-weight: bold;" text="Kernfrage:" />
                 <ChoiceBox fx:id="kernfrageChoice" prefWidth="380" />
             </ToolBar>
@@ -100,10 +106,14 @@
 
             <Label fx:id="messageLabel" maxWidth="Infinity" style="-fx-text-fill: gray;" textOverrun="CLIP" wrapText="true" />
 
-            <StackPane fx:id="resultsStack" VBox.vgrow="ALWAYS">
-                <VBox fx:id="tableHost" VBox.vgrow="ALWAYS" />
-                <VBox fx:id="treeHost" managed="false" visible="false" VBox.vgrow="ALWAYS" />
-            </StackPane>
+            <!-- ✅ on conserve l'identité resultsContainer pour la compatibilité -->
+            <VBox fx:id="resultsContainer" spacing="10" VBox.vgrow="ALWAYS">
+                <StackPane fx:id="resultsStack" VBox.vgrow="ALWAYS">
+                    <VBox fx:id="tableHost" VBox.vgrow="ALWAYS"/>
+                    <VBox fx:id="treeHost" managed="false" visible="false" VBox.vgrow="ALWAYS"/>
+                </StackPane>
+            </VBox>
+
 
         </VBox>
     </center>

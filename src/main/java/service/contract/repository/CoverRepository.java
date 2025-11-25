@@ -42,7 +42,13 @@ public class CoverRepository {
             "LUM.LU_PLZ",
             "COVER.LU_SPAKZ",
             "COVER.LU_VSN_MAKLER",
-            "COVER.LU_VSN_VR"
+            "COVER.LU_VSN_VR",
+            "COVER.LU_SACHBEA_VT",
+            "COVER.LU_SACHBEA_SC",
+            "COVER.LU_SACHBEA_RG",
+            "COVER.LU_SACHBEA_GL",
+            "COVER.LU_SACHBEA_DOK",
+            "COVER.LU_SACHBEA_BUH"
     );
 
 
@@ -211,7 +217,8 @@ public class CoverRepository {
         }
         return out;
     }
-    // ENDE NEU
+
+
 
     // =====================================================================================
     // SQL-Build
@@ -509,6 +516,26 @@ public class CoverRepository {
         if ("MAKLERV".equals(upper)) {
             return "SELECT LU_VMTNR, LU_NAM FROM MAKLERV";
         }
+
+        // ➜ NEU: Voller SB-Name (Key = LU_SB_KURZ, Text = 'Vorname Nachname')
+        if ("SACHBEA_FULL".equals(upper)) {
+            return "SELECT\n" +
+                    "    LU_SB_KURZ AS CODE,\n" +
+                    "    REPLACE(\n" +
+                    "            LTRIM(RTRIM(\n" +
+                    "                    LTRIM(RTRIM(CAST(LU_SB_VOR AS NVARCHAR(200)))) +\n" +
+                    "                    CASE\n" +
+                    "                        WHEN LTRIM(RTRIM(CAST(LU_SB_VOR AS NVARCHAR(200)))) <> ''\n" +
+                    "                            AND LTRIM(RTRIM(CAST(LU_SB_NAM AS NVARCHAR(200)))) <> ''\n" +
+                    "                            THEN ' ' ELSE ''\n" +
+                    "                        END +\n" +
+                    "                    LTRIM(RTRIM(CAST(LU_SB_NAM AS NVARCHAR(200))))\n" +
+                    "                  )),\n" +
+                    "        CHAR(0), ''\n" +
+                    "    ) AS TEXT\n" +
+                    "FROM SACHBEA;\n";
+        }
+
         return "SELECT * FROM " + table;
     }
 

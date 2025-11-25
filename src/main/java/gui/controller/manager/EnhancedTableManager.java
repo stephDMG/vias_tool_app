@@ -6,6 +6,7 @@ import gui.controller.manager.base.AbstractTableManager;
 import gui.controller.model.ColumnStateModel;
 import gui.controller.model.ResultContextModel;
 import gui.controller.model.TableStateModel;
+import gui.controller.service.FormatterService;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
@@ -13,8 +14,10 @@ import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
 import javafx.scene.Node;
 import javafx.scene.control.*;
+import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.scene.layout.Region;
 import javafx.scene.paint.Color;
+import javafx.scene.text.Text;
 import model.RowData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -91,6 +94,9 @@ public class EnhancedTableManager extends AbstractTableManager {
         if (deleteButton != null) {
             deleteButton.setDisable(true);
         }
+        tableView.getStylesheets().add(Objects.requireNonNull(getClass().getResource("/css/fixed-header.css")).toExternalForm());
+        //treeTableView.getStylesheets().add(getClass().getResource("/css/fixed-header.css").toExternalForm());
+
         installGroupRowFactory();
     }
 
@@ -120,6 +126,33 @@ public class EnhancedTableManager extends AbstractTableManager {
                         : new ResultContextModel());
     }
 
+    // Ajouter cette méthode
+    public void resizeColumnsToFitContent() {
+        if (tableView.getItems().isEmpty()) return;
+
+        for (TableColumn<ObservableList<String>, ?> column : tableView.getColumns()) {
+            double maxWidth = 0.0;
+
+            // Largeur de l'en-tête
+            Text headerText = new Text(column.getText());
+            maxWidth = headerText.getLayoutBounds().getWidth() + 20;
+
+            // Largeur du contenu (échantillon de 10 premières lignes)
+            for (int i = 0; i < Math.min(10, tableView.getItems().size()); i++) {
+                Object cellData = column.getCellData(i);
+                if (cellData != null) {
+                    Text cellText = new Text(cellData.toString());
+                    double cellWidth = cellText.getLayoutBounds().getWidth() + 10;
+                    maxWidth = Math.max(maxWidth, cellWidth);
+                }
+            }
+
+            // Limiter à 300px max par colonne
+            column.setPrefWidth(Math.min(maxWidth, 300));
+            column.setMinWidth(80);  // Largeur minimale pour éviter tronquage
+        }
+    }
+
     /**
      * Minimal-Konstruktor nur mit TableView (hauptsächlich für Tests).
      */
@@ -134,6 +167,14 @@ public class EnhancedTableManager extends AbstractTableManager {
     public EnhancedTableManager enableSearch() {
         super.enableSearch();
         return this;
+    }
+
+    public TableView<ObservableList<String>> getTableView() {
+        return tableView;
+    }
+
+    public void rebuildView() {
+        refreshView(); // méthode protégée existante
     }
 
     public EnhancedTableManager enableSelection() {
@@ -212,15 +253,19 @@ public class EnhancedTableManager extends AbstractTableManager {
         this.cleanColumnsButton = cleanButton;
         if (cleanButton != null) {
             cleanButton.setOnAction(e -> cleanColumnsAllPages());
-            columnModel.cleanedProperty().addListener((obs, oldV, newV) ->
-                    cleanColumnsButton.setDisable(newV || !hasData())
+
+            // ➜ Gemeinsame Deaktivierungslogik:
+            // - keine Daten -> disabled
+            // - bereits global bereinigt -> disabled
+            // - globaler Job läuft (loading=true) -> disabled
+            cleanButton.disableProperty().bind(
+                    columnModel.cleanedProperty()
+                            .or(hasDataProperty().not())
+                            .or(resultModel.loadingProperty())
             );
-            hasDataProperty().addListener((obs, oldV, newV) ->
-                    cleanColumnsButton.setDisable(columnModel.isCleaned() || !newV)
-            );
-            cleanColumnsButton.setDisable(!hasData() || columnModel.isCleaned());
         }
     }
+
 
     public void setExportCsvButton(Button b) {
         // Export-Buttons werden in CoverDomainController gebunden (keine Logik hier).
@@ -267,7 +312,6 @@ public class EnhancedTableManager extends AbstractTableManager {
         ObservableList<TablePosition> selectedCells = tableView.getSelectionModel().getSelectedCells();
         if (selectedCells == null || selectedCells.isEmpty()) return;
 
-        // Wegen Java-Generics nutzen wir hier eine einfache Schleife anstatt Collectors.toSet().
         Set<TableColumn<?, ?>> columnsToDelete = new HashSet<>();
         for (TablePosition<?, ?> pos : selectedCells) {
             TableColumn<?, ?> col = pos.getTableColumn();
@@ -275,9 +319,25 @@ public class EnhancedTableManager extends AbstractTableManager {
                 columnsToDelete.add(col);
             }
         }
+        if (columnsToDelete.isEmpty()) {
+            return;
+        }
+
+        List<String> headerNames = columnsToDelete.stream()
+                .map(TableColumn::getText)
+                .filter(Objects::nonNull)
+                .filter(h -> !h.isBlank())
+                .toList();
+
+        // ➜ common helper in AbstractTableManager
+        if (!confirmDeleteColumns(headerNames, columnsToDelete.size())) {
+            return;
+        }
 
         deleteColumns(new ArrayList<>(columnsToDelete));
     }
+
+
 
     private void deleteColumns(List<TableColumn<?, ?>> columnsToDelete) {
         Set<String> originalKeysToDelete = columnsToDelete.stream()
@@ -343,14 +403,47 @@ public class EnhancedTableManager extends AbstractTableManager {
         MenuItem renameItem = new MenuItem("Spalte umbenennen");
         MenuItem deleteItem = new MenuItem("Spalte löschen");
 
-        renameItem.setStyle("-fx-text-fill: #2563eb;");
-        deleteItem.setStyle("-fx-text-fill: #dc2626;");
+        // ➜ NEU: Format-Untermenü
+        Menu formatMenu = new Menu("Spalte formatieren");
+        MenuItem moneyItem = new MenuItem("Währung (€)");
+        MenuItem dateItem  = new MenuItem("Datum");
+        MenuItem sbItem    = new MenuItem("SB (Voll. Name)");
+        MenuItem noneItem  = new MenuItem("Kein Format");
+
+        moneyItem.setOnAction(e -> applyFormatAndPersist(column, "MONEY"));
+        dateItem.setOnAction(e  -> applyFormatAndPersist(column, "DATE"));
+        sbItem.setOnAction(e    -> applyFormatAndPersist(column, "SB"));
+        noneItem.setOnAction(e  -> applyFormatAndPersist(column, "NONE"));
 
         renameItem.setOnAction(e -> renameColumn(column));
         deleteItem.setOnAction(e -> deleteColumn(column));
-        ContextMenu contextMenu = new ContextMenu(renameItem, new SeparatorMenuItem(), deleteItem);
-        column.setContextMenu(contextMenu);
+
+        formatMenu.getItems().addAll(moneyItem, dateItem, sbItem, new SeparatorMenuItem(), noneItem);
+
+        ContextMenu cm = new ContextMenu(renameItem, new SeparatorMenuItem(), deleteItem, new SeparatorMenuItem(), formatMenu);
+        column.setContextMenu(cm);
+
+        // Couleurs (déjà demandé)
+        renameItem.setStyle("-fx-text-fill: #2563eb;");
+        deleteItem.setStyle("-fx-text-fill: #dc2626;");
     }
+
+    private void applyFormatAndPersist(TableColumn<ObservableList<String>, String> column, String type) {
+        String originalKey = String.valueOf(column.getUserData());
+        String headerText  = column.getText();
+        try {
+            FormatterService.setColumnFormat(originalKey, headerText, type);
+            // Recharger la config dans les singletons et rafraîchir l’UI
+            FormatterService.reloadRuntimeConfig();
+            requestRefresh();                // Table
+            // pour TreeTableManager: treeTableView.refresh() ou manager.requestRefresh()
+            log.info("Format gesetzt: {} -> {}", originalKey, type);
+        } catch (Exception ex) {
+            Dialog.showErrorDialog("Format speichern", "Konnte Format nicht speichern: " + ex.getMessage());
+        }
+    }
+
+
 
     private void renameColumn(TableColumn<ObservableList<String>, String> column) {
         TextInputDialog dialog = new TextInputDialog(column.getText());
@@ -456,6 +549,9 @@ public class EnhancedTableManager extends AbstractTableManager {
         buildTableColumns(filteredData, hiddenKeys);
         populateTableData(filteredData);
 
+        // ✅ FORCER LE REDIMENSIONNEMENT APRÈS MISE À JOUR
+        Platform.runLater(this::resizeColumnsToFitContent);
+
         if (!serverPaginationEnabled && pagination != null && paginationEnabled) {
             int rowsPerPage = stateModel.getRowsPerPage();
             int pageCount = (rowsPerPage <= 0)
@@ -525,15 +621,27 @@ public class EnhancedTableManager extends AbstractTableManager {
             TableColumn<ObservableList<String>, String> column = new TableColumn<>(headerText);
             column.setUserData(originalKey);
 
+            // ✅ Largeurs pour éviter tronquage
+            column.setPrefWidth(150);
+            column.setMinWidth(80);
+
             column.setCellValueFactory(param -> {
                 ObservableList<String> row = param.getValue();
-
-                applySharedDisplayNames();
-
                 return new SimpleStringProperty(
                         (row != null && columnIndex < row.size()) ? row.get(columnIndex) : ""
                 );
             });
+
+            final String headerAlias = originalKey;
+
+            column.setCellFactory(tc -> new javafx.scene.control.cell.TextFieldTableCell<ObservableList<String>, String>() {
+                @Override
+                public void updateItem(String item, boolean empty) { // <-- public
+                    super.updateItem(item, empty);
+                    setText(empty ? null : formatter.ColumnValueFormatter.displayOnly(headerAlias, item));
+                }
+            });
+
             addContextMenuToColumn(column);
             tableView.getColumns().add(column);
         }
@@ -580,7 +688,7 @@ public class EnhancedTableManager extends AbstractTableManager {
     }
 
     @Override
-    protected void requestRefresh() {
+    public void requestRefresh() {
         tableView.refresh();
     }
 

@@ -1,0 +1,8 @@
+.table-view .column-header, .tree-table-view .column-header {
+    -fx-size: 24px;            /* hauteur fixe de l’entête */
+}
+.table-view .column-header .label,
+.tree-table-view .column-header .label {
+    -fx-wrap-text: false;      /* pas de retour à la ligne */
+    -fx-padding: 0 6 0 6;      /* padding identique aux cellules */
+}

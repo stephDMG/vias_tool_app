@@ -28,7 +28,13 @@ public class ResultContextModel {
 
     // NOUVEAU: Eigenschaft pour le binding de l'export
     private final ReadOnlyBooleanWrapper canExport = new ReadOnlyBooleanWrapper(false);
+
     private CoverFilter lastValidFilter = null;
+    private final BooleanProperty fullNameMode = new SimpleBooleanProperty(false);
+    public final boolean isFullNameMode() { return fullNameMode.get(); }
+    public final BooleanProperty fullNameModeProperty() { return fullNameMode; }
+    public final void setFullNameMode(boolean v) { fullNameMode.set(v); }
+
 
     /**
      * Loader, der <b>exakt</b> den gleichen Datenpfad nutzt wie die UI beim Paging.

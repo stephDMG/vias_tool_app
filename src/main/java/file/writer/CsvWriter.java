@@ -44,7 +44,11 @@ public class CsvWriter implements DataWriter {
     public CsvWriter(String path) throws IOException {
         OutputStreamWriter writer = new OutputStreamWriter(new FileOutputStream(path), StandardCharsets.UTF_8);
         writer.write(CSV_BOM);
-        this.printer = new CSVPrinter(writer, CSVFormat.DEFAULT.withDelimiter(CSV_DELIMITER));
+        CSVFormat format = CSVFormat.DEFAULT.builder() // Startet einen Builder basierend auf CSVFormat.DEFAULT
+                .setDelimiter(CSV_DELIMITER) // Setzt das Trennzeichen
+                .build(); // Erstellt das finale, nicht-deprecated CSVFormat-Objekt
+
+        this.printer = new CSVPrinter(writer, format);
     }
 
     /**
