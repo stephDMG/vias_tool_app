@@ -1,4 +1,10 @@
 ﻿====================
+Version 1.3.4 (2025-11-26)
+====================
+- [Aenderung] - Probleme mit der Tabelle beheben
+- [Aenderung] - Build-Prozess erwertert
+
+====================
 Version 1.3.3 (2025-11-12)
 ====================
 - [Aenderung] Test
@@ -425,6 +431,7 @@ Version 1.0.1 (2025-08-07)
 ====================
 - [Aenderung] Es wurde eine Build-Automatisierung eingebunden, die sollte nur mit PowerShell-Skript umsetzen. Zum starten einfach ./release.ps1
 - [Aenderung] 
+
 
 
 

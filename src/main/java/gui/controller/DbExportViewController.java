@@ -478,7 +478,7 @@ public class DbExportViewController implements Initializable {
      * Setzt den UI-Zustand für Processing-Operationen.
      *
      * @param isProcessing {@code true} wenn eine Operation läuft, {@code false} sonst
-     * @param status       Statustext für den Benutzer
+     * @param status    Statustext für den Benutzer
      */
     private void setProcessingState(boolean isProcessing, String status) {
         progressBar.setVisible(isProcessing);

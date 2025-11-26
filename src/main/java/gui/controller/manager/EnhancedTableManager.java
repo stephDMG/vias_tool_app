@@ -73,8 +73,6 @@ public class EnhancedTableManager extends AbstractTableManager {
                                 Label resultsCountLabel) {
         this(tableView, searchField, deleteButton, pagination, resultsCountLabel,
                 new TableStateModel(), new ColumnStateModel(), new ResultContextModel());
-        log.warn("EnhancedTableManager ohne explizite Models instanziiert – lokale Modelle erzeugt. " +
-                "Nur für Tests/Legacy-Kontext empfohlen.");
     }
 
     /**
