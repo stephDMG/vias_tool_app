@@ -9,6 +9,8 @@ import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 
 import java.io.IOException;
@@ -23,18 +25,14 @@ public class TableViewBuilder {
 
     private final VBox tableContainer;
     private final TextField searchField;
-    private final Button deleteColumnsButton;
     private final Pagination pagination;
     private final Label resultsCountLabel;
-    private final Button exportCsvButton;
-    private final Button exportXlsxButton;
-    private final Button cleanColumnsButton;
+    private final Button exportCsvButton, exportXlsxButton, cleanColumnsButton, deleteColumnsButton;
     private final TableView<ObservableList<String>> tableView;
 
     private boolean optGroupStriping = false;
     private String groupStripingHeader = null;
 
-    // Modelle d'état partagés (Maintenant 3)
     private ColumnStateModel columnStateModel = null;
     private ResultContextModel resultContextModel = null;
     private TableStateModel tableStateModel = null; // NOUVEAU
@@ -54,15 +52,14 @@ public class TableViewBuilder {
         this.cleanColumnsButton = (Button) tableContainer.lookup("#cleanColumnsButton");
 
         alignHBox("actionsSection", Pos.CENTER_RIGHT);
-        alignHBox("exportSection",  Pos.CENTER_RIGHT);
-        alignHBox("searchSection",  Pos.CENTER_LEFT);
+        alignHBox("exportSection", Pos.CENTER_RIGHT);
+        alignHBox("searchSection", Pos.CENTER_LEFT);
 
-        if (this.tableView != null) this.tableView.setFixedCellSize(24);
-    }
-
-    private void alignHBox(String id, Pos pos) {
-        Node n = tableContainer.lookup("#" + id);
-        if (n instanceof HBox box) box.setAlignment(pos);
+        if (this.tableView != null) {
+            this.tableView.setPrefHeight(Region.USE_COMPUTED_SIZE);
+            this.tableView.setFixedCellSize(24);
+            VBox.setVgrow(this.tableView, Priority.ALWAYS);
+        }
     }
 
     public static TableViewBuilder create() {
@@ -73,11 +70,15 @@ public class TableViewBuilder {
         }
     }
 
-    // Signature MODIFIÉE pour accepter TableStateModel (résout l'erreur 478)
+    private void alignHBox(String id, Pos pos) {
+        Node n = tableContainer.lookup("#" + id);
+        if (n instanceof HBox box) box.setAlignment(pos);
+    }
+
     public TableViewBuilder withModels(ColumnStateModel csm, ResultContextModel rcm, TableStateModel tsm) {
         this.columnStateModel = csm;
         this.resultContextModel = rcm;
-        this.tableStateModel = tsm; // NOUVEAU
+        this.tableStateModel = tsm;
         return this;
     }
 
@@ -119,7 +120,6 @@ public class TableViewBuilder {
     public EnhancedTableManager buildManager() {
         EnhancedTableManager manager;
 
-        // Utilise le constructeur complet si des modèles sont fournis
         if (columnStateModel != null || resultContextModel != null || tableStateModel != null) {
             manager = new EnhancedTableManager(
                     tableView,
@@ -127,12 +127,10 @@ public class TableViewBuilder {
                     deleteColumnsButton,
                     pagination,
                     resultsCountLabel,
+                    tableStateModel,
                     columnStateModel,
-                    resultContextModel,
-                    tableStateModel // NOUVEAU: Ajout du 3e modèle
-            );
+                    resultContextModel);
         } else {
-            // Fallback pour la rétrocompatibilité (constructeur 5 arguments)
             manager = new EnhancedTableManager(
                     tableView,
                     searchField,
@@ -142,27 +140,52 @@ public class TableViewBuilder {
             );
         }
 
-
         if (optGroupStriping && groupStripingHeader != null) {
             manager.enableGroupStripingByHeader(groupStripingHeader);
         }
 
         if (cleanColumnsButton != null) manager.setCleanButton(cleanColumnsButton);
-        if (exportCsvButton  != null) manager.setExportCsvButton(exportCsvButton);
+        if (exportCsvButton != null) manager.setExportCsvButton(exportCsvButton);
         if (exportXlsxButton != null) manager.setExportXlsxButton(exportXlsxButton);
 
         return manager;
     }
 
-    public VBox getTableContainer() { return tableContainer; }
-    public TableView<ObservableList<String>> getTableView() { return tableView; }
-    public TextField getSearchField() { return searchField; }
-    public Button getDeleteColumnsButton() { return deleteColumnsButton; }
-    public Pagination getPagination() { return pagination; }
-    public Label getResultsCountLabel() { return resultsCountLabel; }
-    public Button getExportCsvButton() { return exportCsvButton; }
-    public Button getExportXlsxButton() { return exportXlsxButton; }
-    public Button getCleanColumnsButton() { return cleanColumnsButton; } // Déjà présent
+    public VBox getTableContainer() {
+        return tableContainer;
+    }
 
-    public enum Feature { SEARCH, SELECTION, PAGINATION, EXPORT }
+    public TableView<ObservableList<String>> getTableView() {
+        return tableView;
+    }
+
+    public TextField getSearchField() {
+        return searchField;
+    }
+
+    public Button getDeleteColumnsButton() {
+        return deleteColumnsButton;
+    }
+
+    public Pagination getPagination() {
+        return pagination;
+    }
+
+    public Label getResultsCountLabel() {
+        return resultsCountLabel;
+    }
+
+    public Button getExportCsvButton() {
+        return exportCsvButton;
+    }
+
+    public Button getExportXlsxButton() {
+        return exportXlsxButton;
+    }
+
+    public Button getCleanColumnsButton() {
+        return cleanColumnsButton;
+    }
+
+    public enum Feature {SEARCH, SELECTION, PAGINATION, EXPORT}
 }

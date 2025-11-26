@@ -1,79 +1,109 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.geometry.*?>
+<?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<VBox fx:id="treeTableContainer"
+<VBox xmlns:fx="http://javafx.com/fxml/1"
+      fx:id="treeTableContainer"
       xmlns="http://javafx.com/javafx/17.0.12"
-      xmlns:fx="http://javafx.com/fxml/1"
       spacing="10"
-      style="-fx-font-family: 'Segoe UI', Arial, sans-serif; -fx-font-size: 12px;"
->
+      style="-fx-font-family: 'Segoe UI', Arial, sans-serif; -fx-font-size: 12px;">
 
-    <!-- Search Section - wird dynamisch ein/ausgeblendet (Includes TreeTable specific controls) -->
-    <HBox fx:id="searchSection" alignment="CENTER_LEFT" managed="false" prefHeight="0.0" prefWidth="0.0" spacing="10" visible="false">
-        <Label text="Suchen:" />
-        <TextField fx:id="searchField" promptText="Suchbegriff eingeben..." HBox.hgrow="ALWAYS" />
-        <Label fx:id="resultsCountLabel" />
+    <!-- BorderPane pour fixer la barre d’export en bas -->
+    <BorderPane VBox.vgrow="ALWAYS">
 
-        <!-- TreeTable-specific controls -->
-        <Separator orientation="VERTICAL"/>
-        <Button fx:id="expandAllButton"
-                text="Alle aufklappen"
-                style="-fx-background-radius: 6; -fx-padding: 4 10;">
-            <tooltip>
-                <Tooltip text="Alle Gruppen öffnen"/>
-            </tooltip>
-        </Button>
-        <Button fx:id="collapseAllButton"
-                text="Alle zuklappen"
-                style="-fx-background-radius: 6; -fx-padding: 4 10;">
-            <tooltip>
-                <Tooltip text="Alle Gruppen schließen"/>
-            </tooltip>
-        </Button>
-    </HBox>
+        <!-- CENTER : search + treeTable/pagination + actions -->
+        <center>
+            <VBox spacing="10">
 
-    <!-- Main TreeTable (Replaced TableView) -->
-    <TreeTableView fx:id="treeTableView"
-                   showRoot="false"
-                   fixedCellSize="24.0"
-                   editable="true"
-                   prefHeight="596.0"
-                   prefWidth="1955.0"
-                   style="-fx-background-radius: 8; -fx-border-color: rgba(0,0,0,0.08); -fx-border-radius: 8;">
-        <columnResizePolicy>
-            <TreeTableView fx:constant="UNCONSTRAINED_RESIZE_POLICY"/>
-        </columnResizePolicy>
-        <padding>
-            <Insets top="10" right="10" bottom="10" left="10"/>
-        </padding>
-        <placeholder>
-            <Label text="Keine Daten geladen."/>
-        </placeholder>
-    </TreeTableView>
+                <!-- Search Section - wird dynamisch ein/ausgeblendet (Includes TreeTable specific controls) -->
+                <HBox fx:id="searchSection"
+                      alignment="CENTER_LEFT"
+                      managed="false"
+                      prefHeight="0.0"
+                      prefWidth="0.0"
+                      spacing="10"
+                      visible="false">
+                    <Label text="Suchen:"/>
+                    <TextField fx:id="searchField"
+                               promptText="Suchbegriff eingeben..."
+                               HBox.hgrow="ALWAYS"/>
+                    <Label fx:id="resultsCountLabel"/>
 
-    <!-- Actions Section - wird dynamisch konfiguriert -->
-    <HBox fx:id="actionsSection" alignment="CENTER_RIGHT" managed="false" spacing="10" visible="false">
-        <Label fx:id="actionsLabel" text="Ausgewählte Spalten löschen:" />
-        <Button fx:id="deleteColumnsButton" text="Löschen" />
-        <Button fx:id="cleanColumnsButton" text="Bereinigen" />
-    </HBox>
+                    <!-- TreeTable-specific controls -->
+                    <Separator orientation="VERTICAL"/>
+                    <Button fx:id="expandAllButton"
+                            text="Alle aufklappen"
+                            style="-fx-background-radius: 6; -fx-padding: 4 10;">
+                        <tooltip>
+                            <Tooltip text="Alle Gruppen öffnen"/>
+                        </tooltip>
+                    </Button>
+                    <Button fx:id="collapseAllButton"
+                            text="Alle zuklappen"
+                            style="-fx-background-radius: 6; -fx-padding: 4 10;">
+                        <tooltip>
+                            <Tooltip text="Alle Gruppen schließen"/>
+                        </tooltip>
+                    </Button>
+                </HBox>
 
-    <!-- Pagination Section - wird dynamisch ein/ausgeblendet -->
-    <Pagination fx:id="pagination"
-                managed="false"
-                visible="false"
-                prefHeight="36"
-                maxPageIndicatorCount="10"
-                pageCount="0"/>
+                <!-- Main TreeTable -->
+                <TreeTableView fx:id="treeTableView"
+                               showRoot="false"
+                               fixedCellSize="24.0"
+                               editable="true"
+                               VBox.vgrow="ALWAYS"
+                               style="-fx-background-radius: 8; -fx-border-color: rgba(0,0,0,0.08); -fx-border-radius: 8;">
+                    <columnResizePolicy>
+                        <TreeTableView fx:constant="UNCONSTRAINED_RESIZE_POLICY"/>
+                    </columnResizePolicy>
+                    <padding>
+                        <Insets top="10" right="10" bottom="10" left="10"/>
+                    </padding>
+                    <placeholder>
+                        <Label text="Keine Daten geladen."/>
+                    </placeholder>
+                </TreeTableView>
 
-    <!-- Export Section - wird dynamisch konfiguriert -->
-    <HBox fx:id="exportSection" alignment="CENTER_RIGHT" managed="false" spacing="10" visible="false">
-        <Label fx:id="exportLabel" text="Vollständigen Bericht exportieren als:" />
-        <Button fx:id="exportCsvButton" disable="true" text="CSV" />
-        <Button fx:id="exportXlsxButton" disable="true" text="XLSX" />
-    </HBox>
+                <!-- Actions Section - wird dynamisch konfiguriert -->
+                <HBox fx:id="actionsSection"
+                      alignment="CENTER_RIGHT"
+                      managed="false"
+                      spacing="10"
+                      visible="false">
+                    <Label fx:id="actionsLabel" text="Ausgewählte Spalten löschen:"/>
+                    <Button fx:id="deleteColumnsButton" text="Löschen"/>
+                    <Button fx:id="cleanColumnsButton" text="Bereinigen"/>
+                </HBox>
+
+                <!-- Pagination Section - wird dynamisch ein/ausgeblendet -->
+                <Pagination fx:id="pagination"
+                            managed="false"
+                            visible="false"
+                            VBox.vgrow="ALWAYS"
+                            maxPageIndicatorCount="10"
+                            pageCount="0"/>
+            </VBox>
+        </center>
+
+        <!-- BOTTOM : Export Section – fixée en bas -->
+        <bottom>
+            <HBox fx:id="exportSection"
+                  alignment="CENTER_RIGHT"
+                  spacing="10"
+                  managed="false"
+                  visible="false">
+                <Label fx:id="exportLabel" text="Vollständigen Bericht exportieren als:"/>
+                <Button fx:id="exportCsvButton" disable="true" text="CSV"/>
+                <Button fx:id="exportXlsxButton" disable="true" text="XLSX"/>
+                <padding>
+                    <Insets top="0" right="0" bottom="0" left="0"/>
+                </padding>
+            </HBox>
+        </bottom>
+
+    </BorderPane>
 
 </VBox>

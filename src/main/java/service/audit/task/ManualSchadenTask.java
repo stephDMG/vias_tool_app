@@ -40,6 +40,13 @@ public class ManualSchadenTask extends Task<ExecutionResult> implements Progress
     }
 
     // ProgressReporter → an Task weiterreichen
-    @Override public void updateMessage(String message) { super.updateMessage(message); }
-    @Override public void updateProgress(long workDone, long max) { super.updateProgress(workDone, max); }
+    @Override
+    public void updateMessage(String message) {
+        super.updateMessage(message);
+    }
+
+    @Override
+    public void updateProgress(long workDone, long max) {
+        super.updateProgress(workDone, max);
+    }
 }

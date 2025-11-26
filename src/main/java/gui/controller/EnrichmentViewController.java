@@ -30,7 +30,7 @@ import java.util.ResourceBundle;
 
 import static gui.controller.dialog.Dialog.showErrorDialog;
 import static gui.controller.dialog.Dialog.showSuccessDialog;
-import static gui.controller.utils.format.FormatterService.exportWithFormat;
+import static gui.controller.service.FormatterService.exportWithFormat;
 
 /**
  * Controller für die Datenanreicherung: Lädt Quelldateien, sucht Dateien,
@@ -85,7 +85,6 @@ public class EnrichmentViewController implements Initializable {
         pagination.setVisible(false);
         logger.info("✅ EnrichmentViewController initialized successfully.");
     }
-
 
 
     @FXML

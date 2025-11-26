@@ -6,7 +6,10 @@ import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
 import javafx.scene.Parent;
-import javafx.scene.control.*;
+import javafx.scene.control.Alert;
+import javafx.scene.control.ButtonBar;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.MenuItem;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.text.Text;
 import javafx.scene.text.TextFlow;
@@ -14,11 +17,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import service.ServiceFactory;
 import service.contract.CoverService;
-import service.rbac.AccessControlService;
 import service.rbac.LoginService;
 import service.theme.ThemeService;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
@@ -27,12 +28,15 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.util.*;
+import java.util.Objects;
+import java.util.Properties;
+import java.util.ResourceBundle;
+import java.util.StringJoiner;
 
 
 /**
  * Haupt-Controller des Hauptfensters (MainWindow.fxml).
- *
+ * <p>
  * Initialisiert alle Views + lädt CoverService & Dictionaries vor,
  * damit Kernfragen im CoverDashboard schnell reagieren.
  */
@@ -45,7 +49,9 @@ public class MainController implements Initializable {
     private static final String VERSION_FILE_PATH = BASE + "version.txt";
     private static final String CHANGELOG_FILE_PATH = BASE + "changelog.txt";
 
-    /** Aktuelle App-Version */
+    /**
+     * Aktuelle App-Version
+     */
     private String CURRENT_VERSION = "N/A";
 
     // Views
@@ -56,10 +62,14 @@ public class MainController implements Initializable {
     // CoverService global
     private CoverService coverService;
 
-    @FXML private BorderPane mainBorderPane;
-    @FXML private MenuItem statusItem;
-    @FXML private TextFlow userGreeting;
-    @FXML private MenuItem coverDashboardItem;
+    @FXML
+    private BorderPane mainBorderPane;
+    @FXML
+    private MenuItem statusItem;
+    @FXML
+    private TextFlow userGreeting;
+    @FXML
+    private MenuItem coverDashboardItem;
 
     /**
      * Formatiert einen String, sodass der erste Buchstabe jedes Wortes großgeschrieben wird.
@@ -76,10 +86,24 @@ public class MainController implements Initializable {
     }
 
     /**
+     * Extrahiert eine semantische Versionsnummer (MAJOR.MINOR.PATCH) aus einem String.
+     * Entfernt BOM/Whitespace und gibt nur die Version zurück oder null, wenn keine gefunden wurde.
+     *
+     * @param s Roh-String (z. B. aus Datei gelesen)
+     * @return bereinigte Version oder null
+     */
+    private static String cleanVersion(String s) {
+        if (s == null) return null;
+        s = s.replace("\uFEFF", "").trim();
+        var m = java.util.regex.Pattern.compile("(\\d+)\\.(\\d+)\\.(\\d+)").matcher(s);
+        return m.find() ? m.group(0) : null;
+    }
+
+    /**
      * Initialisiert das Hauptfenster: lädt Views vor, richtet RBAC/Theme ein,
      * lädt die App-Version und bereitet den CoverService vor.
      *
-     * @param location URL der FXML-Ressource
+     * @param location  URL der FXML-Ressource
      * @param resources Ressourcenbündel der FXML
      */
     @Override
@@ -92,7 +116,7 @@ public class MainController implements Initializable {
         String username = loginService.getCurrentWindowsUsername();
         //AccessControlService accessControl = new AccessControlService();
         //statusItem.setVisible(accessControl.hasPermission(username, "op-list") || accessControl.hasPermission(username, "all"));
-       // coverDashboardItem.setVisible(accessControl.hasPermission(username, "view") || accessControl.hasPermission(username, "all"));
+        // coverDashboardItem.setVisible(accessControl.hasPermission(username, "view") || accessControl.hasPermission(username, "all"));
 
         // Begrüßung
         String user = username.replace('.', ' ');
@@ -136,7 +160,9 @@ public class MainController implements Initializable {
         checkForUpdates();
     }
 
-    /** Lädt /version.properties und speichert CURRENT_VERSION */
+    /**
+     * Lädt /version.properties und speichert CURRENT_VERSION
+     */
     private void loadAppVersion() {
         try (InputStream input = getClass().getResourceAsStream("/version.properties")) {
             if (input == null) {
@@ -152,57 +178,101 @@ public class MainController implements Initializable {
         }
     }
 
-    /**
-     * Extrahiert eine semantische Versionsnummer (MAJOR.MINOR.PATCH) aus einem String.
-     * Entfernt BOM/Whitespace und gibt nur die Version zurück oder null, wenn keine gefunden wurde.
-     *
-     * @param s Roh-String (z. B. aus Datei gelesen)
-     * @return bereinigte Version oder null
-     */
-    private static String cleanVersion(String s) {
-        if (s == null) return null;
-        s = s.replace("\uFEFF", "").trim();
-        var m = java.util.regex.Pattern.compile("(\\d+)\\.(\\d+)\\.(\\d+)").matcher(s);
-        return m.find() ? m.group(0) : null;
-    }
-
     // ------------------- View Switcher -------------------
 
-    /** Zeigt die Ansicht zur Datenextraktion. */
-    @FXML private void showExtractionView() { mainBorderPane.setCenter(extractionView); }
+    /**
+     * Zeigt die Ansicht zur Datenextraktion.
+     */
+    @FXML
+    private void showExtractionView() {
+        mainBorderPane.setCenter(extractionView);
+    }
 
-    /** Zeigt die Datenansicht. */
-    @FXML private void showDataView() { mainBorderPane.setCenter(dataView); }
+    /**
+     * Zeigt die Datenansicht.
+     */
+    @FXML
+    private void showDataView() {
+        mainBorderPane.setCenter(dataView);
+    }
 
-    /** Zeigt die Datenbank-Export-Ansicht. */
-    @FXML private void showDbExportView() { mainBorderPane.setCenter(dbExportView); }
+    /**
+     * Zeigt die Datenbank-Export-Ansicht.
+     */
+    @FXML
+    private void showDbExportView() {
+        mainBorderPane.setCenter(dbExportView);
+    }
 
-    /** Zeigt die KI-Assistent-Ansicht. */
-    @FXML private void showAiAssistantView() { mainBorderPane.setCenter(aiAssistantView); }
+    /**
+     * Zeigt die KI-Assistent-Ansicht.
+     */
+    @FXML
+    private void showAiAssistantView() {
+        mainBorderPane.setCenter(aiAssistantView);
+    }
 
-    /** Zeigt die Pivot-Ansicht. */
-    @FXML private void showPivotView() { mainBorderPane.setCenter(pivotView); }
+    /**
+     * Zeigt die Pivot-Ansicht.
+     */
+    @FXML
+    private void showPivotView() {
+        mainBorderPane.setCenter(pivotView);
+    }
 
-    /** Zeigt das Dashboard. */
-    @FXML private void showDashboardView() { mainBorderPane.setCenter(dashboardView); }
+    /**
+     * Zeigt das Dashboard.
+     */
+    @FXML
+    private void showDashboardView() {
+        mainBorderPane.setCenter(dashboardView);
+    }
 
-    /** Zeigt die Anreicherungs-Ansicht. */
-    @FXML private void showEnrichmentView() { mainBorderPane.setCenter(showEnrichmentView); }
+    /**
+     * Zeigt die Anreicherungs-Ansicht.
+     */
+    @FXML
+    private void showEnrichmentView() {
+        mainBorderPane.setCenter(showEnrichmentView);
+    }
 
-    /** Zeigt die OP-Liste. */
-    @FXML private void showOpListView() { mainBorderPane.setCenter(opListView); }
+    /**
+     * Zeigt die OP-Liste.
+     */
+    @FXML
+    private void showOpListView() {
+        mainBorderPane.setCenter(opListView);
+    }
 
-    /** Zeigt die Einstellungen. */
-    @FXML private void showSettingsView() { mainBorderPane.setCenter(settingsView); }
+    /**
+     * Zeigt die Einstellungen.
+     */
+    @FXML
+    private void showSettingsView() {
+        mainBorderPane.setCenter(settingsView);
+    }
 
-    /** Zeigt das Cover-Dashboard. */
-    @FXML private void showCoverDashboardView() { mainBorderPane.setCenter(coverDashboardView); }
+    /**
+     * Zeigt das Cover-Dashboard.
+     */
+    @FXML
+    private void showCoverDashboardView() {
+        mainBorderPane.setCenter(coverDashboardView);
+    }
 
 
-    @FXML private void showAuditView(){mainBorderPane.setCenter(auditView);}
+    @FXML
+    private void showAuditView() {
+        mainBorderPane.setCenter(auditView);
+    }
 
-    /** Beendet die Anwendung. */
-    @FXML private void closeApplication() { Platform.exit(); }
+    /**
+     * Beendet die Anwendung.
+     */
+    @FXML
+    private void closeApplication() {
+        Platform.exit();
+    }
 
     // ------------------- Update Check -------------------
 
@@ -260,7 +330,7 @@ public class MainController implements Initializable {
     /**
      * Vergleicht zwei Versionsstrings im Format MAJOR.MINOR.PATCH.
      *
-     * @param onlineVersion Version aus externer Quelle
+     * @param onlineVersion  Version aus externer Quelle
      * @param currentVersion lokale aktuelle App-Version
      * @return true, falls onlineVersion > currentVersion
      */
@@ -327,11 +397,11 @@ public class MainController implements Initializable {
 
     /**
      * Führt den Update-Prozess robust aus, ohne Cmdline-Parsing-Probleme:
-     *  - Kopiert das MSI vom UNC in %LOCALAPPDATA%\VIAS\ updates\<version>\
-     *  - Erzeugt eine updater.ps1 (saubere Argument-Quoting)
-     *  - Startet PowerShell mit -File (kein -Command-Quoting-Chaos)
-     *  - msiexec läuft mit /passive (sichtbar) + /norestart + /l*v (Logging)
-     *  - Danach Relaunch der App; aktuelle App beendet sich sofort
+     * - Kopiert das MSI vom UNC in %LOCALAPPDATA%\VIAS\ updates\<version>\
+     * - Erzeugt eine updater.ps1 (saubere Argument-Quoting)
+     * - Startet PowerShell mit -File (kein -Command-Quoting-Chaos)
+     * - msiexec läuft mit /passive (sichtbar) + /norestart + /l*v (Logging)
+     * - Danach Relaunch der App; aktuelle App beendet sich sofort
      *
      * @param remoteInstallerPath UNC-Pfad zum MSI (z. B. \\server\share\VIAS Export Tool-1.2.15.msi)
      * @throws IOException bei Kopierfehlern
@@ -349,8 +419,8 @@ public class MainController implements Initializable {
         // --- 2) Staging-Ziel unter LOCALAPPDATA vorbereiten ---------------------
         Path localBase = Paths.get(System.getenv("LOCALAPPDATA"), "VIAS", "updates", version);
         Files.createDirectories(localBase);
-        Path localMsi  = localBase.resolve(msiName);
-        Path msiLog    = localBase.resolve("install-" + version + ".log");
+        Path localMsi = localBase.resolve(msiName);
+        Path msiLog = localBase.resolve("install-" + version + ".log");
         Path updaterPs = localBase.resolve("updater.ps1");
 
         logger.info("Update: kopiere MSI {} -> {}", remote, localMsi);
@@ -359,12 +429,12 @@ public class MainController implements Initializable {
         // --- 3) MOTW entfernen (best effort) -----------------------------------
         try {
             new ProcessBuilder("powershell", "-NoProfile", "-ExecutionPolicy", "Bypass",
-                    "-Command", "Unblock-File -Path \"" + localMsi.toString().replace("\"","\\\"") + "\"")
+                    "-Command", "Unblock-File -Path \"" + localMsi.toString().replace("\"", "\\\"") + "\"")
                     .inheritIO()
                     .start()
                     .waitFor();
-        } catch (Exception ignore) {
-            logger.warn("Unblock-File nicht ausgeführt (ok): {}", ignore.toString());
+        } catch (Exception i) {
+            logger.warn("Unblock-File nicht ausgeführt (ok): {}", i.toString());
         }
 
         // --- 4) PS1-Skript erzeugen (Argumente korrekt quoten) -----------------
@@ -394,28 +464,37 @@ public class MainController implements Initializable {
         // --- 6) Aktuelle App beenden (Dateisperren lösen) ----------------------
         Platform.exit();
         new Thread(() -> {
-            try { Thread.sleep(200); } catch (InterruptedException ignored) {}
+            try {
+                Thread.sleep(200);
+            } catch (InterruptedException ignored) {
+            }
             System.exit(0);
         }, "forced-exit").start();
     }
-
 
 
     /**
      * Container für Versionsinformationen aus der Online-Quelle.
      */
     private static class UpdateInfo {
-        /** Versionsnummer der verfügbaren Anwendung */
+        /**
+         * Versionsnummer der verfügbaren Anwendung
+         */
         final String version;
-        /** Changelog-Text für die neue Version */
+        /**
+         * Changelog-Text für die neue Version
+         */
         final String changelog;
 
         /**
          * Erstellt eine neue UpdateInfo-Instanz.
          *
-         * @param version Versionsnummer
+         * @param version   Versionsnummer
          * @param changelog Änderungsbeschreibung
          */
-        UpdateInfo(String version, String changelog) { this.version = version; this.changelog = changelog; }
+        UpdateInfo(String version, String changelog) {
+            this.version = version;
+            this.changelog = changelog;
+        }
     }
 }

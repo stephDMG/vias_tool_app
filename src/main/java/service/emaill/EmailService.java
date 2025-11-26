@@ -23,8 +23,8 @@ public class EmailService {
     /**
      * Erstellt einen neuen EmailService.
      *
-     * @param host SMTP-Host
-     * @param port SMTP-Port
+     * @param host     SMTP-Host
+     * @param port     SMTP-Port
      * @param username Benutzername/Absenderadresse
      * @param password Passwort oder App-spezifisches Passwort
      */
@@ -42,12 +42,12 @@ public class EmailService {
     /**
      * Sendet eine E-Mail mit optionalen Dateianhängen.
      *
-     * @param to Empfängeradresse (kommagetrennt möglich)
-     * @param subject Betreff
-     * @param body Nachrichtentext (UTF-8)
+     * @param to          Empfängeradresse (kommagetrennt möglich)
+     * @param subject     Betreff
+     * @param body        Nachrichtentext (UTF-8)
      * @param attachments Liste von Dateien, die angehängt werden sollen (kann leer sein)
      * @throws MessagingException wenn das Senden fehlschlägt
-     * @throws IOException bei Fehlern beim Anhängen von Dateien
+     * @throws IOException        bei Fehlern beim Anhängen von Dateien
      */
     public void sendEmail(String to, String subject, String body, List<File> attachments) throws MessagingException, IOException {
         Session session = Session.getInstance(properties, new Authenticator() {

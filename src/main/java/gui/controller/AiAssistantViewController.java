@@ -2,20 +2,20 @@ package gui.controller;
 
 import gui.controller.manager.EnhancedTableManager;
 import gui.controller.manager.TableViewBuilder;
+import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.*;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.FlowPane;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import model.RowData;
 import model.enums.ExportFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-
 
 import java.io.File;
 import java.net.URL;
@@ -25,7 +25,7 @@ import java.util.ResourceBundle;
 
 import static gui.controller.dialog.Dialog.showErrorDialog;
 import static gui.controller.dialog.Dialog.showSuccessDialog;
-import static gui.controller.utils.format.FormatterService.exportWithFormat;
+import static gui.controller.service.FormatterService.exportWithFormat;
 
 /**
  * Controller für die KI-Assistent-Ansicht mit verbesserter Tabellenverwaltung.
@@ -88,6 +88,7 @@ public class AiAssistantViewController implements Initializable {
     @FXML
     private VBox resultsContainer;
 
+
     // Hilfe & Dokumentation
     @FXML
     private ComboBox<String> helpContextCombo;
@@ -123,7 +124,7 @@ public class AiAssistantViewController implements Initializable {
         logger.info("Initialisiere AiAssistantViewController mit verbesserter Tabellenverwaltung");
 
         // Service-Injection
-        this.aiService =  service.ServiceFactory.getAiService();
+        this.aiService = service.ServiceFactory.getAiService();
         this.databaseService = service.ServiceFactory.getDatabaseService();
 
         // === Erweiterte Tabellenverwaltung Setup ===
@@ -134,6 +135,7 @@ public class AiAssistantViewController implements Initializable {
 
         // === Hilfe-System initialisieren ===
         populateHelp();
+        logger.warn(String.valueOf(resultsContainer.getHeight()));
 
         logger.info("AiAssistantViewController erfolgreich initialisiert");
     }
@@ -152,40 +154,46 @@ public class AiAssistantViewController implements Initializable {
      */
     private void setupAdvancedTableManagement() {
         TableViewBuilder builder = TableViewBuilder.create()
-                .withFeatures(
-                        TableViewBuilder.Feature.SEARCH,
-                        TableViewBuilder.Feature.SELECTION,
-                        TableViewBuilder.Feature.PAGINATION,
-                        TableViewBuilder.Feature.EXPORT
-                )
+                .withFeatures(TableViewBuilder.Feature.SEARCH, TableViewBuilder.Feature.SELECTION,
+                        TableViewBuilder.Feature.PAGINATION, TableViewBuilder.Feature.EXPORT)
                 .withExportLabel("KI-Bericht exportieren als:")
                 .withActionsLabel("Ausgewählte Spalten löschen:");
 
-        // TableManager mit allen Features erstellen
         this.tableManager = builder.buildManager()
                 .enableSearch()
                 .enableSelection()
                 .enablePagination(100);
 
-        // Export-Buttons referenzieren
-        this.exportCsvButton = builder.getExportCsvButton();
-        this.exportXlsxButton = builder.getExportXlsxButton();
+        // ✅ CONFIGURATION UNIVERSELLE
+        VBox tableContainer = builder.getTableContainer();
+        VBox.setVgrow(tableContainer, javafx.scene.layout.Priority.ALWAYS);
+        tableContainer.setMaxHeight(Double.MAX_VALUE);
 
-        // Event-Handler für Buttons
-        Button deleteButton = builder.getDeleteColumnsButton();
-        deleteButton.setOnAction(e -> {
-            logger.debug("Delete button clicked in AiAssistant");
-            tableManager.handleDeleteSelectedColumns();
+        // 🔑 CLÉ: Forcer le conteneur parent
+        resultsContainer.setMinHeight(400);
+        resultsContainer.setPrefHeight(Region.USE_COMPUTED_SIZE);
+
+        resultsContainer.getChildren().clear();
+        resultsContainer.getChildren().add(tableContainer);
+
+        // ✅ Configuration finale après chargement
+        Platform.runLater(() -> {
+            tableManager.getTableView().setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
+            tableManager.getTableView().getColumns().forEach(col -> {
+                col.setPrefWidth(150);
+                col.setMinWidth(80);
+            });
+            resultsContainer.requestLayout();
         });
 
+        // Reste du code (buttons, etc.)
+        Button deleteButton = builder.getDeleteColumnsButton();
+        deleteButton.setOnAction(e -> tableManager.handleDeleteSelectedColumns());
+
+        exportCsvButton = builder.getExportCsvButton();
+        exportXlsxButton = builder.getExportXlsxButton();
         exportCsvButton.setOnAction(this::exportFullReport);
         exportXlsxButton.setOnAction(this::exportFullReport);
-
-        // Tabellen-Container in die UI einbinden
-        resultsContainer.getChildren().clear();
-        resultsContainer.getChildren().add(builder.getTableContainer());
-
-        logger.debug("Erweiterte Tabellenverwaltung für AI-Assistant konfiguriert");
     }
 
     /**

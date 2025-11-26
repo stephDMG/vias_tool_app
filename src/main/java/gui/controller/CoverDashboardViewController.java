@@ -1,8 +1,11 @@
 package gui.controller;
 
+import atlantafx.base.theme.NordLight;
+import atlantafx.base.theme.PrimerLight;
 import gui.cover.CoverDomainController;
 import javafx.animation.FadeTransition;
 import javafx.animation.ScaleTransition;
+import javafx.application.Application;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
@@ -12,6 +15,9 @@ import javafx.stage.Stage;
 import javafx.util.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+
+import java.util.Objects;
 
 import static gui.controller.dialog.Dialog.showErrorDialog;
 
@@ -56,6 +62,7 @@ public class CoverDashboardViewController {
     // =========================
     // Generic Viewer Launcher
     // =========================
+
     /**
      * Öffnet den Domain-Viewer für das Angebotswesen in einem neuen Fenster.
      */
@@ -71,16 +78,16 @@ public class CoverDashboardViewController {
             // Fenêtre
             Stage stage = new Stage();
             stage.setTitle("COVER • " + title);
+            Scene scene = new Scene(root, 1200, 950);
+            Application.setUserAgentStylesheet(new NordLight().getUserAgentStylesheet());
+            scene.getStylesheets().add(Objects.requireNonNull(getClass().getResource("/css/fixed-header.css")).toExternalForm());
 
-            Scene scene = new Scene(root, 1200, 800);
-            // Applique la feuille de style globale
-            //scene.getStylesheets().add(getClass().getResource("/css/app.css").toExternalForm());
             stage.setScene(scene);
-
-            // Plein écran “fenêtré” (maximized) pour occuper l’espace
+            stage.setMinWidth(1100);
+            stage.setMinHeight(900);
             stage.setMaximized(true);
-
             stage.show();
+
         } catch (Exception e) {
             log.error("Fehler beim Öffnen von {}", domain, e);
             showErrorDialog("Ansichtsfehler", e.getMessage());
@@ -107,8 +114,6 @@ public class CoverDashboardViewController {
     private void openRelevanteVias() {
         openDomainViewer("viasfelder", "Relevante VIAS-Felder");
     }
-
-
 
 
 }

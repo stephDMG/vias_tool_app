@@ -1,7 +1,9 @@
 package gui.controller;
 
 import gui.controller.manager.EnhancedTableManager;
+import gui.controller.manager.TableLayoutHelper;
 import gui.controller.manager.TableViewBuilder;
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
@@ -29,7 +31,7 @@ import java.util.stream.Collectors;
 
 import static gui.controller.dialog.Dialog.showErrorDialog;
 import static gui.controller.dialog.Dialog.showSuccessDialog;
-import static gui.controller.utils.format.FormatterService.exportWithFormat;
+import static gui.controller.service.FormatterService.exportWithFormat;
 
 /**
  * Controller für den Datenbank-Exportbereich mit verbesserter Tabellenverwaltung.
@@ -135,10 +137,11 @@ public class DbExportViewController implements Initializable {
         parameterListView.setItems(listParameters);
 
         // === Neue adaptive Tabellenverwaltung ===
-        setupAdvancedTableManagement();
+        setupTable();
 
         // Initialzustand setzen
         setInitialState();
+
 
         logger.info("DbExportViewController erfolgreich initialisiert");
     }
@@ -154,7 +157,7 @@ public class DbExportViewController implements Initializable {
      *   <li>Automatische Ergebnis-Zählung</li>
      * </ul>
      */
-    private void setupAdvancedTableManagement() {
+    private void setupTable() {
         TableViewBuilder builder = TableViewBuilder.create()
                 .withFeatures(
                         TableViewBuilder.Feature.SELECTION,
@@ -183,9 +186,18 @@ public class DbExportViewController implements Initializable {
         exportCsvButton.setOnAction(this::exportFullReport);
         exportXlsxButton.setOnAction(this::exportFullReport);
 
-        // Tabellen-Container in die UI einbinden
-        resultsContainer.getChildren().clear();
-        resultsContainer.getChildren().add(builder.getTableContainer());
+        VBox tableContainer = builder.getTableContainer();
+
+        TableLayoutHelper.configureTableContainer(
+                resultsContainer,  // parent
+                tableContainer,     // enfant
+                getClass().getSimpleName()
+        );
+
+        Platform.runLater(() -> {
+            var ttv = tableManager.getTableView();
+            ttv.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
+        });
 
         logger.debug("Erweiterte Tabellenverwaltung konfiguriert");
     }
@@ -466,7 +478,7 @@ public class DbExportViewController implements Initializable {
      * Setzt den UI-Zustand für Processing-Operationen.
      *
      * @param isProcessing {@code true} wenn eine Operation läuft, {@code false} sonst
-     * @param status       Statustext für den Benutzer
+     * @param status    Statustext für den Benutzer
      */
     private void setProcessingState(boolean isProcessing, String status) {
         progressBar.setVisible(isProcessing);

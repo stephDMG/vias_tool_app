@@ -4,6 +4,7 @@ import model.RowData;
 import model.audit.AuditDocumentRecord;
 import model.audit.CoverAuditRecord;
 import model.audit.VsnAuditRecord;
+import model.enums.ExportFormat;
 import model.op.kunde.ExecutionResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,15 +14,13 @@ import service.interfaces.ProgressReporter;
 import util.FileUtil;
 
 import java.io.IOException;
-import java.util.*;
-import java.util.stream.Collectors;
-
-import model.enums.ExportFormat;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.Normalizer;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Service für die Durchführung der Audit-Prozesse (Vertrag und/oder Schaden).
@@ -41,28 +40,99 @@ public class AuditService {
     private final FileService fileService;
     private final AuditRepository auditRepository;
 
-    // Enum zur Steuerung, welchen Prozess wir durchführen (für die GUI)
-    public enum AuditType {
-        VERTRAG("Verträge"),
-        SCHADEN("Schaden"),
-        BEIDE("Verträge und Schaden");
-
-        private final String ordnerName;
-
-        AuditType(String ordnerName) {
-            this.ordnerName = ordnerName;
-        }
-
-        public String getOrdnerName() {
-            return ordnerName;
-        }
-    }
-
     public AuditService(FileService fileService, AuditRepository auditRepository) {
         this.fileService = fileService;
         this.auditRepository = auditRepository;
     }
 
+    /**
+     * Accepte 'CS-2024-04343' ou '2404343' et renvoie LU_SNR (z. B. '2404343').
+     */
+    private static String normalizeToLuSnr(String input) {
+        if (input == null) return "";
+        String s = input.trim();
+        if (s.isEmpty()) return s;
+
+        // Si format texte: CS-20YY-xxxxx -> LU_SNR = YY + xxxxx
+        java.util.regex.Matcher m = java.util.regex.Pattern
+                .compile("(?i)^CS-20(\\d{2})-(\\d{5})$")
+                .matcher(s);
+        if (m.find()) {
+            return m.group(1) + m.group(2); // "24" + "04343" -> "2404343"
+        }
+
+        // Sinon garder uniquement les chiffres (au cas où espaces, etc.)
+        String digits = s.replaceAll("\\D+", "");
+        return digits;
+    }
+
+    /**
+     * Minimal-‘Normalisierung’ für Police Nr.: trim + alle Whitespaces entfernen.
+     */
+    private static String normalizePoliceNr(String input) {
+        if (input == null) return "";
+        String s = input.trim();
+        if (s.isEmpty()) return s;
+        // interne Leerzeichen entfernen (Excel-Padding etc.)
+        s = s.replaceAll("\\s+", "");
+        return s;
+    }
+
+    /**
+     * Normalise un nom pour comparaison robuste (minuscules, espaces, accents).
+     */
+    private static String normalizeName(String s) {
+        if (s == null) return "";
+        String t = s.trim().toLowerCase();
+        t = Normalizer.normalize(t, Normalizer.Form.NFD).replaceAll("\\p{M}+", ""); // enlève accents
+        t = t.replaceAll("\\s+", " "); // espaces multiples -> simple
+        return t;
+    }
+
+    private static String joinFullName(String vor, String nach) {
+        String v = (vor == null) ? "" : vor.trim();
+        String n = (nach == null) ? "" : nach.trim();
+        return (v + " " + n).trim();
+    }
+
+    /**
+     * LU_SNR (ex: "2404343") -> LU_SNR_TEXT "CS-2024-04343" pour affichage/chemin.
+     */
+    private static String toSvaLuSnrText(String raw) {
+        if (raw == null) return "";
+        String digits = raw.replaceAll("\\D+", "");
+        if (digits.length() < 3) return raw.trim();
+        String yy = digits.substring(0, 2);
+        String tail = digits.substring(2);
+        if (tail.length() > 5) tail = tail.substring(tail.length() - 5);
+        if (tail.length() < 5) tail = String.format("%5s", tail).replace(' ', '0');
+        return "CS-20" + yy + "-" + tail;
+    }
+
+    /**
+     * LU_SNR_TEXT "CS-2024-04343" -> LU_SNR "2404343" (utile si besoin).
+     */
+    private static String textToLuSnr(String text) {
+        if (text == null) return "";
+        var m = java.util.regex.Pattern.compile("(?i)^CS-20(\\d{2})-(\\d{5})$").matcher(text.trim());
+        return m.find() ? (m.group(1) + m.group(2)) : text.replaceAll("\\D+", "");
+    }
+
+    private static String plannedBaseFolder(String sb, String typeDir, String key) {
+        String sbDir = FileUtil.sanitizeFileName(sb);
+        String keyDir = FileUtil.sanitizeFileName(key);
+        return Path.of(FileUtil.BASE_AUDIT_PATH, sbDir, FileUtil.sanitizeFileName(typeDir), keyDir).toString();
+    }
+
+    private static Path ensureReportsDir() throws IOException {
+        Path dir = Path.of(FileUtil.BASE_AUDIT_PATH, "_reports");
+        Files.createDirectories(dir);
+        return dir;
+    }
+
+    private static String timestamp() {
+        return LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+    }
 
     /**
      * Startet den Audit-Prozess basierend auf dem Typ.
@@ -288,7 +358,6 @@ public class AuditService {
         return copiedCount;
     }
 
-
     // AuditService.java
     public ExecutionResult startManualSchadenAudit(List<String> luSnrList, ProgressReporter reporter) {
         reporter.updateProgress(0, 100);
@@ -325,27 +394,6 @@ public class AuditService {
             reporter.updateMessage("❌ Fehler: " + ex.getMessage());
             return new ExecutionResult(ExecutionResult.Status.FAILURE, "Kritischer Fehler: " + ex.getMessage());
         }
-    }
-
-    /**
-     * Accepte 'CS-2024-04343' ou '2404343' et renvoie LU_SNR (z. B. '2404343').
-     */
-    private static String normalizeToLuSnr(String input) {
-        if (input == null) return "";
-        String s = input.trim();
-        if (s.isEmpty()) return s;
-
-        // Si format texte: CS-20YY-xxxxx -> LU_SNR = YY + xxxxx
-        java.util.regex.Matcher m = java.util.regex.Pattern
-                .compile("(?i)^CS-20(\\d{2})-(\\d{5})$")
-                .matcher(s);
-        if (m.find()) {
-            return m.group(1) + m.group(2); // "24" + "04343" -> "2404343"
-        }
-
-        // Sinon garder uniquement les chiffres (au cas où espaces, etc.)
-        String digits = s.replaceAll("\\D+", "");
-        return digits;
     }
 
     /**
@@ -390,76 +438,6 @@ public class AuditService {
             return new ExecutionResult(ExecutionResult.Status.FAILURE, "Kritischer Fehler: " + ex.getMessage());
         }
     }
-
-    /**
-     * Minimal-‘Normalisierung’ für Police Nr.: trim + alle Whitespaces entfernen.
-     */
-    private static String normalizePoliceNr(String input) {
-        if (input == null) return "";
-        String s = input.trim();
-        if (s.isEmpty()) return s;
-        // interne Leerzeichen entfernen (Excel-Padding etc.)
-        s = s.replaceAll("\\s+", "");
-        return s;
-    }
-
-    /**
-     * Normalise un nom pour comparaison robuste (minuscules, espaces, accents).
-     */
-    private static String normalizeName(String s) {
-        if (s == null) return "";
-        String t = s.trim().toLowerCase();
-        t = Normalizer.normalize(t, Normalizer.Form.NFD).replaceAll("\\p{M}+", ""); // enlève accents
-        t = t.replaceAll("\\s+", " "); // espaces multiples -> simple
-        return t;
-    }
-
-    private static String joinFullName(String vor, String nach) {
-        String v = (vor == null) ? "" : vor.trim();
-        String n = (nach == null) ? "" : nach.trim();
-        return (v + " " + n).trim();
-    }
-
-    /**
-     * LU_SNR (ex: "2404343") -> LU_SNR_TEXT "CS-2024-04343" pour affichage/chemin.
-     */
-    private static String toSvaLuSnrText(String raw) {
-        if (raw == null) return "";
-        String digits = raw.replaceAll("\\D+", "");
-        if (digits.length() < 3) return raw.trim();
-        String yy = digits.substring(0, 2);
-        String tail = digits.substring(2);
-        if (tail.length() > 5) tail = tail.substring(tail.length() - 5);
-        if (tail.length() < 5) tail = String.format("%5s", tail).replace(' ', '0');
-        return "CS-20" + yy + "-" + tail;
-    }
-
-    /**
-     * LU_SNR_TEXT "CS-2024-04343" -> LU_SNR "2404343" (utile si besoin).
-     */
-    private static String textToLuSnr(String text) {
-        if (text == null) return "";
-        var m = java.util.regex.Pattern.compile("(?i)^CS-20(\\d{2})-(\\d{5})$").matcher(text.trim());
-        return m.find() ? (m.group(1) + m.group(2)) : text.replaceAll("\\D+", "");
-    }
-
-    private static String plannedBaseFolder(String sb, String typeDir, String key) {
-        String sbDir = FileUtil.sanitizeFileName(sb);
-        String keyDir = FileUtil.sanitizeFileName(key);
-        return Path.of(FileUtil.BASE_AUDIT_PATH, sbDir, FileUtil.sanitizeFileName(typeDir), keyDir).toString();
-    }
-
-    private static Path ensureReportsDir() throws IOException {
-        Path dir = Path.of(FileUtil.BASE_AUDIT_PATH, "_reports");
-        Files.createDirectories(dir);
-        return dir;
-    }
-
-    private static String timestamp() {
-        return LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
-    }
-
-// ------------------ 1) SB-Abgleich VERTRAG ------------------
 
     /**
      * Compare SB Vertrag (Excel) vs SB in VIAS (COVER.LU_SACHBEA_VT via SAB) et génère un XLSX.
@@ -563,7 +541,7 @@ public class AuditService {
         }
     }
 
-// ------------------ 2) SB-Abgleich SCHADEN ------------------
+// ------------------ 1) SB-Abgleich VERTRAG ------------------
 
     /**
      * Compare SB Schaden (Excel) vs SB in VIAS (SVA.LU_SACHBEA_SC via SAB) et génère un XLSX.
@@ -676,6 +654,25 @@ public class AuditService {
             logger.error("Fehler bei checkSbMismatchSchaden", ex);
             if (reporter != null) reporter.updateMessage("❌ Fehler: " + ex.getMessage());
             return new ExecutionResult(ExecutionResult.Status.FAILURE, "Fehler SB-Abgleich (Schaden): " + ex.getMessage());
+        }
+    }
+
+// ------------------ 2) SB-Abgleich SCHADEN ------------------
+
+    // Enum zur Steuerung, welchen Prozess wir durchführen (für die GUI)
+    public enum AuditType {
+        VERTRAG("Verträge"),
+        SCHADEN("Schaden"),
+        BEIDE("Verträge und Schaden");
+
+        private final String ordnerName;
+
+        AuditType(String ordnerName) {
+            this.ordnerName = ordnerName;
+        }
+
+        public String getOrdnerName() {
+            return ordnerName;
         }
     }
 }

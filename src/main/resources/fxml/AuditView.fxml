@@ -1,11 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.geometry.*?>
+<?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
-
-<BorderPane xmlns="http://javafx.com/javafx/17.0.12"
-            xmlns:fx="http://javafx.com/fxml/1"
+<BorderPane xmlns:fx="http://javafx.com/fxml/1"
+            xmlns="http://javafx.com/javafx/17.0.12"
             fx:controller="gui.controller.AuditViewController">
 
     <padding>
@@ -151,7 +150,9 @@
                 <ProgressBar fx:id="progressBar" prefWidth="420" visible="false"/>
                 <Label fx:id="statusLabel" style="-fx-font-style: italic;" text="Bereit zum Start"/>
                 <ListView fx:id="stepsListView" prefHeight="160.0" prefWidth="800.0" VBox.vgrow="ALWAYS">
-                    <VBox.margin><Insets top="6.0"/></VBox.margin>
+                    <VBox.margin>
+                        <Insets top="6.0"/>
+                    </VBox.margin>
                 </ListView>
             </VBox>
 

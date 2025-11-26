@@ -21,7 +21,9 @@ public class RowData {
      * Die Map, die die Spaltennamen und ihre zugehörigen Werte speichert.
      */
     private final Map<String, String> values = new LinkedHashMap<>();
-
+    // ---- champ à ajouter dans la classe
+    private java.util.function.Function<model.RowData, java.util.List<String>> groupingPathProvider =
+            row -> java.util.List.of("Alle"); // fallback par défaut
 
     /**
      * Fügt einen Wert für eine bestimmte Spalte hinzu.
@@ -70,11 +72,6 @@ public class RowData {
     public String toString() {
         return values.toString();
     }
-
-
-    // ---- champ à ajouter dans la classe
-    private java.util.function.Function<model.RowData, java.util.List<String>> groupingPathProvider =
-            row -> java.util.List.of("Alle"); // fallback par défaut
 
     // ---- setter à ajouter
     public void setGroupingPathProvider(java.util.function.Function<model.RowData, java.util.List<String>> provider) {

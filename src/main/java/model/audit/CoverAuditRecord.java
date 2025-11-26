@@ -34,6 +34,7 @@ public class CoverAuditRecord extends AuditDocumentRecord {
 
     /**
      * Liefert die Policennummer (Vertragsnummer), die als Audit-Schlüssel dient.
+     *
      * @return Die Police-Nummer.
      */
     public String getPoliceNr() {

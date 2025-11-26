@@ -15,15 +15,11 @@ import java.util.stream.Collectors;
 
 /**
  * CoverRepository
- *
+ * <p>
  * Kapselt den Datenbankzugriff für COVER-bezogene Abfragen (Listen, Counts, KPIs, Dictionaries).
  */
 public class CoverRepository {
     private static final Logger log = LoggerFactory.getLogger(CoverRepository.class);
-
-    private final DatabaseService databaseService;
-    private final CoverFormatter coverFormatter;
-
     private static final List<String> GLOBAL_SEARCH_COLUMNS = List.of(
             "COVER.LU_VSN",
             "LUM.LU_NAM",
@@ -42,8 +38,16 @@ public class CoverRepository {
             "LUM.LU_PLZ",
             "COVER.LU_SPAKZ",
             "COVER.LU_VSN_MAKLER",
-            "COVER.LU_VSN_VR"
+            "COVER.LU_VSN_VR",
+            "COVER.LU_SACHBEA_VT",
+            "COVER.LU_SACHBEA_SC",
+            "COVER.LU_SACHBEA_RG",
+            "COVER.LU_SACHBEA_GL",
+            "COVER.LU_SACHBEA_DOK",
+            "COVER.LU_SACHBEA_BUH"
     );
+    private final DatabaseService databaseService;
+    private final CoverFormatter coverFormatter;
 
 
     public CoverRepository(DatabaseService databaseService,
@@ -211,7 +215,7 @@ public class CoverRepository {
         }
         return out;
     }
-    // ENDE NEU
+
 
     // =====================================================================================
     // SQL-Build
@@ -339,15 +343,15 @@ public class CoverRepository {
     }
 
     /**
-    private String buildCountSql(CoverFilter filter) {
-        StringBuilder from = new StringBuilder();
-        from.append("FROM LU_ALLE AS COVER\n");
-        String where = buildWhere(filter);
-        if (where.contains("LUM.LU_NAM")) {
-            from.append("LEFT JOIN LU_MASKEP AS LUM ON COVER.PPointer = LUM.PPointer\n");
-        }
-        return "SELECT COUNT(1) AS total\n" + from + "WHERE COVER.Sparte LIKE '%COVER' " + where;
-    }
+     * private String buildCountSql(CoverFilter filter) {
+     * StringBuilder from = new StringBuilder();
+     * from.append("FROM LU_ALLE AS COVER\n");
+     * String where = buildWhere(filter);
+     * if (where.contains("LUM.LU_NAM")) {
+     * from.append("LEFT JOIN LU_MASKEP AS LUM ON COVER.PPointer = LUM.PPointer\n");
+     * }
+     * return "SELECT COUNT(1) AS total\n" + from + "WHERE COVER.Sparte LIKE '%COVER' " + where;
+     * }
      */
 
     private String buildCountSql(CoverFilter filter) {
@@ -390,8 +394,6 @@ public class CoverRepository {
 
             sb.append(")");
         }
-
-
 
 
         // 1) Vertragsstand (LU_STA)
@@ -451,7 +453,9 @@ public class CoverRepository {
             java.time.LocalDate ab = filter.getAbDate();
             java.time.LocalDate bis = filter.getBisDate();
             if (ab != null && bis != null && bis.isBefore(ab)) {
-                var tmp = ab; ab = bis; bis = tmp;
+                var tmp = ab;
+                ab = bis;
+                bis = tmp;
             }
 
             // Heuristik: Bei Storno/Beendet → LU_DST, sonst LU_BEG
@@ -497,7 +501,6 @@ public class CoverRepository {
     }
 
 
-
     private String buildDictionarySql(String dictName) {
         String table = dictName == null ? "" : dictName.trim();
         if (table.isEmpty()) throw new IllegalArgumentException("Dictionary-Name darf nicht leer sein.");
@@ -509,6 +512,28 @@ public class CoverRepository {
         if ("MAKLERV".equals(upper)) {
             return "SELECT LU_VMTNR, LU_NAM FROM MAKLERV";
         }
+
+        // ➜ NEU: Voller SB-Name (Key = LU_SB_KURZ, Text = 'Vorname Nachname')
+        if ("SACHBEA_FULL".equals(upper)) {
+            return """
+                    SELECT
+                        LU_SB_KURZ AS CODE,
+                        REPLACE(
+                                LTRIM(RTRIM(
+                                        LTRIM(RTRIM(CAST(LU_SB_VOR AS NVARCHAR(200)))) +
+                                        CASE
+                                            WHEN LTRIM(RTRIM(CAST(LU_SB_VOR AS NVARCHAR(200)))) <> ''
+                                                AND LTRIM(RTRIM(CAST(LU_SB_NAM AS NVARCHAR(200)))) <> ''
+                                                THEN ' ' ELSE ''
+                                            END +
+                                        LTRIM(RTRIM(CAST(LU_SB_NAM AS NVARCHAR(200))))
+                                      )),
+                            CHAR(0), ''
+                        ) AS TEXT
+                    FROM SACHBEA;
+                    """;
+        }
+
         return "SELECT * FROM " + table;
     }
 
@@ -516,7 +541,6 @@ public class CoverRepository {
     // DB-Utils (KORRIGIERT: echte DB-Aufrufe, keine Stubs)
     // =====================================================================================
 
-    @SuppressWarnings("unchecked")
     private List<RowData> executeQuery(String sql) {
         // Echtes Durchreichen an den Datenbank-Service
         try {
@@ -608,17 +632,23 @@ public class CoverRepository {
     // String-/SQL-Utils (fehlende Helfer ergänzt)
 // =====================================================================================
 
-    /** Null/Leer-Prüfung (Whitespace ignorieren). */
+    /**
+     * Null/Leer-Prüfung (Whitespace ignorieren).
+     */
     private boolean nz(String s) {
         return s != null && !s.trim().isEmpty();
     }
 
-    /** SQL-Escaping für Literale (einfaches Hochkomma verdoppeln). */
+    /**
+     * SQL-Escaping für Literale (einfaches Hochkomma verdoppeln).
+     */
     private String escape(String s) {
         return (s == null) ? "" : s.replace("'", "''").trim();
     }
 
-    /** LIKE-Escaping: zuerst normales Escape, dann einfache Sonderzeichen maskieren. */
+    /**
+     * LIKE-Escaping: zuerst normales Escape, dann einfache Sonderzeichen maskieren.
+     */
     private String escapeLike(String s) {
         // Minimal ausreichend, weil wir '%' und '_' nur im Pattern anhängen.
         // Wenn du echte LIKE-Maskierung brauchst, erweitern:

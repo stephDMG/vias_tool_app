@@ -11,19 +11,19 @@ import java.util.*;
 
 /**
  * Hierarchischer CSV-Writer - erstellt gruppierte CSV-Dateien.
- *
+ * <p>
  * Erzeugt CSV-Dateien mit:
  * - Globalen Spalten-Header (nur einmal ganz oben)
  * - Gruppen-Header-Zeilen vor jeder Gruppe
  * - Datenzeilen unter jeder Gruppe
  * - Leerzeilen zwischen Gruppen für bessere Lesbarkeit
- *
+ * <p>
  * Format:
  * Spalte1,Spalte2,Spalte3,...
  * # Gruppe: Wert1 / Wert2
  * Daten1,Daten2,Daten3,...
  * Daten1,Daten2,Daten3,...
- *
+ * <p>
  * # Gruppe: Wert3 / Wert4
  * Daten1,Daten2,Daten3,...
  *
@@ -37,13 +37,13 @@ public class GroupedCsvWriter {
 
     /**
      * Schreibt Daten mit hierarchischer Gruppierung in eine CSV-Datei.
-     *
+     * <p>
      * Wenn groupByKeys null oder leer: Flache CSV ohne Gruppierung
      * Wenn groupByKeys gesetzt: Hierarchische CSV mit Gruppen-Headern
      *
-     * @param rows Die zu exportierenden Zeilen
+     * @param rows        Die zu exportierenden Zeilen
      * @param groupByKeys Liste der Spalten-Keys für Gruppierung (null/leer = keine Gruppierung)
-     * @param outputPath Ausgabepfad der CSV-Datei
+     * @param outputPath  Ausgabepfad der CSV-Datei
      * @throws Exception bei Schreibfehlern
      */
     public void writeGrouped(List<RowData> rows, List<String> groupByKeys, String outputPath) throws Exception {
@@ -93,7 +93,7 @@ public class GroupedCsvWriter {
 
     /**
      * Schreibt HIERARCHISCHE CSV ähnlich wie Excel-Format.
-     *
+     * <p>
      * Format:
      * Header-Zeile (nur einmal)
      * # Gruppe: Name

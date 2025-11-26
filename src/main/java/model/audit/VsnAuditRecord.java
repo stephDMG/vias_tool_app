@@ -13,15 +13,15 @@ public class VsnAuditRecord extends AuditDocumentRecord {
     /**
      * Konstruktor für einen VSN (Schaden) Audit Record.
      *
-     * @param vsnNummer Die VSN-Nummer des Schadens.
-     * @param nachname Nachname des Sachbearbeiters.
-     * @param vorname Vorname des Sachbearbeiters.
+     * @param vsnNummer    Die VSN-Nummer des Schadens.
+     * @param nachname     Nachname des Sachbearbeiters.
+     * @param vorname      Vorname des Sachbearbeiters.
      * @param beschreibung Beschreibung des Vorgangs (z.B. "01) Korrespondenz").
-     * @param parameter Der vollständige VIAS-Pfad-String.
-     * @param extension Die Dateierweiterung.
-     * @param betreff Der Betreff des Dokuments.
-     * @param bezugsdatum Das Bezugsdatum.
-     * @param uhrzeit Die Erstellungszeit.
+     * @param parameter    Der vollständige VIAS-Pfad-String.
+     * @param extension    Die Dateierweiterung.
+     * @param betreff      Der Betreff des Dokuments.
+     * @param bezugsdatum  Das Bezugsdatum.
+     * @param uhrzeit      Die Erstellungszeit.
      */
     public VsnAuditRecord(String vsnNummer, String nachname, String vorname, String beschreibung,
                           String parameter, String extension, String betreff,
@@ -33,6 +33,7 @@ public class VsnAuditRecord extends AuditDocumentRecord {
 
     /**
      * Liefert die VSN-Nummer (Schaden-Nummer), die als Audit-Schlüssel dient.
+     *
      * @return Die VSN-Nummer.
      */
     public String getVsnNummer() {

@@ -316,6 +316,88 @@ if ($targetChoice -eq '2' -or $targetChoice -eq '3')
     Create-Checksum -InstallerPath $publicInstallerPath
 }
 
+# --- 7. GIT: Release-Branch anlegen & pushen -------------------------------
+Write-Host '----------------------------------------------------------'
+Write-Host '--> Git: Erstelle Release-Branch...' -ForegroundColor Cyan
+
+# On suppose que le script est im Projektordner ($projectDir = $PSScriptRoot)
+if (-not (Test-Path (Join-Path $projectDir '.git'))) {
+    Write-Host '[INFO] Kein Git-Repository gefunden (.git fehlt). Git-Schritt wird übersprungen.' -ForegroundColor Yellow
+}
+else {
+    Push-Location $projectDir
+
+    # Aktuellen Branch bestimmen
+    $currentBranch = (git rev-parse --abbrev-ref HEAD).Trim()
+    if ([string]::IsNullOrWhiteSpace($currentBranch)) {
+        Write-Host '[ERROR] Konnte aktuellen Branch nicht ermitteln. Git-Schritt abgebrochen.' -ForegroundColor Red
+        Pop-Location
+        return
+    }
+
+    # Zeitstempel im Format dd.MM.yyyy_HH.mm
+    $timestamp = Get-Date -Format 'dd.MM.yyyy_HH.mm'
+
+    # Branchname: <gitBranchName>_release_<dd.MM.yyyy>_<HH.mm>
+    $releaseBranch = "{0}_release_{1}" -f $currentBranch, $timestamp
+
+    Write-Host "Aktueller Branch: $currentBranch" -ForegroundColor Cyan
+    Write-Host "Neuer Release-Branch: $releaseBranch" -ForegroundColor Green
+
+    # Commit-Message aus den eingegebenen Aenderungen bauen
+    if ($commitLines.Count -gt 0) {
+        $commitBody = $commitLines -join "`r`n"
+        $commitMessage = "Release $newVersion`r`n`r`n$commitBody"
+    }
+    else {
+        $commitMessage = "Release $newVersion"
+    }
+
+    # Temporäre Datei für den Commit-Text (damit Zeilenumbrüche erhalten bleiben)
+    $tmpCommitFile = [System.IO.Path]::GetTempFileName()
+    Set-Content -Path $tmpCommitFile -Value $commitMessage -Encoding UTF8
+
+    # ALLES im Repo aufnehmen (inkl. neuer Klassen etc.)
+    git add .
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host '[ERROR] git add . fehlgeschlagen. Git-Schritt abgebrochen.' -ForegroundColor Red
+        Remove-Item $tmpCommitFile -ErrorAction SilentlyContinue
+        Pop-Location
+        return
+    }
+
+    # Commit ausführen
+    git commit -F $tmpCommitFile
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host '[ERROR] git commit fehlgeschlagen (evtl. keine Änderungen?). Git-Schritt abgebrochen.' -ForegroundColor Red
+        Remove-Item $tmpCommitFile -ErrorAction SilentlyContinue
+        Pop-Location
+        return
+    }
+
+    Remove-Item $tmpCommitFile -ErrorAction SilentlyContinue
+
+    # Release-Branch erstellen (zeigt auf den gerade erstellten Commit)
+    git branch $releaseBranch
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host '[ERROR] git branch fehlgeschlagen.' -ForegroundColor Red
+        Pop-Location
+        return
+    }
+
+    # Auf Remote (origin) pushen
+    git push origin $releaseBranch
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host '[ERROR] git push fehlgeschlagen. Bitte Remote/Authentifizierung prüfen.' -ForegroundColor Red
+        Pop-Location
+        return
+    }
+
+    Write-Host "[OK] Release-Branch '$releaseBranch' wurde erstellt und nach 'origin' gepusht." -ForegroundColor Green
+    Pop-Location
+}
+
+
 Write-Host '==========================================================' -ForegroundColor Magenta
 Write-Host '=== Release process completed successfully! ==============' -ForegroundColor Magenta
 Write-Host '==========================================================' -ForegroundColor Magenta

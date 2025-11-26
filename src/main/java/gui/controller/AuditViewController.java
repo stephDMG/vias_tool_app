@@ -14,7 +14,6 @@ import service.ServiceFactory;
 import service.audit.AuditService;
 import service.audit.AuditService.AuditType;
 import service.audit.task.*;
-import service.interfaces.ProgressReporter;
 
 import java.net.URL;
 import java.util.Arrays;
@@ -32,25 +31,32 @@ import static gui.controller.dialog.Dialog.showSuccessDialog;
 public class AuditViewController implements Initializable {
 
     private static final Logger log = LoggerFactory.getLogger(AuditViewController.class);
-
-    // --- FXML Elemente ---
-    @FXML private Button startVertragButton;
-    @FXML private Button startSchadenButton;
-    @FXML private Button startBeideButton;
-    @FXML private Button startManualSchadenButton;
-    @FXML private Button startManualVertragButton;
-    @FXML private Button stopButton;
-
-    @FXML private ProgressBar progressBar;
-    @FXML private Label statusLabel;
-    @FXML private ListView<String> stepsListView;
-
-    @FXML private TextArea manualSchadenInput;
-    @FXML private TextArea manualVertragInput;
-
     // --- Services / State ---
     private final AuditService auditService = ServiceFactory.getAuditService();
     private final ObservableList<String> steps = FXCollections.observableArrayList();
+    // --- FXML Elemente ---
+    @FXML
+    private Button startVertragButton;
+    @FXML
+    private Button startSchadenButton;
+    @FXML
+    private Button startBeideButton;
+    @FXML
+    private Button startManualSchadenButton;
+    @FXML
+    private Button startManualVertragButton;
+    @FXML
+    private Button stopButton;
+    @FXML
+    private ProgressBar progressBar;
+    @FXML
+    private Label statusLabel;
+    @FXML
+    private ListView<String> stepsListView;
+    @FXML
+    private TextArea manualSchadenInput;
+    @FXML
+    private TextArea manualVertragInput;
     private Task<ExecutionResult> currentTask;
 
     @Override
@@ -91,7 +97,9 @@ public class AuditViewController implements Initializable {
     // Manueller Modus
     // =====================================================================
 
-    /** Schaden (manuell) – akzeptiert LU_SNR oder CS-20YY-xxxxx; Trennzeichen , ; Leerzeichen \n */
+    /**
+     * Schaden (manuell) – akzeptiert LU_SNR oder CS-20YY-xxxxx; Trennzeichen , ; Leerzeichen \n
+     */
     @FXML
     private void startSchadenAuditManuell() {
         String raw = (manualSchadenInput != null) ? manualSchadenInput.getText() : null;
@@ -114,7 +122,9 @@ public class AuditViewController implements Initializable {
         bindAndRunTask(task, "Manueller Schaden-Audit gestartet");
     }
 
-    /** Verträge (manuell) – Police Nr. 1..N; Trennzeichen , ; Leerzeichen \n */
+    /**
+     * Verträge (manuell) – Police Nr. 1..N; Trennzeichen , ; Leerzeichen \n
+     */
     @FXML
     private void startVertragAuditManuell() {
         String raw = (manualVertragInput != null) ? manualVertragInput.getText() : null;

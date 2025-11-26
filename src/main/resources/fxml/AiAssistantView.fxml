@@ -38,7 +38,7 @@
         </VBox>
 
         <!-- Rechte Spalte: SQL + Vorschau -->
-        <VBox spacing="10.0">
+        <VBox spacing="10.0" VBox.vgrow="ALWAYS">
             <SplitPane dividerPositions="0.4" orientation="VERTICAL" VBox.vgrow="ALWAYS">
 
                 <VBox spacing="10.0">
@@ -51,22 +51,23 @@
                         <Button fx:id="executeQueryButton" disable="true" onAction="#executeQuery"
                                 text="Abfrage ausführen"/>
                     </HBox>
-                    <TextArea fx:id="sqlTextArea" editable="false" styleClass="text-area-code" wrapText="true"
+                    <TextArea fx:id="sqlTextArea" editable="false" wrapText="true"
                               VBox.vgrow="ALWAYS"/>
                 </VBox>
 
-                <VBox spacing="10.0">
+                <VBox spacing="10.0" VBox.vgrow="ALWAYS">
                     <padding>
                         <Insets top="5.0" right="5.0" left="5.0" bottom="5.0"/>
                     </padding>
+
                     <HBox alignment="CENTER_LEFT">
                         <Label text="Ergebnis-Vorschau" style="-fx-font-weight: bold;"/>
                     </HBox>
 
                     <!-- In AiAssistantView.fxml ersetzen Sie den Tabellenbereich durch: -->
                     <VBox fx:id="resultsContainer" spacing="10" VBox.vgrow="ALWAYS">
-                        <!-- TableViewBuilder fügt hier dynamisch die Tabelle ein -->
                     </VBox>
+
                 </VBox>
 
             </SplitPane>

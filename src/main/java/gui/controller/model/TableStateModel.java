@@ -35,17 +35,24 @@ public final class TableStateModel {
     private final IntegerProperty searchTotalCount = new SimpleIntegerProperty(0);
 
 
-    /** État d'expansion par clé de nœud (pour TreeTable). */
+    /**
+     * État d'expansion par clé de nœud (pour TreeTable).
+     */
     private final ObservableMap<String, Boolean> expansionState = FXCollections.observableHashMap();
 
-    /** État informatif: True si la fonction Bereinigen (global) a déjà été exécutée. */
+    /**
+     * État informatif: True si la fonction Bereinigen (global) a déjà été exécutée.
+     */
     private final BooleanProperty cleaningApplied = new SimpleBooleanProperty(false);
 
 
-    /** Zustand für die Gesamtanzahl der Ergebnisse, wenn die Suche aktiv ist. */
+    /**
+     * Zustand für die Gesamtanzahl der Ergebnisse, wenn die Suche aktiv ist.
+     */
     public IntegerProperty searchTotalCountProperty() {
         return searchTotalCount;
     }
+
     public int getSearchTotalCount() {
         return searchTotalCount.get();
     }
@@ -59,20 +66,32 @@ public final class TableStateModel {
 
     // --- Search Text ---
 
-    public StringProperty searchTextProperty() { return searchText; }
-    public String getSearchText() { return searchText.get(); }
+    public StringProperty searchTextProperty() {
+        return searchText;
+    }
+
+    public String getSearchText() {
+        return searchText.get();
+    }
+
     public void setSearchText(String text) {
         String old = searchText.get();
         searchText.set(text == null ? "" : text);
-        if (!String.valueOf(old).equals(searchText.get())){
+        if (!String.valueOf(old).equals(searchText.get())) {
             log.debug("TableStateModel: searchText='{}'", getSearchText());
         }
     }
 
     // --- Search Active ---
 
-    public BooleanProperty searchActiveProperty() { return searchActive; }
-    public boolean isSearchActive() { return searchActive.get(); }
+    public BooleanProperty searchActiveProperty() {
+        return searchActive;
+    }
+
+    public boolean isSearchActive() {
+        return searchActive.get();
+    }
+
     public void setSearchActive(boolean active) {
         boolean old = searchActive.get();
         searchActive.set(active);
@@ -81,8 +100,14 @@ public final class TableStateModel {
 
     // --- Total Count ---
 
-    public IntegerProperty totalCountProperty() { return totalCount; }
-    public int getTotalCount() { return totalCount.get(); }
+    public IntegerProperty totalCountProperty() {
+        return totalCount;
+    }
+
+    public int getTotalCount() {
+        return totalCount.get();
+    }
+
     public void setTotalCount(int count) {
         int old = totalCount.get();
         totalCount.set(Math.max(0, count));
@@ -91,8 +116,14 @@ public final class TableStateModel {
 
     // --- Rows Per Page ---
 
-    public IntegerProperty rowsPerPageProperty() { return rowsPerPage; }
-    public int getRowsPerPage() { return rowsPerPage.get(); }
+    public IntegerProperty rowsPerPageProperty() {
+        return rowsPerPage;
+    }
+
+    public int getRowsPerPage() {
+        return rowsPerPage.get();
+    }
+
     public void setRowsPerPage(int count) {
         int old = rowsPerPage.get();
         rowsPerPage.set(Math.max(10, count)); // Minimum de 10
@@ -101,7 +132,9 @@ public final class TableStateModel {
 
     // --- Expansion State (Tree) ---
 
-    public ObservableMap<String, Boolean> getExpansionState() { return expansionState; }
+    public ObservableMap<String, Boolean> getExpansionState() {
+        return expansionState;
+    }
 
     public void putExpansion(String key, boolean expanded) {
         expansionState.put(key, expanded);
@@ -113,16 +146,28 @@ public final class TableStateModel {
 
     // --- Cleaning Status ---
 
-    public BooleanProperty cleaningAppliedProperty() { return cleaningApplied; }
-    public boolean isCleaningApplied() { return cleaningApplied.get(); }
+    public BooleanProperty cleaningAppliedProperty() {
+        return cleaningApplied;
+    }
+
+    public boolean isCleaningApplied() {
+        return cleaningApplied.get();
+    }
+
     public void setCleaningApplied(boolean applied) {
         boolean old = cleaningApplied.get();
         cleaningApplied.set(applied);
         if (old != applied) log.info("TableStateModel: cleaningApplied={} -> {}", old, applied);
     }
 
-    public IntegerProperty currentPageIndexProperty() { return currentPageIndex; }
-    public int getCurrentPageIndex() { return currentPageIndex.get(); }
+    public IntegerProperty currentPageIndexProperty() {
+        return currentPageIndex;
+    }
+
+    public int getCurrentPageIndex() {
+        return currentPageIndex.get();
+    }
+
     public void setCurrentPageIndex(int index) {
         int old = currentPageIndex.get();
         int clamped = Math.max(0, index);
@@ -132,7 +177,9 @@ public final class TableStateModel {
         }
     }
 
-    /** Réinitialise les états de recherche et de nettoyage. */
+    /**
+     * Réinitialise les états de recherche et de nettoyage.
+     */
     public void reset() {
         setSearchText("");
         setSearchActive(false);

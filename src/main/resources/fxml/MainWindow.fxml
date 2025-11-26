@@ -58,9 +58,9 @@
                     <MenuItem mnemonicParsing="false" onAction="#showEnrichmentView" styleClass="menu-item"
                               text="Daten anreichern"/>
                     <MenuItem fx:id="statusItem" mnemonicParsing="false" onAction="#showOpListView"
-                              styleClass="menu-item" text="OP-Listen Export" />
+                              styleClass="menu-item" text="OP-Listen Export"/>
                     <MenuItem mnemonicParsing="false" onAction="#showAuditView"
-                              styleClass="menu-item" text="Audit-Tool" />
+                              styleClass="menu-item" text="Audit-Tool"/>
                 </Menu>
 
                 <Menu text="Verträge">

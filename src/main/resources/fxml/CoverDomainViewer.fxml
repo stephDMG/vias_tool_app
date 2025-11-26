@@ -1,40 +1,59 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.geometry.*?>
+<?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
-<?import javafx.scene.effect.*?>
-<?import javafx.scene.image.*?>
+<?import javafx.scene.effect.InnerShadow?>
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.*?>
-
-<BorderPane prefHeight="800.0" prefWidth="1200.0" style="-fx-font-family: 'Segoe UI', Arial, sans-serif; -fx-font-size: 12px;" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.cover.CoverDomainController">
+<BorderPane xmlns:fx="http://javafx.com/fxml/1" prefHeight="800.0"
+            prefWidth="1200.0"
+            style="-fx-font-family: 'Segoe UI', Arial, sans-serif; -fx-font-size: 12px;" xmlns="http://javafx.com/javafx/17.0.12"
+            fx:controller="gui.cover.CoverDomainController">
 
     <!-- ====== HEADER ====== -->
     <top>
         <VBox spacing="10">
-            <HBox alignment="CENTER_LEFT" spacing="12" style="-fx-background-color: linear-gradient(to right, #263240, #1f2833);">
+            <HBox alignment="CENTER_LEFT" spacing="12"
+                  style="-fx-background-color: linear-gradient(to right, #263240, #1f2833);">
                 <padding>
-                    <Insets bottom="12" left="16" right="16" top="12" />
+                    <Insets bottom="12" left="16" right="16" top="12"/>
                 </padding>
                 <ImageView fitHeight="28.0" preserveRatio="true">
-                    <Image url="@/images/logo.png" />
+                    <Image url="@/images/logo.png"/>
                 </ImageView>
-                <Label fx:id="domainTitle" maxWidth="Infinity" style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: white;" textOverrun="CLIP" wrapText="true" />
+                <Label fx:id="domainTitle" maxWidth="Infinity"
+                       style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: white;" textOverrun="CLIP"
+                       wrapText="true"/>
             </HBox>
 
             <ToolBar style="-fx-background-insets: 0 0 1 0; -fx-padding: 6 12 6 12;">
-                <Button fx:id="ausfuehrenButton" disable="true" onAction="#runKernfrage" style="-fx-background-color: #15a66b; -fx-text-fill: white; -fx-background-radius: 8; -fx-padding: 8 14; -fx-font-weight: bold;" text="🔍 Ausführen" />
-                <Region prefHeight="31.0" prefWidth="400.0" HBox.hgrow="ALWAYS" />
-                <ToggleButton fx:id="toggleVersionView" mnemonicParsing="false" style="-fx-background-radius: 30;">
-                    <effect><InnerShadow/></effect>
+                <Button fx:id="ausfuehrenButton" disable="true" onAction="#runKernfrage"
+                        style="-fx-background-color: #15a66b; -fx-text-fill: white; -fx-background-radius: 8; -fx-padding: 8 14; -fx-font-weight: bold;"
+                        text="🔍 Ausführen"/>
+                <Region prefHeight="31.0" prefWidth="400.0" HBox.hgrow="ALWAYS"/>
+                <ToggleButton fx:id="toggleFullName" layoutX="620.0" layoutY="14.0" style="-fx-background-radius: 30;"
+                              text="Voll. Name">
+                    <effect>
+                        <InnerShadow/>
+                    </effect>
                 </ToggleButton>
-                <Region prefHeight="31.0" prefWidth="20.0" />
+                <Separator layoutX="708.0" layoutY="10.0" orientation="VERTICAL" prefHeight="31.0" prefWidth="29.0"/>
+                <ToggleButton fx:id="toggleVersionView" mnemonicParsing="false" style="-fx-background-radius: 30;">
+                    <effect>
+                        <InnerShadow/>
+                    </effect>
+                </ToggleButton>
+                <Separator layoutX="708.0" layoutY="10.0" orientation="VERTICAL" prefHeight="31.0" prefWidth="29.0"/>
                 <ToggleButton fx:id="toggleTreeView" style="-fx-background-radius: 30;" text="Baumansicht">
-                    <effect><InnerShadow/></effect>
+                    <effect>
+                        <InnerShadow/>
+                    </effect>
                 </ToggleButton>
 
-                <Separator orientation="VERTICAL" />
-                <Label style="-fx-font-weight: bold;" text="Kernfrage:" />
-                <ChoiceBox fx:id="kernfrageChoice" prefWidth="380" />
+                <Separator orientation="VERTICAL" prefHeight="31.0" prefWidth="29.0"/>
+                <Label style="-fx-font-weight: bold;" text="Kernfrage:"/>
+                <ChoiceBox fx:id="kernfrageChoice" prefWidth="380"/>
             </ToolBar>
 
         </VBox>
@@ -44,66 +63,91 @@
     <center>
         <VBox spacing="14" VBox.vgrow="ALWAYS">
             <padding>
-                <Insets bottom="16" left="16" right="16" top="14" />
+                <Insets bottom="16" left="16" right="16" top="14"/>
             </padding>
 
             <!-- Filtres -->
             <TitledPane animated="true" expanded="true" text="Filter">
                 <content>
-                    <HBox fx:id="parameter" alignment="TOP_LEFT" fillHeight="true" managed="true" spacing="20" visible="true">
+                    <HBox fx:id="parameter" alignment="TOP_LEFT" fillHeight="true" managed="true" spacing="20"
+                          visible="true">
 
                         <!-- Vertragsstand -->
                         <VBox spacing="6" HBox.hgrow="ALWAYS">
-                            <Label maxWidth="Infinity" style="-fx-font-weight: bold;" text="Vertragsstand" textOverrun="CLIP" wrapText="true" />
-                            <ListView fx:id="vertragsstandList" fixedCellSize="22" minHeight="160" prefHeight="200" style="-fx-background-radius: 8; -fx-border-color: rgba(0,0,0,0.1); -fx-border-radius: 8;" VBox.vgrow="ALWAYS" />
-                            <Label fx:id="vertragsstandSelectedLabel" maxWidth="Infinity" style="-fx-font-style: italic; -fx-text-fill: gray;" text="Ausgewählt: -" textOverrun="CLIP" wrapText="true" />
+                            <Label maxWidth="Infinity" style="-fx-font-weight: bold;" text="Vertragsstand"
+                                   textOverrun="CLIP" wrapText="true"/>
+                            <ListView fx:id="vertragsstandList" fixedCellSize="22" minHeight="160" prefHeight="200"
+                                      style="-fx-background-radius: 8; -fx-border-color: rgba(0,0,0,0.1); -fx-border-radius: 8;"
+                                      VBox.vgrow="ALWAYS"/>
+                            <Label fx:id="vertragsstandSelectedLabel" maxWidth="Infinity"
+                                   style="-fx-font-style: italic; -fx-text-fill: gray;" text="Ausgewählt: -"
+                                   textOverrun="CLIP" wrapText="true"/>
                         </VBox>
 
                         <!-- Bearbeitungsstand -->
                         <VBox spacing="6" HBox.hgrow="ALWAYS">
-                            <Label maxWidth="Infinity" style="-fx-font-weight: bold;" text="Bearbeitungsstand" textOverrun="CLIP" wrapText="true" />
-                            <ListView fx:id="bearbeitungsstandList" fixedCellSize="22" minHeight="200" prefHeight="260" style="-fx-background-radius: 8; -fx-border-color: rgba(0,0,0,0.1); -fx-border-radius: 8;" VBox.vgrow="ALWAYS" />
-                            <Label fx:id="bastandSelectedLabel" maxWidth="Infinity" style="-fx-font-style: italic; -fx-text-fill: gray;" text="Ausgewählt: -" textOverrun="CLIP" wrapText="true" />
+                            <Label maxWidth="Infinity" style="-fx-font-weight: bold;" text="Bearbeitungsstand"
+                                   textOverrun="CLIP" wrapText="true"/>
+                            <ListView fx:id="bearbeitungsstandList" fixedCellSize="22" minHeight="200" prefHeight="260"
+                                      style="-fx-background-radius: 8; -fx-border-color: rgba(0,0,0,0.1); -fx-border-radius: 8;"
+                                      VBox.vgrow="ALWAYS"/>
+                            <Label fx:id="bastandSelectedLabel" maxWidth="Infinity"
+                                   style="-fx-font-style: italic; -fx-text-fill: gray;" text="Ausgewählt: -"
+                                   textOverrun="CLIP" wrapText="true"/>
                         </VBox>
 
                         <!-- Gruppierung -->
                         <VBox spacing="6" HBox.hgrow="ALWAYS">
                             <HBox alignment="CENTER_LEFT" spacing="10">
-                                <Label maxWidth="Infinity" style="-fx-font-weight: bold;" text="Gruppierung" textOverrun="CLIP" wrapText="true" />
-                                <CheckBox fx:id="groupByAllCheck" text="Alles" />
+                                <Label maxWidth="Infinity" style="-fx-font-weight: bold;" text="Gruppierung"
+                                       textOverrun="CLIP" wrapText="true"/>
+                                <CheckBox fx:id="groupByAllCheck" text="Alles"/>
                             </HBox>
-                            <ListView fx:id="groupByList" fixedCellSize="22" minHeight="180" prefHeight="220" style="-fx-background-radius: 8; -fx-border-color: rgba(0,0,0,0.1); -fx-border-radius: 8;" VBox.vgrow="ALWAYS" />
-                            <Label fx:id="groupBySelectedLabel" maxWidth="Infinity" style="-fx-font-style: italic; -fx-text-fill: gray;" text="Ausgewählt: Standard (all)" textOverrun="CLIP" wrapText="true" />
+                            <ListView fx:id="groupByList" fixedCellSize="22" minHeight="180" prefHeight="220"
+                                      style="-fx-background-radius: 8; -fx-border-color: rgba(0,0,0,0.1); -fx-border-radius: 8;"
+                                      VBox.vgrow="ALWAYS"/>
+                            <Label fx:id="groupBySelectedLabel" maxWidth="Infinity"
+                                   style="-fx-font-style: italic; -fx-text-fill: gray;"
+                                   text="Ausgewählt: Standard (all)" textOverrun="CLIP" wrapText="true"/>
                         </VBox>
 
                         <!-- Date filters -->
                         <HBox fx:id="dateBox" alignment="TOP_LEFT" managed="false" spacing="16" visible="false">
                             <VBox spacing="6">
-                                <Label style="-fx-font-weight: bold;" text="Ab-Datum" />
-                                <DatePicker fx:id="abDatePicker" />
+                                <Label style="-fx-font-weight: bold;" text="Ab-Datum"/>
+                                <DatePicker fx:id="abDatePicker"/>
                             </VBox>
                             <VBox spacing="6">
-                                <Label style="-fx-font-weight: bold;" text="Bis-Datum" />
-                                <DatePicker fx:id="bisDatePicker" />
+                                <Label style="-fx-font-weight: bold;" text="Bis-Datum"/>
+                                <DatePicker fx:id="bisDatePicker"/>
                             </VBox>
                         </HBox>
 
                         <!-- Stornogründe -->
-                        <VBox fx:id="stornoGrundFilterBox" managed="false" spacing="6" visible="false" HBox.hgrow="ALWAYS">
-                            <Label maxWidth="Infinity" style="-fx-font-weight: bold;" text="Stornogründe filtern" textOverrun="CLIP" wrapText="true" />
-                            <ListView fx:id="stornoGrundList" fixedCellSize="22" minHeight="200" prefHeight="260" style="-fx-background-radius: 8; -fx-border-color: rgba(0,0,0,0.1); -fx-border-radius: 8;" VBox.vgrow="ALWAYS" />
+                        <VBox fx:id="stornoGrundFilterBox" managed="false" spacing="6" visible="false"
+                              HBox.hgrow="ALWAYS">
+                            <Label maxWidth="Infinity" style="-fx-font-weight: bold;" text="Stornogründe filtern"
+                                   textOverrun="CLIP" wrapText="true"/>
+                            <ListView fx:id="stornoGrundList" fixedCellSize="22" minHeight="200" prefHeight="260"
+                                      style="-fx-background-radius: 8; -fx-border-color: rgba(0,0,0,0.1); -fx-border-radius: 8;"
+                                      VBox.vgrow="ALWAYS"/>
                         </VBox>
 
                     </HBox>
                 </content>
             </TitledPane>
 
-            <Label fx:id="messageLabel" maxWidth="Infinity" style="-fx-text-fill: gray;" textOverrun="CLIP" wrapText="true" />
+            <Label fx:id="messageLabel" maxWidth="Infinity" style="-fx-text-fill: gray;" textOverrun="CLIP"
+                   wrapText="true"/>
 
-            <StackPane fx:id="resultsStack" VBox.vgrow="ALWAYS">
-                <VBox fx:id="tableHost" VBox.vgrow="ALWAYS" />
-                <VBox fx:id="treeHost" managed="false" visible="false" VBox.vgrow="ALWAYS" />
-            </StackPane>
+            <!-- ✅ on conserve l'identité resultsContainer pour la compatibilité -->
+            <VBox fx:id="resultsContainer" spacing="10" VBox.vgrow="ALWAYS">
+                <StackPane fx:id="resultsStack" VBox.vgrow="ALWAYS">
+                    <VBox fx:id="tableHost" VBox.vgrow="ALWAYS"/>
+                    <VBox fx:id="treeHost" managed="false" visible="false" VBox.vgrow="ALWAYS"/>
+                </StackPane>
+            </VBox>
+
 
         </VBox>
     </center>
@@ -112,9 +156,9 @@
     <bottom>
         <HBox alignment="CENTER_RIGHT">
             <padding>
-                <Insets bottom="8" left="12" right="12" top="8" />
+                <Insets bottom="8" left="12" right="12" top="8"/>
             </padding>
-            <Button onAction="#closeWindow" style="-fx-background-radius: 8; -fx-padding: 6 12;" text="Schließen" />
+            <Button onAction="#closeWindow" style="-fx-background-radius: 8; -fx-padding: 6 12;" text="Schließen"/>
         </HBox>
     </bottom>
 </BorderPane>

@@ -1,7 +1,5 @@
 package file.extrator;
 
-import model.VersicherungsData;
-
 import java.io.File;
 import java.util.List;
 

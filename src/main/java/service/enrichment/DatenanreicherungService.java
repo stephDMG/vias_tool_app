@@ -27,7 +27,7 @@ public class DatenanreicherungService {
     /**
      * Erstellt den Service zur Datenanreicherung.
      *
-     * @param fileService Dienst zum Lesen/Schreiben von Dateien
+     * @param fileService     Dienst zum Lesen/Schreiben von Dateien
      * @param databaseService Dienst für Datenbankabfragen (VIAS)
      */
     public DatenanreicherungService(FileService fileService, DatabaseService databaseService) {

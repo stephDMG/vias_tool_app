@@ -8,7 +8,9 @@ import gui.controller.model.ResultContextModel;
 import gui.controller.model.TableStateModel;
 import javafx.animation.PauseTransition;
 import javafx.application.Platform;
-import javafx.beans.property.*;
+import javafx.beans.property.BooleanProperty;
+import javafx.beans.property.ReadOnlyBooleanProperty;
+import javafx.beans.property.SimpleBooleanProperty;
 import javafx.scene.Node;
 import javafx.scene.control.Label;
 import javafx.scene.control.Pagination;
@@ -20,9 +22,6 @@ import model.RowData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javafx.scene.paint.Color;
-
-import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -39,9 +38,8 @@ import java.util.function.Consumer;
  */
 public abstract class AbstractTableManager {
 
-    private static final Logger log = LoggerFactory.getLogger(AbstractTableManager.class);
     protected static final ExecutorService EXECUTOR = Executors.newFixedThreadPool(4);
-
+    private static final Logger log = LoggerFactory.getLogger(AbstractTableManager.class);
     // Zustand (Models)
     protected final TableStateModel stateModel;
     protected final ColumnStateModel columnModel;
@@ -51,26 +49,19 @@ public abstract class AbstractTableManager {
     protected final TextField searchField;
     protected final Pagination pagination;
     protected final Label resultsCountLabel;
-
+    // Status
+    protected final BooleanProperty hasData = new SimpleBooleanProperty(false);
+    private final BooleanProperty isUpdatingSearchField = new SimpleBooleanProperty(false);
     // Datenhaltung
     protected List<RowData> filteredData = new ArrayList<>();
     protected List<String> currentHeaders = new ArrayList<>();
-
     // Suche/Pagination-Status
     protected boolean searchEnabled = false;
     protected boolean paginationEnabled = false;
     protected boolean serverPaginationEnabled = false;
     protected Consumer<String> onServerSearch = null;
     protected int totalCount = 0;
-
-
-
-    // Status
-    protected final BooleanProperty hasData = new SimpleBooleanProperty(false);
     protected PauseTransition searchDebounce = new PauseTransition(Duration.millis(400)); // NEU: 300ms Verzögerung
-    private final BooleanProperty isUpdatingSearchField = new SimpleBooleanProperty(false);
-
-
     protected int groupColIndex = -1;
     protected List<Boolean> stripeIsA = new ArrayList<>();
     protected Color groupColorA = null;
@@ -96,30 +87,31 @@ public abstract class AbstractTableManager {
         stateModel.rowsPerPageProperty().addListener((obs, oldV, newV) -> setRowsPerPage(newV.intValue()));
         columnModel.cleanedProperty().addListener((obs, oldV, newV) -> refreshView());
 
+        columnModel.getHiddenKeys().addListener(
+                (javafx.collections.SetChangeListener<String>) change -> refreshView()
+        );
+
 
         if (searchField != null) {
-
             // 1. Synchronisation der UI-Eingabe zum Modell (Saisie Utilisateur)
             searchField.textProperty().addListener((obs, ov, nv) -> {
-                // 1. Ignorer les mises à jour venant du modèle
-                if (isUpdatingSearchField.get()) return;
-
-                // 2. Démarrer/Réinitialiser le Debounce pour la requête serveur
+                stateModel.setSearchText(nv);
+                final String q = (nv == null) ? "" : nv.trim();
                 searchDebounce.stop();
                 searchDebounce.setOnFinished(evt -> {
-
-                    stateModel.setSearchText(nv);
-
-                    final String qTrimmé = (nv == null) ? "" : nv.trim();
-                    startSearchOrReturnToKF(qTrimmé);
+                    startSearchOrReturnToKF(q);
                 });
-                searchDebounce.playFromStart();
+                if (q.length() >= 1 || q.isEmpty()) {
+                    searchDebounce.playFromStart();
+                }
             });
         }
     }
 
-    /** Startet den Suchvorgang oder kehrt zur Kernfrage zurück.
-     * DIESE Methode wird NACH dem Debounce aufgerufen. */
+    /**
+     * Startet den Suchvorgang oder kehrt zur Kernfrage zurück.
+     * DIESE Methode wird NACH dem Debounce aufgerufen.
+     */
     private void startSearchOrReturnToKF(String q) {
         final boolean active = !q.isEmpty();
 
@@ -134,10 +126,50 @@ public abstract class AbstractTableManager {
         }
     }
 
+    /**
+     * Zeigt einen einheitlichen Bestätigungsdialog für das Löschen von Spalten an.
+     *
+     * @param headerNames Liste der Spalten-Anzeigenamen (kann leer sein)
+     * @param count       Anzahl der zu löschenden Spalten
+     * @return {@code true}, wenn der Benutzer die Löschung bestätigt hat, sonst {@code false}.
+     */
+    protected boolean confirmDeleteColumns(Collection<String> headerNames, int count) {
+        if (count <= 0) {
+            return false;
+        }
+
+        List<String> names = (headerNames == null)
+                ? List.of()
+                : headerNames.stream()
+                .filter(Objects::nonNull)
+                .filter(s -> !s.isBlank())
+                .toList();
+
+        String message;
+        if (count == 1) {
+            String name = names.isEmpty() ? "1 Spalte" : "'" + names.get(0) + "'";
+            message = "Möchten Sie die Spalte " + name + " wirklich löschen?";
+        } else {
+            String list = names.isEmpty()
+                    ? ""
+                    : "\n\n" + String.join(", ", names);
+            message = "Möchten Sie die ausgewählten " + count
+                    + " Spalten wirklich löschen?" + list;
+        }
+
+        return gui.controller.dialog.Dialog.showWarningDialog("Spalten löschen", message);
+    }
+
+
     // ---------- Öffentliche gemeinsame API ----------
 
-    public ReadOnlyBooleanProperty hasDataProperty() { return hasData; }
-    public boolean hasData() { return hasData.get(); }
+    public ReadOnlyBooleanProperty hasDataProperty() {
+        return hasData;
+    }
+
+    public boolean hasData() {
+        return hasData.get();
+    }
 
     public AbstractTableManager enableSearch() {
         if (searchField == null) return this;
@@ -207,7 +239,7 @@ public abstract class AbstractTableManager {
             }
 
             int rowsPerPage = Math.max(1, stateModel.getRowsPerPage());
-            int pageCount   = Math.max(1, (int) Math.ceil((double) totalCount / rowsPerPage));
+            int pageCount = Math.max(1, (int) Math.ceil((double) totalCount / rowsPerPage));
 
             // targetIndex ist 0, da der Controller (applyResultContext) setCurrentPageIndex(0) aufruft
             int targetIndex = 0;
@@ -224,7 +256,6 @@ public abstract class AbstractTableManager {
             loadServerPageData(targetIndex);
         });
     }
-
 
 
     public AbstractTableManager setOnServerSearch(Consumer<String> handler) {
@@ -277,6 +308,9 @@ public abstract class AbstractTableManager {
     }
 
     /** Bereinigt alle Spalten, die auf ALLEN Seiten leer sind (1-a). */
+    /**
+     * Bereinigt alle Spalten, die auf ALLEN Seiten leer sind (1-a).
+     */
     public void cleanColumnsAllPages() {
         if (!hasData()) {
             Dialog.showInfoDialog("Bereinigen", "Keine Daten vorhanden.");
@@ -288,31 +322,43 @@ public abstract class AbstractTableManager {
         }
 
         if (!Dialog.showWarningDialog("Global Bereinigen",
-                "Es werden Spalten entfernt, die im GESAMTEN Ergebnis leer sind. Dies kann bei großen Datenmengen einen Moment dauern. Fortfahren?")) {
+                "Es werden Spalten entfernt, die im GESAMTEN Ergebnis leer sind. "
+                        + "Dies kann bei großen Datenmengen einen Moment dauern. Fortfahren?")) {
             return;
         }
 
-        // Deaktiviert den Button während des Jobs (löst Problem 2-a)
+        resultModel.setLoading(true);
+
+        // Während des Jobs: Button via Listener deaktivieren
         Platform.runLater(() -> columnModel.getHiddenKeys().addListener(this::disableCleanButtonOnCleaned));
 
         EXECUTOR.submit(() -> {
             try {
-                // 1. Alle Daten vom Server/lokal laden
-                List<RowData> allRows = loadAllData();
-                if (allRows.isEmpty()) {
+                // === AJOUT IMPORTANT : choisir la base de données la plus rapide ===
+                // Si une recherche est active et que filteredData est déjà disponible,
+                // on l’utilise directement (p.ex. 107 lignes) au lieu de recharger toutes les pages.
+                final List<RowData> basis;
+                if (stateModel.isSearchActive() && filteredData != null && !filteredData.isEmpty()) {
+                    basis = new ArrayList<>(filteredData);
+                } else {
+                    // Chemin existant : tout charger depuis le serveur
+                    basis = loadAllData(); // ta méthode utilitaire existante
+                }
+
+                if (basis.isEmpty()) {
                     Platform.runLater(() -> Dialog.showInfoDialog("Bereinigen", "Keine Daten zum Bereinigen verfügbar."));
                     return;
                 }
 
-                // 2. Original-Keys bestimmen (könnte leer sein, wenn nur 1 Spalte übrig ist)
-                Set<String> allKeys = allRows.get(0).getValues().keySet();
+                // 2. Original-Keys bestimmen
+                Set<String> allKeys = basis.get(0).getValues().keySet();
                 if (allKeys.isEmpty()) return;
 
                 // 3. Spalten identifizieren, die komplett leer sind
                 Set<String> keysToRemove = new HashSet<>();
                 for (String key : allKeys) {
                     boolean allEmpty = true;
-                    for (RowData row : allRows) {
+                    for (RowData row : basis) {
                         String value = ColumnValueFormatter.format(row, key);
                         if (value != null && !value.trim().isEmpty()) {
                             allEmpty = false;
@@ -322,24 +368,27 @@ public abstract class AbstractTableManager {
                     if (allEmpty) keysToRemove.add(key);
                 }
 
-                // 4. Update des globalen Zustands
+                // 4. Update des globalen Zustands + Feedback
                 Platform.runLater(() -> {
                     if (keysToRemove.isEmpty()) {
                         Dialog.showInfoDialog("Bereinigen", "Es gibt keine vollständig leeren Spalten im gesamten Ergebnis.");
                     } else {
-                        // Wichtig: ColumnStateModel aktualisieren
                         columnModel.replaceHiddenKeys(keysToRemove);
-                        stateModel.setCleaningApplied(true); // Status setzen (4-a)
+                        stateModel.setCleaningApplied(true);
                         Dialog.showInfoDialog("Bereinigen", keysToRemove.size() + " Spalte(n) wurden global ausgeblendet.");
                     }
                 });
 
             } catch (Exception ex) {
                 log.error("Global Bereinigen fehlgeschlagen", ex);
-                Platform.runLater(() -> Dialog.showErrorDialog("Bereinigen Fehler", "Fehler beim Laden aller Daten: " + ex.getMessage()));
+                Platform.runLater(() -> Dialog.showErrorDialog("Bereinigen Fehler",
+                        "Fehler beim globalen Bereinigen: " + ex.getMessage()));
             } finally {
-                // Entfernt den Listener nach dem Job (oder sollte im Sub-Manager bleiben)
-                Platform.runLater(() -> columnModel.getHiddenKeys().removeListener(this::disableCleanButtonOnCleaned));
+                // Toujours retirer le listener et remettre le busy à false
+                Platform.runLater(() -> {
+                    columnModel.getHiddenKeys().removeListener(this::disableCleanButtonOnCleaned);
+                    resultModel.setLoading(false);
+                });
             }
         });
     }
@@ -427,7 +476,9 @@ public abstract class AbstractTableManager {
         });
     }
 
-    /** Aligne la Pagination locale sur l'index mémorisé dans TableStateModel (sans recharger toute la KF). */
+    /**
+     * Aligne la Pagination locale sur l'index mémorisé dans TableStateModel (sans recharger toute la KF).
+     */
     public void syncToModelPage() {
         if (!serverPaginationEnabled || pagination == null) return;
         int idx = Math.min(Math.max(0, stateModel.getCurrentPageIndex()),
@@ -438,7 +489,6 @@ public abstract class AbstractTableManager {
             loadServerPageData(idx);
         }
     }
-
 
 
     protected void recomputeGroupStripes() {
@@ -504,24 +554,38 @@ public abstract class AbstractTableManager {
         updateResultsCount();
     }
 
+    public TextField getSearchField() {
+        return searchField;
+    }
 
 
     // ---------- Abstrakte Hooks (UI-spezifisch) ----------
 
-    /** Liefert die Datenbasis (alle Daten) für den Client-Filter. */
+    /**
+     * Liefert die Datenbasis (alle Daten) für den Client-Filter.
+     */
     protected abstract List<RowData> getOriginalDataForClientFilter();
 
     protected abstract void configureSearchSection(boolean visible);
+
     protected abstract List<String> currentHeaders();
+
     protected abstract int getVisibleRowCount();
+
     protected abstract String getVisibleCellValue(int rowIndex, int columnIndex);
+
     protected abstract void installGroupRowFactory();
+
     protected abstract void refreshView();
+
     protected abstract void updateResultsCount();
+
     protected abstract void clearView();
+
     protected abstract void requestRefresh();
 
     public abstract List<String> getDisplayHeaders();
+
     public abstract List<String> getOriginalKeys();
 
 }

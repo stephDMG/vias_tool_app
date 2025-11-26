@@ -2,7 +2,7 @@
 package formatter;
 
 import config.ApplicationConfig;
-import gui.controller.utils.format.FormatterService;
+import gui.controller.service.FormatterService;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;

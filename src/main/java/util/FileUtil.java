@@ -12,9 +12,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Set;
 
 /**
  * Hilfsklasse für Dateioperationen.
@@ -23,10 +21,8 @@ import java.util.Set;
  * @since 15/07/2025
  */
 public class FileUtil {
-    private static final Logger logger = LoggerFactory.getLogger(FileServiceImpl.class);
-
-
     public static final String BASE_AUDIT_PATH = "X:\\FREIE ZONE\\000_AUDIT_2025\\AUDIT\\";
+    private static final Logger logger = LoggerFactory.getLogger(FileServiceImpl.class);
     private static final DateTimeFormatter FILE_DATETIME_FMT = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm:ss");
 
 
@@ -128,17 +124,15 @@ public class FileUtil {
     }
 
 
-
-
     /**
      * Erstellt den vollständigen Zielpfad für das Dokument gemäß der Audit-Struktur und stellt sicher,
      * dass alle Verzeichnisse existieren.
      * Struktur: X:\...\SB_[Vorname]_[Nachname]\[Vertrag|Schaden]\[Schlüssel]\[Beschreibung]\
      *
-     * @param vorname Vorname des Sachbearbeiters.
-     * @param nachname Nachname des Sachbearbeiters.
-     * @param auditType "Vertrag" oder "Schaden".
-     * @param schluessel Policennummer oder Schaden-Nummer.
+     * @param vorname      Vorname des Sachbearbeiters.
+     * @param nachname     Nachname des Sachbearbeiters.
+     * @param auditType    "Vertrag" oder "Schaden".
+     * @param schluessel   Policennummer oder Schaden-Nummer.
      * @param beschreibung Dokumenten-Beschreibung (z.B. "01) Schriftwechsel").
      * @return Der vollständige Zielpfad als String.
      */
@@ -170,16 +164,14 @@ public class FileUtil {
     }
 
 
-
     /**
      * Generiert einen eindeutigen Dateinamen (Betreff.Extension) unter Berücksichtigung von Konflikten.
      * Wenn der Betreff bereits in 'existingBetreffs' enthalten ist, wird er mit Datum/Uhrzeit ergänzt.
      *
-     * @param betreff Der Betreff (Basis-Dateiname).
+     * @param betreff     Der Betreff (Basis-Dateiname).
      * @param bezugsdatum Das Bezugsdatum des Dokuments.
-     * @param uhrzeit Die Erstellungszeit des Dokuments.
-     * @param extension Die Dateierweiterung (ohne Punkt).
-
+     * @param uhrzeit     Die Erstellungszeit des Dokuments.
+     * @param extension   Die Dateierweiterung (ohne Punkt).
      * @return Der eindeutige, sichere Dateiname (ohne Pfad).
      */
     // FileUtil.java
@@ -222,7 +214,6 @@ public class FileUtil {
     }
 
 
-
     // FileUtil.java
     public static String buildTargetPathString(String vorname, String nachname, String auditType,
                                                String schluessel, String beschreibung) {
@@ -241,13 +232,12 @@ public class FileUtil {
     }
 
 
-
-
     /**
      * Führt die Kopieroperation einer Datei von Quelle zu Ziel durch.
-     * @param sourcePath Physischer Pfad der Quelldatei.
+     *
+     * @param sourcePath      Physischer Pfad der Quelldatei.
      * @param targetDirectory Pfad zum Zielordner.
-     * @param newFileName Der neue, eindeutige Dateiname (inkl. Extension).
+     * @param newFileName     Der neue, eindeutige Dateiname (inkl. Extension).
      * @throws IOException Wenn die Datei nicht kopiert werden kann.
      */
     public static void copyFile(String sourcePath, String targetDirectory, String newFileName) throws IOException {

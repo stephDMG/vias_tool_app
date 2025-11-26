@@ -2,10 +2,10 @@ package service.op.task;
 
 import javafx.concurrent.Task;
 import model.enums.ExportFormat;
+import model.op.kunde.ExecutionResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import service.interfaces.ProgressReporter;
-import model.op.kunde.ExecutionResult;
 import service.op.OPListenService;
 
 /**
