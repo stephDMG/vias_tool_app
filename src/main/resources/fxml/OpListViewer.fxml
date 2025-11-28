@@ -5,11 +5,15 @@
 <?import javafx.scene.layout.*?>
 <BorderPane xmlns:fx="http://javafx.com/fxml/1" xmlns="http://javafx.com/javafx/17.0.12"
             fx:controller="gui.controller.OpListViewerController">
+
     <padding>
         <Insets bottom="12" left="12" right="12" top="12"/>
     </padding>
 
     <top>
+        <HBox alignment="CENTER" prefHeight="45.0" prefWidth="477.0" styleClass="banner-header">
+            <Label text="OP-Liste Viewer" style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: white;"/>
+        </HBox>
         <HBox alignment="CENTER_LEFT" prefHeight="47.0" prefWidth="927.0" spacing="10">
             <Label text="OP-Liste (Hauptliste)"/>
             <Label text="Filter Policen-Nr:"/>
@@ -30,8 +34,6 @@
             <VBox fx:id="resultsContainer" spacing="10" VBox.vgrow="ALWAYS"/>
 
         </VBox>
-
-
     </center>
 
     <bottom>
