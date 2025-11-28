@@ -1,4 +1,11 @@
 ﻿====================
+Version 1.3.5 (2025-11-28)
+====================
+- [Aenderung] - PDF header + Footer pro Seite + Numerierung hinzufügen
+- [Aenderung] - PdfWriter enthaelt jetzt nur (Header+Logo | content (jetzt dynamisch) | Footer (Seite 1/Total)
+- [Aenderung] - add writer/op/OpListePdfWriter
+
+====================
 Version 1.3.4 (2025-11-26)
 ====================
 - [Aenderung] - Probleme mit der Tabelle beheben
@@ -431,6 +438,7 @@ Version 1.0.1 (2025-08-07)
 ====================
 - [Aenderung] Es wurde eine Build-Automatisierung eingebunden, die sollte nur mit PowerShell-Skript umsetzen. Zum starten einfach ./release.ps1
 - [Aenderung] 
+
 
 
 
