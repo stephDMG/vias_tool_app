@@ -19,8 +19,6 @@ import java.util.Properties;
  * @since 15/07/2025
  */
 public final class DatabaseConfig {
-
-
     public static final String URL;
     public static final String USER;
     public static final String PASSWORD;

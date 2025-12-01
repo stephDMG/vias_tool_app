@@ -447,7 +447,7 @@ public class MainController implements Initializable {
                 "$log = '" + msiLog.toString().replace("'", "''") + "'",
                 "$app = '" + appExe.replace("'", "''") + "'",
                 // msiexec sichtbar + Logging; ein einziger ArgumentString, innere Quotes mit Backtick `
-                "Start-Process -FilePath 'msiexec.exe' -ArgumentList \"/i `\"$msi`\" /passive /norestart /l*v `\"$log`\"\" -Wait",
+                "Start-Process -FilePath 'msiexec.exe' -ArgumentList \"/i `\"$msi`\" MSIINSTALLPERUSER=1 /passive /norestart /l*v `\"$log`\"\" -Wait",
                 "Start-Sleep -Seconds 1",
                 "if (Test-Path $app) { Start-Process -FilePath $app }"
         );

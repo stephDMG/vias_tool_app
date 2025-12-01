@@ -2,6 +2,7 @@ target/
 !.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
+!**/src/main/resources/
 
 ### IntelliJ IDEA ###
 .idea/modules.xml
@@ -39,3 +40,5 @@ build/
 
 # Local database config (do not commit secrets)
 config/db.properties
+resources/db.properties
+config/oplist_db.properties
