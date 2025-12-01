@@ -15,8 +15,8 @@ $changelogFile = Join-Path $projectDir 'changelog.txt'
 
 $jpackageInputDir = 'C:\jpackage_input'
 $jpackageLibsDir = Join-Path $jpackageInputDir 'libs'
-$logoFileSource = Join-Path $projectDir 'src\main\resources\images\logo_weihnachten.ico'
-$logoFileDest = Join-Path $jpackageLibsDir 'logo_weihnachten.ico'
+$logoFileSource = Join-Path $projectDir 'src\main\resources\images\logo.ico'
+$logoFileDest = Join-Path $jpackageLibsDir 'logo.ico'
 
 $destLocal = 'C:\jpackage_output'
 
