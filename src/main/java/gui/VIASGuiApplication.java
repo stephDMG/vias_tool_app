@@ -118,7 +118,9 @@ public class VIASGuiApplication extends Application {
      * Nutzt das zentrale Logging, um das ordnungsgemäße Herunterfahren zu dokumentieren.
      */
     @Override
-    public void stop() {
+    public void stop() throws Exception {
         logger.info("🛑 VIAS GUI-Anwendung wird beendet");
+        super.stop();
+        System.exit(0); // Sécurité supplémentaire
     }
 }

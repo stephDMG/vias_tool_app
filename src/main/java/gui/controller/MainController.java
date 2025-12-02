@@ -437,8 +437,7 @@ public class MainController implements Initializable {
             logger.warn("Unblock-File nicht ausgeführt (ok): {}", i.toString());
         }
 
-        // --- 4) PS1-Skript erzeugen (Argumente korrekt quoten) -----------------
-        // WICHTIG: In PS1 nutzen wir einen EINZIGEN ArgumentList-String und quoten mit `"
+        // --- 4) PS1-Skript erzeugen ---
         String appExe = Paths.get(System.getenv("LOCALAPPDATA"), "Programs", "VIAS Export Tool", "VIAS Export Tool.exe").toString();
 
         String ps1 = String.join("\r\n",
@@ -446,7 +445,13 @@ public class MainController implements Initializable {
                 "$msi = '" + localMsi.toString().replace("'", "''") + "'",
                 "$log = '" + msiLog.toString().replace("'", "''") + "'",
                 "$app = '" + appExe.replace("'", "''") + "'",
-                // msiexec sichtbar + Logging; ein einziger ArgumentString, innere Quotes mit Backtick `
+
+                // AJOUT : Attendre que le processus "VIAS Export Tool" soit vraiment mort
+                "Write-Host 'Warte auf Beendigung der App...'",
+                "$proc = Get-Process 'VIAS Export Tool' -ErrorAction SilentlyContinue",
+                "if ($proc) { $proc | Wait-Process -Timeout 10 }", // Attendre max 10s
+
+                // Installation
                 "Start-Process -FilePath 'msiexec.exe' -ArgumentList \"/i `\"$msi`\" MSIINSTALLPERUSER=1 /passive /norestart /l*v `\"$log`\"\" -Wait",
                 "Start-Sleep -Seconds 1",
                 "if (Test-Path $app) { Start-Process -FilePath $app }"
@@ -495,6 +500,25 @@ public class MainController implements Initializable {
         UpdateInfo(String version, String changelog) {
             this.version = version;
             this.changelog = changelog;
+        }
+
+
+        /**
+         * Beendet die Anwendung komplett.
+         */
+        @FXML
+        private void closeApplication() {
+            // 1. Fermeture propre de JavaFX
+            Platform.exit();
+
+            // 2. Force brute pour tuer tous les threads restants (DB, Timer, etc.)
+            // Le délai permet à JavaFX de finir ses animations de fermeture si nécessaire
+            new Thread(() -> {
+                try {
+                    Thread.sleep(200);
+                } catch (InterruptedException ignored) {}
+                System.exit(0);
+            }).start();
         }
     }
 }
