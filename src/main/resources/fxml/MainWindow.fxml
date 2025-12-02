@@ -1,37 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.effect.Bloom?>
 <?import javafx.scene.effect.InnerShadow?>
-<?import javafx.scene.image.Image?>
-<?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.*?>
 <?import javafx.scene.paint.Color?>
 <?import javafx.scene.text.TextFlow?>
-<?import javafx.scene.shape.Rectangle?>
+
 <BorderPane xmlns:fx="http://javafx.com/fxml/1" fx:id="mainBorderPane" prefHeight="800.0" prefWidth="1200.0"
             xmlns="http://javafx.com/javafx/17.0.12" fx:controller="gui.controller.MainController">
     <top>
         <VBox>
-            <HBox alignment="CENTER" styleClass="banner-header">
-                <padding>
-                    <Insets/>
-                </padding>
-
-                <StackPane prefHeight="120.0" maxHeight="120.0" minHeight="120.0">
-
-                    <clip>
-                        <Rectangle width="${mainBorderPane.width}" height="120.0" />
-                    </clip>
-
-                    <ImageView preserveRatio="true" fitWidth="${mainBorderPane.width}">
-
-                        <Image url="@/images/merry_christmas_banner.png"/>
-                    </ImageView>
-                </StackPane>
+            <HBox alignment="CENTER_LEFT" styleClass="banner-header" HBox.hgrow="ALWAYS">
+                <StackPane minHeight="100.0" maxHeight="100.0" prefHeight="100.0"
+                           style="-fx-background-size: 30% 75%;
+                       -fx-background-repeat: no-repeat;
+                      -fx-background-image: url('/images/merry_christmas_banner.png');"
+                           HBox.hgrow="ALWAYS"/>
             </HBox>
-
             <MenuBar>
                 <Menu text="Datei">
                     <Menu mnemonicParsing="false" text="Daten importieren">

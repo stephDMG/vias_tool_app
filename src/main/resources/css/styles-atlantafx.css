@@ -16,7 +16,8 @@
 *********************/
 .banner-header {
     /* Subtle gradient that looks fine on light & dark */
-    -fx-background-color: #263240;
+    /*-fx-background-color: #263240; */
+    -fx-background-color: #001d4a;
 }
 
 /********************
@@ -259,4 +260,16 @@
 
 .view-toggle-switch:selected:pressed {
     -fx-background-color: -color-accent-emphasis-pressed;
+}
+
+.banner-container {
+    -fx-min-height: 100px;
+    -fx-max-height: 100px;
+    -fx-pref-height: 100px;
+}
+
+.banner-image {
+    -fx-fit-width: 100%;
+    -fx-fit-height: 100px;
+    -fx-preserve-ratio: false;
 }
